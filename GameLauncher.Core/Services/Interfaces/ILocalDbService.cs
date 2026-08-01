@@ -8,6 +8,7 @@ public interface ILocalDbService
     
     // Games metadata (synced from Nextcloud)
     Task UpsertGamesAsync(Game[] games);
+    Task RemoveGamesNotInAsync(IReadOnlyCollection<string> keepIds);
     Task<Game?> GetGameAsync(string gameId);
     Task<Game[]> GetAllGamesAsync();
     Task<Game[]> GetGamesByStatusAsync(InstallStatus status);

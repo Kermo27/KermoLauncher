@@ -168,6 +168,36 @@ public class LocalDbService : ILocalDbService
         }
     }
 
+    public async Task RemoveGamesNotInAsync(IReadOnlyCollection<string> keepIds)
+    {
+        if (keepIds.Count == 0) return;
+
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var tx = conn.BeginTransaction();
+        try
+        {
+            var idList = string.Join(",", keepIds.Select((_, i) => $"@p{i}"));
+            var parameters = new DynamicParameters();
+            var i = 0;
+            foreach (var id in keepIds)
+            {
+                parameters.Add($"p{i++}", id);
+            }
+
+            await conn.ExecuteAsync($"DELETE FROM game_local_state WHERE game_id NOT IN ({idList})", parameters, tx);
+            await conn.ExecuteAsync($"DELETE FROM games WHERE id NOT IN ({idList})", parameters, tx);
+            tx.Commit();
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
+    }
+
     public async Task<Game?> GetGameAsync(string gameId)
     {
         await InitializeAsync();

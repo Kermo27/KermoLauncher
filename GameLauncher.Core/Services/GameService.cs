@@ -484,6 +484,10 @@ public class GameService : IGameService
 
         var games = await _webDav.DownloadMetadataAsync(config, ct);
         await _db.UpsertGamesAsync(games);
+        if (games.Length > 0)
+        {
+            await _db.RemoveGamesNotInAsync(games.Select(g => g.Id).ToArray());
+        }
         _logger.LogInformation("Synced {Count} games from Nextcloud", games.Length);
         return games.Length;
     }
