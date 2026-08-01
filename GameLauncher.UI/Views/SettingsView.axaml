@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GameLauncher.UI.ViewModels"
+             xmlns:conv="using:GameLauncher.UI.Converters"
+             x:Class="GameLauncher.UI.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.Section">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style Selector="TextBlock.SectionTitle">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.FieldLabel">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Margin="20" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="18" MaxWidth="860" HorizontalAlignment="Stretch">
+            <!-- ============ HEADER ============ -->
+            <StackPanel Margin="0,0,0,4">
+                <TextBlock Text="Ustawienia" FontSize="24" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="Konfiguracja źródła gier (Nextcloud) i folderów" FontSize="12" Margin="0,2,0,0"
+                           Foreground="{DynamicResource TextMutedBrush}"/>
+            </StackPanel>
+
+            <!-- ============ NEXTCLOUD ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#128451;  Źródło gier (Nextcloud)" Classes="SectionTitle"/>
+
+                    <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Adres udostępniania:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
+                                 Text="{Binding ShareUrl}"
+                                 Watermark="https://twoj-serwer/s/abc123" Margin="0,8"/>
+                        <Button Grid.Row="0" Grid.Column="2" Content="Testuj połączenie" Classes="ghost"
+                                Command="{Binding TestConnectionCommand}"
+                                Margin="10,8,0,8" Padding="14,7"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Token udostępniania:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                 Text="{Binding ShareToken}"
+                                 Watermark="Opcjonalnie - zwykle wyciągany z linku" Margin="0,8"/>
+                    </Grid>
+
+                    <TextBlock Text="Katalog udostępniony"
+                               IsVisible="{Binding Settings.Nextcloud, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                               FontSize="12" Foreground="{DynamicResource SuccessBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ FOLDERS ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#128193;  Foldery" Classes="SectionTitle"/>
+
+                    <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Folder pobierania:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
+                                 Text="{Binding DownloadFolder}" IsReadOnly="True" Margin="0,8"
+                                 Watermark="Domyślnie: ~/KermoLauncher/downloads"/>
+                        <Button Grid.Row="0" Grid.Column="2" Content="Przeglądaj" Classes="ghost"
+                                Command="{Binding BrowseDownloadFolderCommand}"
+                                Margin="10,8,0,8" Padding="14,7"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Folder instalacji:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                 Text="{Binding InstallFolder}" IsReadOnly="True" Margin="0,8"
+                                 Watermark="Domyślnie: ~/KermoLauncher/games"/>
+                        <Button Grid.Row="1" Grid.Column="2" Content="Przeglądaj" Classes="ghost"
+                                Command="{Binding BrowseInstallFolderCommand}"
+                                Margin="10,8,0,8" Padding="14,7"/>
+                    </Grid>
+                    <TextBlock Text="Pobrane archiwum .zip trafia do folderu pobierania, a rozpakowana gra do folderu instalacji (podkatalog z ID gry)."
+                               FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ GENERAL ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#9881;  Ogólne" Classes="SectionTitle"/>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="Równoległe pobierania:" Classes="FieldLabel"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <NumericUpDown Value="{Binding Settings.MaxParallelDownloads}"
+                                           Minimum="1" Maximum="8" Width="110"/>
+                            <TextBlock Text="(wymaga ponownego uruchomienia)" FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextMutedBrush}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="Automatyczna aktualizacja:" Classes="FieldLabel"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoUpdate}"
+                                      HorizontalAlignment="Left"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="Motyw:" Classes="FieldLabel"/>
+                        <ComboBox Grid.Column="1" Width="180" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding ThemeOptions}"
+                                  SelectedIndex="{Binding SelectedThemeIndex}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ SAVE ============ -->
+            <Button Content="Zapisz ustawienia" Classes="primary"
+                    Command="{Binding SaveCommand}"
+                    HorizontalAlignment="Right" Padding="28,11"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

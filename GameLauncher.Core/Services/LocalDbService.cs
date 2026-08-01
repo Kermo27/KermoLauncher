@@ -1,0 +1,377 @@
+namespace GameLauncher.Core.Services;
+
+using System.Data;
+using Dapper;
+using GameLauncher.Core.Models;
+using GameLauncher.Core.Services.Interfaces;
+using Microsoft.Data.Sqlite;
+using System.Text.Json;
+
+public class LocalDbService : ILocalDbService
+{
+    private readonly string _dbPath;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private bool _initialized;
+
+    public LocalDbService(string? dbPath = null)
+    {
+        _dbPath = dbPath ?? Path.Combine(Utils.AppPaths.DataDirectory, "launcher.db");
+    }
+
+    private SqliteConnection CreateConnection() => new($"Data Source={_dbPath}");
+
+    public async Task InitializeAsync()
+    {
+        if (_initialized) return;
+        
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initialized) return;
+            
+            using var conn = CreateConnection();
+            await conn.OpenAsync();
+
+            await conn.ExecuteAsync("PRAGMA journal_mode=WAL;");
+            await conn.ExecuteAsync("PRAGMA foreign_keys=ON;");
+
+            await conn.ExecuteAsync("""
+                CREATE TABLE IF NOT EXISTS games (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    version TEXT,
+                    description TEXT,
+                    tags TEXT,
+                    dependencies TEXT,
+                    screenshot_urls TEXT,
+                    remote_zip_url TEXT,
+                    size_bytes INTEGER,
+                    sha256 TEXT,
+                    launch_config TEXT
+                );
+            """);
+
+            await conn.ExecuteAsync("""
+                CREATE TABLE IF NOT EXISTS game_local_state (
+                    game_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    installed_path TEXT,
+                    play_time_seconds INTEGER DEFAULT 0,
+                    last_played INTEGER,
+                    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+                );
+            """);
+
+            await conn.ExecuteAsync("""
+                CREATE TABLE IF NOT EXISTS downloads (
+                    id TEXT PRIMARY KEY,
+                    game_id TEXT NOT NULL,
+                    remote_url TEXT NOT NULL,
+                    local_path TEXT NOT NULL,
+                    total_bytes INTEGER NOT NULL,
+                    downloaded_bytes INTEGER DEFAULT 0,
+                    status TEXT NOT NULL,
+                    error TEXT,
+                    started_at INTEGER,
+                    completed_at INTEGER,
+                    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+                );
+            """);
+
+            await conn.ExecuteAsync("""
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+            """);
+
+            _initialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    public async Task UpsertGamesAsync(Game[] games)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        
+        using var tx = conn.BeginTransaction();
+        try
+        {
+            foreach (var game in games)
+            {
+                var tagsJson = JsonSerializer.Serialize(game.Tags);
+                var depsJson = JsonSerializer.Serialize(game.Dependencies);
+                var screenshotsJson = JsonSerializer.Serialize(game.ScreenshotUrls);
+                var launchConfigJson = game.LaunchConfig != null ? JsonSerializer.Serialize(game.LaunchConfig) : null;
+
+                await conn.ExecuteAsync("""
+                    INSERT INTO games (id, name, version, description, tags, dependencies, screenshot_urls, remote_zip_url, size_bytes, sha256, launch_config)
+                    VALUES (@Id, @Name, @Version, @Description, @Tags, @Dependencies, @ScreenshotUrls, @RemoteZipUrl, @SizeBytes, @Sha256, @LaunchConfig)
+                    ON CONFLICT(id) DO UPDATE SET
+                        name=@Name, version=@Version, description=@Description,
+                        tags=@Tags, dependencies=@Dependencies, screenshot_urls=@ScreenshotUrls,
+                        remote_zip_url=@RemoteZipUrl, size_bytes=@SizeBytes, sha256=@Sha256, launch_config=@LaunchConfig
+                """, new
+                {
+                    game.Id,
+                    game.Name,
+                    game.Version,
+                    game.Description,
+                    Tags = tagsJson,
+                    Dependencies = depsJson,
+                    ScreenshotUrls = screenshotsJson,
+                    game.RemoteZipUrl,
+                    game.SizeBytes,
+                    game.Sha256,
+                    LaunchConfig = launchConfigJson
+                }, tx);
+            }
+            tx.Commit();
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
+    }
+
+    public async Task<Game?> GetGameAsync(string gameId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        
+        var row = await conn.QueryFirstOrDefaultAsync("""
+            SELECT id, name, version, description, tags, dependencies, screenshot_urls, remote_zip_url, size_bytes, sha256, launch_config
+            FROM games WHERE id = @Id
+        """, new { Id = gameId });
+
+        return row != null ? MapGame(row) : null;
+    }
+
+    public async Task<Game[]> GetAllGamesAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        
+        var rows = await conn.QueryAsync("SELECT * FROM games");
+        return rows.Select(MapGame).ToArray();
+    }
+
+    public async Task<Game[]> GetGamesByStatusAsync(InstallStatus status)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        
+        var rows = await conn.QueryAsync("""
+            SELECT g.* FROM games g
+            JOIN game_local_state s ON g.id = s.game_id
+            WHERE s.status = @Status
+        """, new { Status = status.ToString() });
+        
+        return rows.Select(MapGame).ToArray();
+    }
+
+    private static Game MapGame(dynamic row)
+    {
+        var tagsJson = row.tags as string;
+        var depsJson = row.dependencies as string;
+        var screenshotsJson = row.screenshot_urls as string;
+        var launchConfigJson = row.launch_config as string;
+        
+        var tags = tagsJson != null ? JsonSerializer.Deserialize<string[]>(tagsJson) ?? [] : [];
+        var deps = depsJson != null ? JsonSerializer.Deserialize<string[]>(depsJson) ?? [] : [];
+        var screenshots = screenshotsJson != null ? JsonSerializer.Deserialize<string[]>(screenshotsJson) ?? [] : [];
+        var launchConfig = launchConfigJson != null ? JsonSerializer.Deserialize<LaunchConfig>(launchConfigJson) : null;
+
+        return new Game(
+            row.id, row.name, row.version, row.description,
+            tags, deps, screenshots, row.remote_zip_url,
+            (long)row.size_bytes, row.sha256, launchConfig
+        );
+    }
+
+    public async Task UpsertLocalStateAsync(GameLocalState state)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        long? lastPlayed = state.LastPlayed.HasValue 
+            ? new DateTimeOffset(state.LastPlayed.Value).ToUnixTimeSeconds() 
+            : null;
+        await conn.ExecuteAsync("""
+            INSERT INTO game_local_state (game_id, status, installed_path, play_time_seconds, last_played)
+            VALUES (@GameId, @Status, @InstalledPath, @PlayTimeSeconds, @LastPlayed)
+            ON CONFLICT(game_id) DO UPDATE SET
+                status=@Status, installed_path=@InstalledPath, play_time_seconds=@PlayTimeSeconds, last_played=@LastPlayed
+        """, new
+        {
+            state.GameId,
+            Status = state.Status.ToString(),
+            state.InstalledPath,
+            state.PlayTimeSeconds,
+            LastPlayed = lastPlayed
+        });
+    }
+
+    public async Task<GameLocalState?> GetLocalStateAsync(string gameId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var row = await conn.QueryFirstOrDefaultAsync("""
+            SELECT game_id, status, installed_path, play_time_seconds, last_played
+            FROM game_local_state WHERE game_id = @GameId
+        """, new { GameId = gameId });
+
+        return row != null ? MapLocalState(row) : null;
+    }
+
+    public async Task<IReadOnlyList<GameLocalState>> GetAllLocalStatesAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var rows = await conn.QueryAsync("SELECT * FROM game_local_state");
+        return rows.Select(MapLocalState).ToArray();
+    }
+
+    private static GameLocalState MapLocalState(dynamic row)
+    {
+        var lastPlayedUnix = LongOrZero(row, "last_played");
+        DateTime? lastPlayed = lastPlayedUnix != 0 
+            ? DateTimeOffset.FromUnixTimeSeconds(lastPlayedUnix).DateTime 
+            : null;
+        
+        return new GameLocalState(
+            row.game_id,
+            Enum.Parse<InstallStatus>(row.status as string ?? "NotInstalled"),
+            row.installed_path as string,
+            (long)row.play_time_seconds,
+            lastPlayed
+        );
+    }
+
+    public async Task UpsertDownloadTaskAsync(DownloadTask task)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        long? startedAt = task.StartedAt.HasValue ? new DateTimeOffset(task.StartedAt.Value).ToUnixTimeSeconds() : (long?)null;
+        long? completedAt = task.CompletedAt.HasValue ? new DateTimeOffset(task.CompletedAt.Value).ToUnixTimeSeconds() : (long?)null;
+        
+        await conn.ExecuteAsync("""
+            INSERT INTO downloads (id, game_id, remote_url, local_path, total_bytes, downloaded_bytes, status, error, started_at, completed_at)
+            VALUES (@Id, @GameId, @RemoteUrl, @LocalPath, @TotalBytes, @DownloadedBytes, @Status, @Error, @StartedAt, @CompletedAt)
+            ON CONFLICT(id) DO UPDATE SET
+                downloaded_bytes=@DownloadedBytes, status=@Status, error=@Error, completed_at=@CompletedAt
+        """, new
+        {
+            task.Id,
+            task.GameId,
+            task.RemoteUrl,
+            task.LocalPath,
+            task.TotalBytes,
+            task.DownloadedBytes,
+            Status = task.Status.ToString(),
+            task.Error,
+            StartedAt = startedAt,
+            CompletedAt = completedAt
+        });
+    }
+
+    public async Task<DownloadTask?> GetDownloadTaskAsync(string taskId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var row = await conn.QueryFirstOrDefaultAsync("SELECT * FROM downloads WHERE id = @Id", new { Id = taskId });
+        return row != null ? MapDownloadTask(row) : null;
+    }
+
+    public async Task<IReadOnlyList<DownloadTask>> GetAllDownloadTasksAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var rows = await conn.QueryAsync("SELECT * FROM downloads ORDER BY started_at DESC");
+        return rows.Select(MapDownloadTask).ToArray();
+    }
+
+    public async Task DeleteDownloadTaskAsync(string taskId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await conn.ExecuteAsync("DELETE FROM downloads WHERE id = @Id", new { Id = taskId });
+    }
+
+    private static DownloadTask MapDownloadTask(dynamic row)
+    {
+        var startedAtUnix = LongOrZero(row, "started_at");
+        var completedAtUnix = LongOrZero(row, "completed_at");
+        
+        DateTime? startedAt = startedAtUnix != 0 
+            ? DateTimeOffset.FromUnixTimeSeconds(startedAtUnix).DateTime 
+            : null;
+        DateTime? completedAt = completedAtUnix != 0 
+            ? DateTimeOffset.FromUnixTimeSeconds(completedAtUnix).DateTime 
+            : null;
+        
+        return new DownloadTask(
+            row.id, row.game_id, row.remote_url, row.local_path,
+            (long)row.total_bytes, (long)row.downloaded_bytes,
+            Enum.Parse<DownloadStatus>(row.status as string ?? "Queued"),
+            row.error as string,
+            startedAt,
+            completedAt
+        );
+    }
+
+    private static long LongOrZero(dynamic row, string columnName)
+    {
+        var value = ((System.Collections.Generic.IDictionary<string, object>)row)[columnName];
+        return value == null || value is DBNull ? 0 : Convert.ToInt64(value);
+    }
+
+    public async Task<AppSettings> GetSettingsAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var row = await conn.QueryFirstOrDefaultAsync("SELECT value FROM settings WHERE key = 'app_settings'");
+        var value = row?.value as string;
+        if (value != null)
+        {
+            return JsonSerializer.Deserialize<AppSettings>(value) ?? new AppSettings();
+        }
+        return new AppSettings();
+    }
+
+    public async Task SaveSettingsAsync(AppSettings settings)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var json = JsonSerializer.Serialize(settings);
+        await conn.ExecuteAsync("""
+            INSERT INTO settings (key, value) VALUES ('app_settings', @Value)
+            ON CONFLICT(key) DO UPDATE SET value=@Value
+        """, new { Value = json });
+    }
+}

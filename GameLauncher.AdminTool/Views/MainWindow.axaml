@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GameLauncher.AdminTool.ViewModels"
+        x:Class="GameLauncher.AdminTool.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="KermoLauncher - Panel administratora"
+        Width="1000"
+        Height="700"
+        MinWidth="860"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBgBrush}">
+
+    <Window.Styles>
+        <Style Selector="Button.NavButton">
+            <Setter Property="Padding" Value="14,11"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="Button.NavButton:pointerover">
+            <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}"/>
+        </Style>
+        <Style Selector="Button.NavButton.active">
+            <Setter Property="Background" Value="{DynamicResource NavActiveBgBrush}"/>
+        </Style>
+        <Style Selector="Button.NavButton.active TextBlock.NavLabel">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- ============ SIDEBAR ============ -->
+        <Border DockPanel.Dock="Left" Width="230" Background="{DynamicResource SidebarBgBrush}">
+            <DockPanel>
+                <!-- Logo -->
+                <Border DockPanel.Dock="Top" Padding="20,22,20,24">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="38" Height="38" CornerRadius="9"
+                                Background="{DynamicResource AccentBrush}">
+                            <TextBlock Text="&#128736;" FontSize="18" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="KermoLauncher" FontSize="16" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Panel administratora" FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Status -->
+                <Border DockPanel.Dock="Bottom" Padding="20,12" BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource CardBorderBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}"
+                                 VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusText}" FontSize="11"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Navigation -->
+                <StackPanel Margin="12,0,12,0" Spacing="4">
+                    <Button Classes="NavButton" Classes.active="{Binding IsGameEditorActive}"
+                            Command="{Binding ShowGameEditorCommand}">
+                        <Grid ColumnDefinitions="26,*">
+                            <TextBlock Grid.Column="0" Text="&#127918;" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Edytor gier" Classes="NavLabel"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </Grid>
+                    </Button>
+
+                    <Button Classes="NavButton" Classes.active="{Binding IsUploadActive}"
+                            Command="{Binding ShowUploadCommand}">
+                        <Grid ColumnDefinitions="26,*">
+                            <TextBlock Grid.Column="0" Text="&#11014;" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Wysyłka na Nextcloud" Classes="NavLabel"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ MAIN CONTENT ============ -->
+        <Border Background="{DynamicResource WindowBgBrush}">
+            <ContentControl Content="{Binding CurrentView}"/>
+        </Border>
+    </DockPanel>
+</Window>

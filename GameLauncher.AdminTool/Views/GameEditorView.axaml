@@ -1,0 +1,257 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GameLauncher.AdminTool.ViewModels"
+             xmlns:conv="using:GameLauncher.AdminTool.Converters"
+             x:Class="GameLauncher.AdminTool.Views.GameEditorView"
+             x:DataType="vm:GameEditorViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.Section">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+        <Style Selector="TextBlock.FieldLabel">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ListBox.GameList">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.GameList ListBoxItem">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+        <Style Selector="ListBox.GameList ListBoxItem:selected">
+            <Setter Property="Background" Value="{DynamicResource NavActiveBgBrush}"/>
+        </Style>
+        <Style Selector="ListBox.GameList ListBoxItem:selected TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="20">
+        <!-- ============ HEADER ============ -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,14">
+            <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Edytor gier" FontSize="24" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Skanowanie folderu z grami, edycja danych i generowanie metadata.json"
+                                   FontSize="12" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+
+                    <TextBox Classes="field" Width="340" VerticalAlignment="Center"
+                             Text="{Binding ScanFolderPath}"
+                             Watermark="Ścieżka do folderu z grami (np. ~/Nextcloud/Games)"/>
+
+                    <Button Classes="ghost" VerticalAlignment="Center"
+                            Command="{Binding ScanCommand}"
+                            IsEnabled="{Binding IsScanning, Converter={x:Static conv:ObjectConverters.Not}}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#128269;" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="Skanuj" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="ghost" VerticalAlignment="Center"
+                            Command="{Binding AddGameCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#10133;" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="Dodaj grę" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="primary" VerticalAlignment="Center"
+                            Command="{Binding GenerateMetadataCommand}"
+                            IsEnabled="{Binding IsGenerating, Converter={x:Static conv:ObjectConverters.Not}}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#128424;" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="Generuj metadata.json" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <ProgressBar Width="90" IsIndeterminate="True" VerticalAlignment="Center"
+                                 IsVisible="{Binding IsScanning}" />
+                </StackPanel>
+
+                <!-- Error banner -->
+                <Border CornerRadius="8" Padding="12,9"
+                        Background="{DynamicResource DangerBrush}" Opacity="0.9"
+                        IsVisible="{Binding ErrorText, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding ErrorText}" Foreground="White" FontSize="12" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Status line -->
+                <TextBlock Text="{Binding StatusText}" FontSize="12"
+                           Foreground="{DynamicResource SuccessBrush}"
+                           IsVisible="{Binding StatusText, Converter={x:Static conv:ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ CONTENT ============ -->
+        <Grid ColumnDefinitions="380,*">
+            <!-- Games list -->
+            <Border Grid.Column="0" Classes="Section" Margin="0,0,14,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10"
+                               Text="{Binding Games.Length, StringFormat='{} gier w katalogu'}"
+                               FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <ListBox Classes="GameList"
+                             ItemsSource="{Binding Games}"
+                             SelectedItem="{Binding SelectedGame}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:GameMetadata">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Version}" FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding SizeText}" FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Id}" FontSize="10"
+                                               Foreground="{DynamicResource TextMutedBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Editor -->
+            <Border Grid.Column="1" Classes="Section"
+                    IsVisible="{Binding SelectedGame, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+                <ScrollViewer>
+                    <StackPanel Spacing="10" DataContext="{Binding SelectedGame}">
+                        <TextBlock Text="Szczegóły gry" FontSize="18" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                        <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="ID (slug):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
+                                     Text="{Binding Id}" Margin="0,6" Grid.ColumnSpan="3"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Nazwa:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                     Text="{Binding Name}" Margin="0,6"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="Wersja:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBox Grid.Row="1" Grid.Column="3" Classes="field"
+                                     Text="{Binding Version}" Margin="8,6,0,6"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Tagi (po przecinku):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Classes="field"
+                                     Text="{Binding TagsString}" Margin="0,6"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Zależności:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBox Grid.Row="2" Grid.Column="3" Classes="field"
+                                     Text="{Binding DependenciesString}" Margin="8,6,0,6"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Opis:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Classes="field" Grid.ColumnSpan="3"
+                                     Text="{Binding Description}" AcceptsReturn="True" Height="70" Margin="0,6"
+                                     Watermark="Opis gry wyświetlany w launcherze"/>
+                        </Grid>
+
+                        <TextBlock Text="Pliki" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Lokalny plik ZIP:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
+                                     Text="{Binding LocalZipPath}" Margin="0,6" Grid.ColumnSpan="3"
+                                     Watermark="Ustawiany automatycznie po skanowaniu"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Ścieżka zdalna:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Classes="field" IsReadOnly="True"
+                                     Text="{Binding RemoteZipPath}" Margin="0,6" Grid.ColumnSpan="3"
+                                     Watermark="Względna do folderu Games/ (np. witcher-3/witcher-3.zip)"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Pliki PNG/JPG:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Classes="field" IsReadOnly="True"
+                                     Text="{Binding ScreenshotPaths.Count, StringFormat='{} plików'}"
+                                     Margin="0,6"/>
+                        </Grid>
+
+                        <TextBlock Text="Uruchamianie" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Plik wykonywalny:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
+                                     Text="{Binding LaunchExecutable}" Margin="0,6"
+                                     Watermark="np. bin/win64/game.exe"/>
+
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Katalog roboczy:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBox Grid.Row="0" Grid.Column="3" Classes="field"
+                                     Text="{Binding LaunchWorkingDir}" Margin="8,6,0,6"
+                                     Watermark="Opcjonalnie"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Argumenty (po przecinku):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                     Text="{Binding LaunchArgsString}" Margin="0,6"
+                                     Watermark="np. -fullscreen, -nointro"/>
+                        </Grid>
+
+                        <Border Margin="0,12,0,0" CornerRadius="8" Padding="12"
+                                Background="{DynamicResource TagBgBrush}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Zrzuty ekranu" FontWeight="SemiBold" FontSize="12"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <ItemsControl ItemsSource="{Binding ScreenshotPaths}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Width="130" Height="86" CornerRadius="6" Margin="0,0,8,0"
+                                                    Background="{DynamicResource CardBgBrush}"
+                                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                                <TextBlock Text="{Binding}" FontSize="9" Margin="6"
+                                                           TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Classes="ghost" HorizontalAlignment="Left" Margin="0,14,0,0"
+                                Command="{Binding $parent[UserControl].DataContext.RemoveGameCommand}"
+                                CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#128465;" FontSize="13"/>
+                                <TextBlock Text="Usuń grę z listy"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Empty state -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                        IsVisible="{Binding SelectedGame, Converter={x:Static conv:ObjectConverters.IsNull}}">
+                <TextBlock Text="&#128269;" FontSize="40" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextMutedBrush}"/>
+                <TextBlock Text="Wybierz grę z listy, aby edytować jej dane"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock Text="Najpierw zeskanuj folder z grami (przycisk Skanuj)."
+                           FontSize="11" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextMutedBrush}"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

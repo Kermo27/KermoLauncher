@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GameLauncher.AdminTool.ViewModels"
+             xmlns:conv="using:GameLauncher.AdminTool.Converters"
+             x:Class="GameLauncher.AdminTool.Views.UploadView"
+             x:DataType="vm:UploadViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.Section">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style Selector="TextBlock.SectionTitle">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.FieldLabel">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Margin="20" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="18" MaxWidth="760" HorizontalAlignment="Stretch">
+            <!-- ============ HEADER ============ -->
+            <StackPanel Margin="0,0,0,4">
+                <TextBlock Text="Wysyłka na Nextcloud" FontSize="24" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="Wgranie metadata.json, archiwów .zip i zrzutów ekranu do udostępnionego katalogu Games"
+                           FontSize="12" Margin="0,2,0,0"
+                           Foreground="{DynamicResource TextMutedBrush}"/>
+            </StackPanel>
+
+            <!-- ============ HELP ============ -->
+            <Border Classes="Section" Padding="14">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="&#128204;  Jak zdobyć dane dostępu:" FontSize="12" FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <TextBlock Text="1. Zaloguj się do Nextcloud w przeglądarce &#8594; Awatar &#8594; Ustawienia osobiste &#8594; Bezpieczeństwo."
+                               FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="2. Utwórz nowe hasło aplikacji (Sekcja: Hasła aplikacji) - będzie ono potrzebne do wysyłki plików."
+                               FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="3. Adres WebDAV znajdziesz w Ustawieniach osobistych &#8594; WebDAV (np. https://twoj-serwer/remote.php/dav/files/twoj-user)."
+                               FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="4. Konto musi mieć uprawnienia do zapisu w folderze Games. Po wysyłce udostępnij folder Games jako link publiczny - launcher pobierze go stamtąd."
+                               FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ CREDENTIALS ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#128273;  Dane dostępu (zapis)" Classes="SectionTitle"/>
+
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Adres WebDAV:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
+                                 Text="{Binding NextcloudUrl}"
+                                 Watermark="https://twoj-serwer/remote.php/dav/files/twoj-user" Margin="0,8"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Użytkownik:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                 Text="{Binding NextcloudUser}" Margin="0,8"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Hasło aplikacji:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Classes="field"
+                                 Text="{Binding NextcloudPassword}" PasswordChar="&#8226;" Margin="0,8"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ FILES ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#128193;  Pliki do wysłania" Classes="SectionTitle"/>
+
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="metadata.json:" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
+                                 Text="{Binding $parent[UserControl].DataContext.GameEditor.GeneratedMetadataPath}"
+                                 Margin="0,8"/>
+                    </Grid>
+
+                    <TextBlock Text="Archiva .zip i zrzuty ekranu są pobierane z listy gier edytora (zakładka Edytor gier)."
+                               FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ============ PROGRESS ============ -->
+            <Border Classes="Section">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="&#11014;  Wysyłka" Classes="SectionTitle"/>
+
+                    <!-- Error banner -->
+                    <Border CornerRadius="8" Padding="12,9"
+                            Background="{DynamicResource DangerBrush}" Opacity="0.9"
+                            IsVisible="{Binding ErrorText, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="{Binding ErrorText}" Foreground="White" FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <ProgressBar Value="{Binding UploadProgress}" Minimum="0" Maximum="100" Height="10"
+                                 Foreground="{DynamicResource AccentBrush}"
+                                 Background="{DynamicResource TagBgBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding UploadProgress, StringFormat='{}{0:F0}%'}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Width="48"/>
+                        <TextBlock Text="{Binding CurrentFileText}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding StatusText}" FontSize="12"
+                               Foreground="{DynamicResource SuccessBrush}"
+                               IsVisible="{Binding StatusText, Converter={x:Static conv:ObjectConverters.IsNotNull}}"/>
+
+                    <Button Content="Rozpocznij wysyłkę" Classes="primary"
+                            Command="{Binding UploadCommand}"
+                            IsEnabled="{Binding IsNotUploading}"
+                            HorizontalAlignment="Left" Padding="24,11"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,248 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GameLauncher.UI.ViewModels"
+             xmlns:conv="using:GameLauncher.UI.Converters"
+             x:Class="GameLauncher.UI.Views.LibraryView"
+             x:DataType="vm:LibraryViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.GameCard">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+        </Style>
+        <Style Selector="Border.GameCard:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BoxShadow" Value="0 3 12 0 #22000000"/>
+        </Style>
+        <Style Selector="Border.Skeleton">
+            <Setter Property="Background" Value="{DynamicResource TagBgBrush}"/>
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="20">
+        <!-- ============ HEADER ============ -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,18">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Biblioteka" FontSize="24" FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                </StackPanel>
+
+                <TextBox Grid.Column="1" Classes="field" Margin="24,0,0,0"
+                         Text="{Binding SearchText}"
+                         Watermark="Szukaj gier..." Width="280" VerticalAlignment="Center"
+                         VerticalContentAlignment="Center"/>
+
+                <ComboBox Grid.Column="2" Margin="12,0,0,0" Width="170"
+                          ItemsSource="{Binding AvailableTags}"
+                          SelectedItem="{Binding SelectedTag}"
+                          VerticalAlignment="Center"/>
+
+                <Button Grid.Column="3" Margin="12,0,0,0" Classes="ghost"
+                        Command="{Binding RefreshCommand}"
+                        IsEnabled="{Binding IsRefreshing, Converter={x:Static conv:ObjectConverters.Not}}"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="&#8635;" FontSize="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="Odśwież" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <ProgressBar Grid.Column="4" Margin="12,0,0,0" Width="120"
+                             IsVisible="{Binding IsRefreshing}"
+                             IsIndeterminate="True" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- ============ ERROR BANNER ============ -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,14" CornerRadius="8" Padding="14,10"
+                Background="{DynamicResource DangerBrush}" Opacity="0.9"
+                IsVisible="{Binding LoadError, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding LoadError}" Foreground="White" FontSize="12"
+                       TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- ============ EMPTY STATE ============ -->
+        <Border DockPanel.Dock="Top" CornerRadius="10" Padding="40"
+                Background="{DynamicResource CardBgBrush}"
+                BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                Margin="8,0,8,0"
+                IsVisible="{Binding GameItems.Length, Converter={x:Static conv:ObjectConverters.IsZero}}">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <TextBlock Text="&#128218;" FontSize="44" HorizontalAlignment="Center"/>
+                <TextBlock Text="Brak gier w bibliotece" FontSize="16" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="Skonfiguruj Nextcloud w zakładce Ustawienia i kliknij Odśwież."
+                           FontSize="12" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ GAMES GRID ============ -->
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <!-- Skeleton loading -->
+                <ItemsControl IsVisible="{Binding IsLoading}"
+                              ItemsSource="{Binding SkeletonItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemWidth="288" ItemHeight="410"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="GameCard" Width="268">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Top" Height="140" CornerRadius="8" Margin="0,0,0,12"
+                                            Background="{DynamicResource TagBgBrush}"
+                                            Classes="Skeleton"/>
+                                    <DockPanel DockPanel.Dock="Top">
+                                        <Border DockPanel.Dock="Top" Height="24" Width="80" CornerRadius="4"
+                                                Background="{DynamicResource TagBgBrush}" Margin="0,0,0,4"
+                                                Classes="Skeleton"/>
+                                        <Border DockPanel.Dock="Top" Height="16" Width="60" CornerRadius="4"
+                                                Background="{DynamicResource TagBgBrush}"
+                                                Classes="Skeleton"/>
+                                    </DockPanel>
+                                    <WrapPanel DockPanel.Dock="Top" ItemHeight="24" Margin="0,0,0,10">
+                                        <ItemsControl ItemsSource="{Binding Tags}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource TagBgBrush}"
+                                                            CornerRadius="10" Padding="9,3" Margin="0,0,5,5"
+                                                            Classes="Skeleton"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </WrapPanel>
+                                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                          Margin="0,6,0,0">
+                                        <Border Grid.Row="0" Grid.Column="0" Height="36" CornerRadius="8"
+                                                Background="{DynamicResource AccentBrush}" Margin="0,0,4,0"
+                                                Classes="Skeleton"/>
+                                        <Border Grid.Row="0" Grid.Column="1" Height="36" CornerRadius="8"
+                                                Background="{DynamicResource AccentBrush}" Margin="4,0,0,0"
+                                                Classes="Skeleton"/>
+                                    </Grid>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Real games -->
+                <ItemsControl IsVisible="{Binding IsLoading, Converter={x:Static conv:ObjectConverters.Not}}"
+                              ItemsSource="{Binding FilteredGameItems}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" ItemWidth="288" ItemHeight="410"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:GameItemViewModel">
+                        <Border Classes="GameCard" Width="268">
+                            <DockPanel>
+                                <!-- Cover -->
+                                <Border DockPanel.Dock="Top" Height="140" CornerRadius="8" Margin="0,0,0,12"
+                                        Background="{DynamicResource TagBgBrush}" ClipToBounds="True">
+                                    <Grid>
+                                        <Image Source="{Binding CoverImage}"
+                                               IsVisible="{Binding HasCover}"
+                                               Stretch="UniformToFill"
+                                               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                                        <TextBlock Text="&#127918;" FontSize="44"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   IsVisible="{Binding HasCover, Converter={x:Static conv:ObjectConverters.Not}}"/>
+                                        <!-- Status pill -->
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="8" CornerRadius="12" Padding="10,3"
+                                                Background="{Binding LocalState.Status, Converter={x:Static conv:ObjectConverters.StatusPillBg}}">
+                                            <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{Binding LocalState.Status, Converter={x:Static conv:ObjectConverters.StatusPillFg}}"/>
+                                        </Border>
+                                        <!-- Size badge -->
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                                Margin="8" CornerRadius="8" Padding="8,2"
+                                                Background="{DynamicResource CardBgBrush}"
+                                                IsVisible="{Binding SizeText.Length, Converter={x:Static conv:ObjectConverters.IsNotZero}}">
+                                            <TextBlock Text="{Binding SizeText}" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Info -->
+                                <DockPanel DockPanel.Dock="Top">
+                                    <TextBlock DockPanel.Dock="Top" Text="{Binding Name}" FontSize="16"
+                                               FontWeight="Bold" TextWrapping="Wrap" MaxLines="2"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock DockPanel.Dock="Top" Text="{Binding Version}" FontSize="11"
+                                               Margin="0,3,0,8"
+                                               Foreground="{DynamicResource TextMutedBrush}"/>
+                                </DockPanel>
+
+                                <!-- Tags -->
+                                <WrapPanel DockPanel.Dock="Top" ItemHeight="24" Margin="0,0,0,10">
+                                    <ItemsControl ItemsSource="{Binding Tags}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource TagBgBrush}"
+                                                        CornerRadius="10" Padding="9,3" Margin="0,0,5,5">
+                                                    <TextBlock Text="{Binding}" FontSize="10"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </WrapPanel>
+
+                                <!-- Actions -->
+                                <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                      Margin="0,6,0,0">
+                                    <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0"
+                                            Content="Zainstaluj" FontSize="12" Padding="8,7"
+                                            Command="{Binding $parent[UserControl].DataContext.InstallCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanInstall}"/>
+                                    <Button Grid.Row="0" Grid.Column="1" Classes="primary" Margin="4,0,0,0"
+                                            Content="Uruchom" FontSize="12" Padding="8,7"
+                                            Command="{Binding $parent[UserControl].DataContext.LaunchCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanLaunch}"/>
+                                    <Button Grid.Row="1" Grid.Column="0" Classes="ghost" Margin="0,4,4,0"
+                                            Content="Szczegóły" FontSize="11" Padding="8,6"
+                                            Command="{Binding $parent[UserControl].DataContext.ShowDetailsCommand}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Grid.Row="1" Grid.Column="1" Classes="ghost" Margin="4,4,0,0"
+                                            Content="Odinstaluj" FontSize="11" Padding="8,6"
+                                            Command="{Binding $parent[UserControl].DataContext.UninstallCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanUninstall}"/>
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </Grid>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

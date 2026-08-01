@@ -1,0 +1,149 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GameLauncher.UI.ViewModels"
+        xmlns:conv="using:GameLauncher.UI.Converters"
+        x:Class="GameLauncher.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding WindowTitle}"
+        Width="1200"
+        Height="800"
+        MinWidth="940"
+        MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBgBrush}">
+
+    <Window.Styles>
+        <Style Selector="Button.NavButton">
+            <Setter Property="Padding" Value="14,11"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="Button.NavButton:pointerover">
+            <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}"/>
+        </Style>
+        <Style Selector="Button.NavButton.active">
+            <Setter Property="Background" Value="{DynamicResource NavActiveBgBrush}"/>
+        </Style>
+        <Style Selector="Button.NavButton.active TextBlock.NavLabel">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+        <DockPanel>
+            <!-- ============ SIDEBAR ============ -->
+            <Border DockPanel.Dock="Left" Width="230" Background="{DynamicResource SidebarBgBrush}">
+            <DockPanel>
+                <!-- Logo -->
+                <Border DockPanel.Dock="Top" Padding="20,22,20,24">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="38" Height="38" CornerRadius="9"
+                                Background="{DynamicResource AccentBrush}">
+                            <TextBlock Text="&#127918;" FontSize="18" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="KermoLauncher" FontSize="16" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Twoja biblioteka" FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Version -->
+                <Border DockPanel.Dock="Bottom" Padding="20,12">
+                    <TextBlock Text="{Binding WindowVersion}" FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"/>
+                </Border>
+
+                <!-- Navigation -->
+                <StackPanel Margin="12,0,12,0" Spacing="4">
+                    <Button Classes="NavButton" Classes.active="{Binding IsLibraryActive}"
+                            Command="{Binding ShowLibraryCommand}">
+                        <Grid ColumnDefinitions="26,*">
+                            <TextBlock Grid.Column="0" Text="&#128218;" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Biblioteka" Classes="NavLabel"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </Grid>
+                    </Button>
+
+                    <Button Classes="NavButton" Classes.active="{Binding IsDownloadsActive}"
+                            Command="{Binding ShowDownloadsCommand}">
+                        <Grid ColumnDefinitions="26,*,Auto">
+                            <TextBlock Grid.Column="0" Text="&#11015;" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Pobieranie" Classes="NavLabel"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Border Grid.Column="2" Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="10" Padding="7,1" Margin="0,0,4,0"
+                                    IsVisible="{Binding ActiveDownloadsCount, Converter={x:Static conv:ObjectConverters.IsNotZero}}">
+                                <TextBlock Text="{Binding ActiveDownloadsCount}" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                        </Grid>
+                    </Button>
+
+                    <Button Classes="NavButton" Classes.active="{Binding IsSettingsActive}"
+                            Command="{Binding ShowSettingsCommand}">
+                        <Grid ColumnDefinitions="26,*">
+                            <TextBlock Grid.Column="0" Text="&#9881;" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Ustawienia" Classes="NavLabel"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ MAIN CONTENT ============ -->
+        <Border Background="{DynamicResource WindowBgBrush}">
+            <ContentControl Content="{Binding CurrentView}"/>
+        </Border>
+        </DockPanel>
+
+        <!-- ============ TOASTS ============ -->
+        <ItemsControl ItemsSource="{Binding Toasts}"
+                      HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                      Margin="20" IsHitTestVisible="False">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" Spacing="10"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:ToastItemViewModel">
+                    <Border MaxWidth="360" CornerRadius="10" Padding="14,10"
+                            Background="#F220252E"
+                            BorderBrush="{Binding Type, Converter={x:Static conv:ObjectConverters.ToastBrush}}"
+                            BorderThickness="1"
+                            BoxShadow="0 4 14 0 #33000000">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" FontSize="15" Margin="0,0,10,0"
+                                       Text="{Binding Type, Converter={x:Static conv:ObjectConverters.ToastIcon}}"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding Message}" FontSize="11" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Panel>
+</Window>

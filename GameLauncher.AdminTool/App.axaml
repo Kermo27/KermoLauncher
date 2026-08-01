@@ -1,0 +1,102 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GameLauncher.AdminTool"
+             x:Class="GameLauncher.AdminTool.App">
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- ============ LIGHT THEME ============ -->
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WindowBgBrush" Color="#F3F5F9"/>
+                    <SolidColorBrush x:Key="SidebarBgBrush" Color="#E9ECF3"/>
+                    <SolidColorBrush x:Key="NavHoverBgBrush" Color="#DDE2EC"/>
+                    <SolidColorBrush x:Key="NavActiveBgBrush" Color="#D5DCF0"/>
+                    <SolidColorBrush x:Key="CardBgBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#D9DEE8"/>
+                    <SolidColorBrush x:Key="InputBgBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1D24"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#565E6D"/>
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#8B94A4"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#4A6CF7"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3659E8"/>
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#1E9E57"/>
+                    <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+                    <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+                    <SolidColorBrush x:Key="TagBgBrush" Color="#EAEDF3"/>
+                    <SolidColorBrush x:Key="InfoBgBrush" Color="#EDF1FE"/>
+                    <SolidColorBrush x:Key="InfoBorderBrush" Color="#C9D4FB"/>
+                </ResourceDictionary>
+
+                <!-- ============ DARK THEME ============ -->
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WindowBgBrush" Color="#14161B"/>
+                    <SolidColorBrush x:Key="SidebarBgBrush" Color="#1C1F27"/>
+                    <SolidColorBrush x:Key="NavHoverBgBrush" Color="#262B36"/>
+                    <SolidColorBrush x:Key="NavActiveBgBrush" Color="#2C3450"/>
+                    <SolidColorBrush x:Key="CardBgBrush" Color="#21252E"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#2F3542"/>
+                    <SolidColorBrush x:Key="InputBgBrush" Color="#191C23"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#EDEFF4"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A7AEBE"/>
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#6F7787"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#6C8CFB"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#7E9AFC"/>
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#34C97B"/>
+                    <SolidColorBrush x:Key="WarningBrush" Color="#F0A43A"/>
+                    <SolidColorBrush x:Key="DangerBrush" Color="#F0645C"/>
+                    <SolidColorBrush x:Key="TagBgBrush" Color="#2C323E"/>
+                    <SolidColorBrush x:Key="InfoBgBrush" Color="#232A45"/>
+                    <SolidColorBrush x:Key="InfoBorderBrush" Color="#3A4A8F"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme/>
+
+        <!-- ============ GLOBAL CONTROL STYLES ============ -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Opacity" Value="0.85"/>
+        </Style>
+
+        <Style Selector="Button.ghost">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.ghost:pointerover">
+            <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="Button.ghost:pressed">
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{DynamicResource InputBgBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="10,7"/>
+        </Style>
+    </Application.Styles>
+</Application>
