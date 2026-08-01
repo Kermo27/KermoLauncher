@@ -62,7 +62,7 @@ public class MetadataGenerator
             return null;
         }
 
-        // Reuse version + hashes from an existing manifest if present
+        // Reuse the version from an existing manifest if present
         var existingManifest = TryLoadManifest(Path.Combine(dir, "manifest.json"));
 
         var files = new GameFile[gameFiles.Length];
@@ -71,11 +71,7 @@ public class MetadataGenerator
         {
             var absPath = Path.Combine(dir, gameFiles[i]);
             var size = new FileInfo(absPath).Length;
-            var existing = existingManifest?.Files.FirstOrDefault(f =>
-                string.Equals(f.Path, gameFiles[i], StringComparison.OrdinalIgnoreCase));
-            var sha = existing != null && existing.SizeBytes == size
-                ? existing.Sha256
-                : await ComputeSha256Async(absPath);
+            var sha = await ComputeSha256Async(absPath);
             files[i] = new GameFile(gameFiles[i], size, sha);
             totalBytes += size;
         }

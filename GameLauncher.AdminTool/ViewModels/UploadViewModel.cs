@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GameLauncher.AdminTool.Services;
+using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -57,25 +59,25 @@ public partial class UploadViewModel : ViewModelBase
         foreach (var game in _gameEditor.Games)
         {
             var gameBase = $"{baseUrl}/{game.RemoteFolder}";
+            var remoteManifest = await TryGetRemoteManifestAsync($"{gameBase}/manifest.json", user, password, ct);
 
-            // Game files (skip unchanged: same remote size)
-            foreach (var file in game.Files)
+            // Game files (delta: skip files whose path+size+hash match the remote manifest)
+            var toUpload = UploadDiff.FilesToUpload(game.Files, remoteManifest);
+            foreach (var file in toUpload)
             {
                 if (string.IsNullOrWhiteSpace(game.LocalFolder)) continue;
                 var localPath = Path.Combine(game.LocalFolder, file.Path.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(localPath)) continue;
-                if (await IsSameAsRemoteAsync($"{gameBase}/{file.Path}", localPath, user, password, ct)) continue;
                 files.Add(new UploadItem(localPath, $"{gameBase}/{file.Path}"));
             }
 
-            // Screenshots
+            // Screenshots (always upload - small files)
             foreach (var shot in game.ScreenshotPaths)
             {
                 if (string.IsNullOrWhiteSpace(game.LocalFolder)) continue;
                 var localPath = Path.Combine(game.LocalFolder, shot.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(localPath)) continue;
                 var remotePath = $"{gameBase}/screenshots/{Path.GetFileName(shot)}";
-                if (await IsSameAsRemoteAsync(remotePath, localPath, user, password, ct)) continue;
                 files.Add(new UploadItem(localPath, remotePath));
             }
 
@@ -91,18 +93,15 @@ public partial class UploadViewModel : ViewModelBase
         return files;
     }
 
-    private async Task<bool> IsSameAsRemoteAsync(string remotePath, string localPath, string user, string password, CancellationToken ct = default)
+    private async Task<GameManifest?> TryGetRemoteManifestAsync(string manifestUrl, string user, string password, CancellationToken ct = default)
     {
         try
         {
-            if (!await _webDav.FileExistsAsync(remotePath, ct)) return false;
-            var remoteSize = await _webDav.GetFileSizeAsync(remotePath, ct);
-            var localSize = new FileInfo(localPath).Length;
-            return remoteSize == localSize;
+            return await _webDav.DownloadManifestAsync(manifestUrl, ct, user, password);
         }
         catch
         {
-            return false;
+            return null;
         }
     }
 

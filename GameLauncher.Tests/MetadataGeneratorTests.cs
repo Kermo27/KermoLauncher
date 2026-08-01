@@ -94,26 +94,29 @@ public class MetadataGeneratorTests : IDisposable
     }
 
     [Fact]
-    public async Task ScanFolderAsync_ReusesHashesForUnchangedFiles()
+    public async Task ScanFolderAsync_AlwaysComputesFreshHashes()
     {
         var gameDir = Directory.CreateDirectory(Path.Combine(_root, "game-c")).FullName;
         var exePath = Path.Combine(gameDir, "game.exe");
         await File.WriteAllTextAsync(exePath, new string('e', 100));
         await File.WriteAllTextAsync(Path.Combine(gameDir, "level.dat"), new string('f', 50));
 
-        var first = await _generator.ScanFolderAsync(_root);
-        await _generator.GenerateMetadataJsonAsync(first, Path.Combine(_root, "metadata.json"));
+        var first = (await _generator.ScanFolderAsync(_root)).Single();
 
-        // Modify one file, keep the other unchanged
+        // Change content but keep the same size
         await File.WriteAllTextAsync(exePath, new string('g', 100));
 
         var second = (await _generator.ScanFolderAsync(_root)).Single();
         var unchanged = second.Files.Single(f => f.Path == "level.dat");
         var changed = second.Files.Single(f => f.Path == "game.exe");
-        var firstUnchanged = first.Single().Files.Single(f => f.Path == "level.dat");
+        var firstUnchanged = first.Files.Single(f => f.Path == "level.dat");
 
+        // Unchanged file gets the same hash (same content)
         Assert.Equal(firstUnchanged.Sha256, unchanged.Sha256);
-        Assert.NotEqual(unchanged.Sha256, changed.Sha256);
+        // Same size but different content must get a NEW hash
+        Assert.NotEqual(firstUnchanged.Sha256, changed.Sha256);
+        var firstChanged = first.Files.Single(f => f.Path == "game.exe");
+        Assert.NotEqual(firstChanged.Sha256, changed.Sha256);
     }
 
     [Fact]

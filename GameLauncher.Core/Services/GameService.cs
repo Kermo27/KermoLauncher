@@ -80,15 +80,19 @@ public class GameService : IGameService
             await UpdateStageAsync(downloadTask.Id, InstallStage.Preparing);
             var manifest = await _webDav.DownloadManifestAsync(downloadTask.RemoteUrl, ct);
 
-            if (installedManifest != null && installedManifest.Version == manifest.Version)
+            var toDownload = ManifestDiff.ComputeFilesToDownload(manifest, installedManifest);
+            var staleFiles = installedManifest != null ? ManifestDiff.ComputeStaleFiles(manifest, installedManifest) : Array.Empty<GameFile>();
+
+            if (installedManifest != null &&
+                installedManifest.Version == manifest.Version &&
+                toDownload.Length == 0 &&
+                staleFiles.Length == 0)
             {
                 // Already up to date
                 await CompleteTaskAsync(downloadTask.Id);
                 return;
             }
 
-            var toDownload = ManifestDiff.ComputeFilesToDownload(manifest, installedManifest);
-            var staleFiles = installedManifest != null ? ManifestDiff.ComputeStaleFiles(manifest, installedManifest) : Array.Empty<GameFile>();
             var totalBytes = toDownload.Sum(f => f.SizeBytes);
             var updatedTask = downloadTask with { TotalBytes = totalBytes, Status = DownloadStatus.Downloading };
             await _db.UpsertDownloadTaskAsync(updatedTask);

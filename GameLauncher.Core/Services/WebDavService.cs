@@ -39,11 +39,16 @@ public class WebDavService : IWebDavService
         return games;
     }
 
-    public async Task<GameManifest> DownloadManifestAsync(string manifestUrl, CancellationToken ct = default)
+    public async Task<GameManifest> DownloadManifestAsync(string manifestUrl, CancellationToken ct = default, string? username = null, string? password = null)
     {
         _logger.LogInformation("Downloading manifest from {Url}", manifestUrl);
 
-        var response = await _httpClient.GetAsync(manifestUrl, ct);
+        using var request = new HttpRequestMessage(HttpMethod.Get, manifestUrl);
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            request.Headers.Authorization = BasicAuth(username, password ?? "");
+        }
+        var response = await _httpClient.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(ct);
@@ -168,28 +173,6 @@ public class WebDavService : IWebDavService
                 lastReportBytes = downloadedBytes;
             }
         }
-    }
-
-    public async Task<bool> FileExistsAsync(string remoteUrl, CancellationToken ct = default)
-    {
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Head, remoteUrl);
-            var response = await _httpClient.SendAsync(request, ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    public async Task<long> GetFileSizeAsync(string remoteUrl, CancellationToken ct = default)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Head, remoteUrl);
-        var response = await _httpClient.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
-        return response.Content.Headers.ContentLength ?? 0;
     }
 
     public async Task CreateDirectoryAsync(string remoteDir, string username, string password, CancellationToken ct = default)

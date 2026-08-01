@@ -36,7 +36,9 @@ public partial class GameEditorViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isGenerating;
 
-    public string GeneratedMetadataPath { get; } = "metadata.json";
+    public string GeneratedMetadataPath => string.IsNullOrWhiteSpace(ScanFolderPath)
+        ? "metadata.json"
+        : Path.Combine(ScanFolderPath, "metadata.json");
 
     public string GamesCountText => string.Format(L["Admin.Editor.GamesCount"], Games.Length);
 
@@ -156,7 +158,19 @@ public partial class GameEditorViewModel : ViewModelBase
         var cts = _saveCts = new CancellationTokenSource();
         _ = Task.Delay(600, cts.Token).ContinueWith(_ =>
         {
-            if (!cts.IsCancellationRequested) SaveState();
+            if (cts.IsCancellationRequested) return;
+            try
+            {
+                SaveState();
+                if (Games.Length > 0)
+                {
+                    _metadataGenerator.GenerateMetadataJsonAsync(Games, GeneratedMetadataPath).GetAwaiter().GetResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to regenerate metadata");
+            }
         }, TaskScheduler.Default);
     }
 
@@ -210,6 +224,10 @@ public partial class GameEditorViewModel : ViewModelBase
             if (SelectedGame != null)
             {
                 SelectedGame = Games.FirstOrDefault(g => g.Id == SelectedGame.Id);
+            }
+            if (games.Length > 0)
+            {
+                await _metadataGenerator.GenerateMetadataJsonAsync(games, GeneratedMetadataPath);
             }
             SaveState();
             StatusText = string.Format(L["Admin.Editor.ScanDone"], games.Length, preserved);
