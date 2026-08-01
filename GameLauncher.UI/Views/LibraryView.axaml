@@ -29,13 +29,13 @@
         <Border DockPanel.Dock="Top" Margin="0,0,0,18">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Biblioteka" FontSize="24" FontWeight="Bold"
+                    <TextBlock Text="{Binding L[Library.Title]}" FontSize="24" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"/>
                 </StackPanel>
 
                 <TextBox Grid.Column="1" Classes="field" Margin="24,0,0,0"
                          Text="{Binding SearchText}"
-                         Watermark="Szukaj gier..." Width="280" VerticalAlignment="Center"
+                         Watermark="{Binding L[Library.SearchPlaceholder]}" Width="280" VerticalAlignment="Center"
                          VerticalContentAlignment="Center"/>
 
                 <ComboBox Grid.Column="2" Margin="12,0,0,0" Width="170"
@@ -49,7 +49,7 @@
                         VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="&#8635;" FontSize="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="Odśwież" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding L[Library.Refresh]}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -75,10 +75,10 @@
                 IsVisible="{Binding GameItems.Length, Converter={x:Static conv:ObjectConverters.IsZero}}">
             <StackPanel Spacing="12" HorizontalAlignment="Center">
                 <TextBlock Text="&#128218;" FontSize="44" HorizontalAlignment="Center"/>
-                <TextBlock Text="Brak gier w bibliotece" FontSize="16" FontWeight="SemiBold"
+                <TextBlock Text="{Binding L[Library.EmptyTitle]}" FontSize="16" FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                <TextBlock Text="Skonfiguruj Nextcloud w zakładce Ustawienia i kliknij Odśwież."
+                <TextBlock Text="{Binding L[Library.EmptyHint]}"
                            FontSize="12" HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
@@ -172,6 +172,13 @@
                                             <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
                                                        Foreground="{Binding LocalState.Status, Converter={x:Static conv:ObjectConverters.StatusPillFg}}"/>
                                         </Border>
+                                        <!-- Update available badge -->
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                Margin="8" CornerRadius="12" Padding="10,3"
+                                                Background="{DynamicResource AccentBrush}"
+                                                IsVisible="{Binding IsUpdateAvailable}">
+                                            <TextBlock Text="{Binding L[Library.UpdateAvailable]}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
                                         <!-- Size badge -->
                                         <Border HorizontalAlignment="Left" VerticalAlignment="Bottom"
                                                 Margin="8" CornerRadius="8" Padding="8,2"
@@ -218,21 +225,27 @@
                                 <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
                                       Margin="0,6,0,0">
                                     <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0"
-                                            Content="Zainstaluj" FontSize="12" Padding="8,7"
+                                            Content="{Binding L[Library.Install]}" FontSize="12" Padding="8,7"
                                             Command="{Binding $parent[UserControl].DataContext.InstallCommand}"
                                             CommandParameter="{Binding}"
                                             IsVisible="{Binding CanInstall}"/>
+                                    <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0"
+                                            Content="{Binding L[Library.Update]}" FontSize="12" Padding="8,7"
+                                            Command="{Binding $parent[UserControl].DataContext.UpdateCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding CanUpdate}"
+                                            IsVisible="{Binding IsUpdateAvailable}"/>
                                     <Button Grid.Row="0" Grid.Column="1" Classes="primary" Margin="4,0,0,0"
-                                            Content="Uruchom" FontSize="12" Padding="8,7"
+                                            Content="{Binding L[Library.Launch]}" FontSize="12" Padding="8,7"
                                             Command="{Binding $parent[UserControl].DataContext.LaunchCommand}"
                                             CommandParameter="{Binding}"
                                             IsVisible="{Binding CanLaunch}"/>
                                     <Button Grid.Row="1" Grid.Column="0" Classes="ghost" Margin="0,4,4,0"
-                                            Content="Szczegóły" FontSize="11" Padding="8,6"
+                                            Content="{Binding L[Library.Details]}" FontSize="11" Padding="8,6"
                                             Command="{Binding $parent[UserControl].DataContext.ShowDetailsCommand}"
                                             CommandParameter="{Binding}"/>
                                     <Button Grid.Row="1" Grid.Column="1" Classes="ghost" Margin="4,4,0,0"
-                                            Content="Odinstaluj" FontSize="11" Padding="8,6"
+                                            Content="{Binding L[Library.Uninstall]}" FontSize="11" Padding="8,6"
                                             Command="{Binding $parent[UserControl].DataContext.UninstallCommand}"
                                             CommandParameter="{Binding}"
                                             IsVisible="{Binding CanUninstall}"/>

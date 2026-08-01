@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Sidebar.Subtitle" xml:space="preserve"><value>Your library</value></data>
+  <data name="Nav.Library" xml:space="preserve"><value>Library</value></data>
+  <data name="Nav.Downloads" xml:space="preserve"><value>Downloads</value></data>
+  <data name="Nav.Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Library.Title" xml:space="preserve"><value>Library</value></data>
+  <data name="Library.SearchPlaceholder" xml:space="preserve"><value>Search games...</value></data>
+  <data name="Library.Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Library.EmptyTitle" xml:space="preserve"><value>No games in library</value></data>
+  <data name="Library.EmptyHint" xml:space="preserve"><value>Configure Nextcloud in the Settings tab and click Refresh.</value></data>
+  <data name="Library.EmptyLoadError" xml:space="preserve"><value>No games in library. Set the Nextcloud share URL in the Settings tab, then click Refresh.</value></data>
+  <data name="Library.LoadError" xml:space="preserve"><value>Failed to load library: {0}</value></data>
+  <data name="Library.Install" xml:space="preserve"><value>Install</value></data>
+  <data name="Library.Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Library.UpdateAvailable" xml:space="preserve"><value>Update available</value></data>
+  <data name="Library.UpdateStartedTitle" xml:space="preserve"><value>Update started</value></data>
+  <data name="Library.UpdateStartedMessage" xml:space="preserve"><value>Update of {0} started.</value></data>
+  <data name="Library.UpdateDoneTitle" xml:space="preserve"><value>Update complete</value></data>
+  <data name="Library.UpdateDoneMessage" xml:space="preserve"><value>{0} has been updated to {1}.</value></data>
+  <data name="Library.UpdateErrorTitle" xml:space="preserve"><value>Update error</value></data>
+  <data name="Library.Launch" xml:space="preserve"><value>Launch</value></data>
+  <data name="Library.Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Library.Uninstall" xml:space="preserve"><value>Uninstall</value></data>
+  <data name="Library.Status.NotInstalled" xml:space="preserve"><value>Not installed</value></data>
+  <data name="Library.Status.Downloading" xml:space="preserve"><value>Downloading...</value></data>
+  <data name="Library.Status.Installing" xml:space="preserve"><value>Installing...</value></data>
+  <data name="Library.Status.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Library.Status.UpdateAvailable" xml:space="preserve"><value>Update available</value></data>
+  <data name="Library.Status.Failed" xml:space="preserve"><value>Error</value></data>
+  <data name="Library.Status.Unknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="Library.SyncTitle" xml:space="preserve"><value>Synchronization</value></data>
+  <data name="Library.SyncDone" xml:space="preserve"><value>Fetched {0} games from Nextcloud.</value></data>
+  <data name="Library.SyncEmpty" xml:space="preserve"><value>Catalog is empty or Nextcloud is not configured.</value></data>
+  <data name="Library.SyncNotFound" xml:space="preserve"><value>No games found. Check the Nextcloud settings (Settings) and the content of the shared folder.</value></data>
+  <data name="Library.RefreshError" xml:space="preserve"><value>Failed to fetch catalog: {0}</value></data>
+  <data name="Library.SyncErrorTitle" xml:space="preserve"><value>Synchronization error</value></data>
+  <data name="Library.AlreadyInstalledTitle" xml:space="preserve"><value>Already installed</value></data>
+  <data name="Library.AlreadyInstalledMessage" xml:space="preserve"><value>{0} is already installed.</value></data>
+  <data name="Library.InProgressTitle" xml:space="preserve"><value>In progress</value></data>
+  <data name="Library.InProgressMessage" xml:space="preserve"><value>{0} is already being installed.</value></data>
+  <data name="Library.InstallStartedTitle" xml:space="preserve"><value>Installation started</value></data>
+  <data name="Library.InstallStartedMessage" xml:space="preserve"><value>Installation of {0} started.</value></data>
+  <data name="Library.InstallDoneTitle" xml:space="preserve"><value>Installation complete</value></data>
+  <data name="Library.InstallDoneMessage" xml:space="preserve"><value>{0} has been installed.</value></data>
+  <data name="Library.InstallErrorTitle" xml:space="preserve"><value>Installation error</value></data>
+  <data name="Library.InstallErrorMessage" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Library.UninstallTitle" xml:space="preserve"><value>Uninstall</value></data>
+  <data name="Library.UninstallConfirm" xml:space="preserve"><value>Are you sure you want to uninstall {0}?</value></data>
+  <data name="Library.UninstalledTitle" xml:space="preserve"><value>Uninstalled</value></data>
+  <data name="Library.UninstalledMessage" xml:space="preserve"><value>{0} has been uninstalled.</value></data>
+  <data name="Library.UninstallErrorTitle" xml:space="preserve"><value>Uninstall error</value></data>
+  <data name="Library.NotInstalledTitle" xml:space="preserve"><value>Not installed</value></data>
+  <data name="Library.NotInstalledMessage" xml:space="preserve"><value>{0} is not installed.</value></data>
+  <data name="Library.LaunchErrorTitle" xml:space="preserve"><value>Launch error</value></data>
+  <data name="Library.UnknownError" xml:space="preserve"><value>Unknown error</value></data>
+  <data name="Library.DetailsSize" xml:space="preserve"><value>Size: {0}</value></data>
+  <data name="Library.DetailsTags" xml:space="preserve"><value>Tags: {0}</value></data>
+  <data name="Library.NoDescription" xml:space="preserve"><value>No description for this game.</value></data>
+  <data name="Library.DetailsTitle" xml:space="preserve"><value>{0}  (version {1})</value></data>
+  <data name="Downloads.Title" xml:space="preserve"><value>Downloads</value></data>
+  <data name="Downloads.Subtitle" xml:space="preserve"><value>Download list and install progress</value></data>
+  <data name="Downloads.EmptyTitle" xml:space="preserve"><value>No active downloads</value></data>
+  <data name="Downloads.EmptyHint" xml:space="preserve"><value>Install a game from the Library tab to start downloading.</value></data>
+  <data name="Downloads.ColumnGame" xml:space="preserve"><value>Game</value></data>
+  <data name="Downloads.ColumnProgress" xml:space="preserve"><value>Progress</value></data>
+  <data name="Downloads.ColumnSpeed" xml:space="preserve"><value>Speed</value></data>
+  <data name="Downloads.ColumnActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Downloads.Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Downloads.Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Downloads.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Downloads.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Downloads.Status.Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Downloads.Status.Preparing" xml:space="preserve"><value>Preparing...</value></data>
+  <data name="Downloads.Status.Downloading" xml:space="preserve"><value>Downloading {0:F1} / {1:F1} MB</value></data>
+  <data name="Downloads.Status.Verifying" xml:space="preserve"><value>Verifying...</value></data>
+  <data name="Downloads.Status.Extracting" xml:space="preserve"><value>Extracting...</value></data>
+  <data name="Downloads.Status.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Downloads.Status.Error" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Downloads.Status.Paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Downloads.Status.Done" xml:space="preserve"><value>Finished</value></data>
+  <data name="Downloads.Status.Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Settings.Title" xml:space="preserve"><value>Settings</value></data>
+  <data name="Settings.Subtitle" xml:space="preserve"><value>Configuration of the game source (Nextcloud) and folders</value></data>
+  <data name="Settings.Nextcloud.Title" xml:space="preserve"><value>Game source (Nextcloud)</value></data>
+  <data name="Settings.Nextcloud.ShareUrl" xml:space="preserve"><value>Share URL:</value></data>
+  <data name="Settings.Nextcloud.ShareUrlPlaceholder" xml:space="preserve"><value>https://your-server/s/abc123</value></data>
+  <data name="Settings.Nextcloud.TestConnection" xml:space="preserve"><value>Test connection</value></data>
+  <data name="Settings.Nextcloud.ShareToken" xml:space="preserve"><value>Share token:</value></data>
+  <data name="Settings.Nextcloud.ShareTokenPlaceholder" xml:space="preserve"><value>Optional - usually extracted from the link</value></data>
+  <data name="Settings.Nextcloud.SharedFolder" xml:space="preserve"><value>Folder shared</value></data>
+  <data name="Settings.Folders.Title" xml:space="preserve"><value>Folders</value></data>
+  <data name="Settings.Folders.Download" xml:space="preserve"><value>Download folder:</value></data>
+  <data name="Settings.Folders.DownloadPlaceholder" xml:space="preserve"><value>Default: ~/KermoLauncher/downloads</value></data>
+  <data name="Settings.Folders.Install" xml:space="preserve"><value>Install folder:</value></data>
+  <data name="Settings.Folders.InstallPlaceholder" xml:space="preserve"><value>Default: ~/KermoLauncher/games</value></data>
+  <data name="Settings.Folders.Hint" xml:space="preserve"><value>The downloaded .zip archive goes to the download folder, and the extracted game to the install folder (subfolder with game ID).</value></data>
+  <data name="Settings.Browse" xml:space="preserve"><value>Browse</value></data>
+  <data name="Settings.General.Title" xml:space="preserve"><value>General</value></data>
+  <data name="Settings.General.MaxParallel" xml:space="preserve"><value>Parallel downloads:</value></data>
+  <data name="Settings.General.MaxParallelHint" xml:space="preserve"><value>(requires restart)</value></data>
+  <data name="Settings.General.AutoUpdate" xml:space="preserve"><value>Automatic updates:</value></data>
+  <data name="Settings.General.Theme" xml:space="preserve"><value>Theme:</value></data>
+  <data name="Settings.General.Language" xml:space="preserve"><value>Language:</value></data>
+  <data name="Settings.Theme.Light" xml:space="preserve"><value>Light</value></data>
+  <data name="Settings.Theme.Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Settings.Theme.System" xml:space="preserve"><value>System</value></data>
+  <data name="Settings.Language.System" xml:space="preserve"><value>System</value></data>
+  <data name="Settings.Language.English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings.Language.Polish" xml:space="preserve"><value>Polski</value></data>
+  <data name="Settings.Save" xml:space="preserve"><value>Save settings</value></data>
+  <data name="Settings.SavedTitle" xml:space="preserve"><value>Settings saved</value></data>
+  <data name="Settings.SavedMessage" xml:space="preserve"><value>Settings have been saved.</value></data>
+  <data name="Settings.NoConfigTitle" xml:space="preserve"><value>No configuration</value></data>
+  <data name="Settings.NoConfigMessage" xml:space="preserve"><value>Paste the Nextcloud share link before testing the connection.</value></data>
+  <data name="Settings.ConnectionOkTitle" xml:space="preserve"><value>Connection OK</value></data>
+  <data name="Settings.ConnectionOkFound" xml:space="preserve"><value>Found {0} games in the {1}/ folder of the share.</value></data>
+  <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Connection works, but the folder is empty (metadata.json in the root).</value></data>
+  <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Connection error</value></data>
+  <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Failed to fetch metadata.json: {0}</value></data>
+  <data name="Updates.AvailableTitle" xml:space="preserve"><value>Update available</value></data>
+  <data name="Updates.AvailableMessage" xml:space="preserve"><value>A new version {0} of the launcher is available on GitHub.</value></data>
+  <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Admin Panel</value></data>
+  <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Admin Panel</value></data>
+  <data name="Admin.Nav.Editor" xml:space="preserve"><value>Game editor</value></data>
+  <data name="Admin.Nav.Upload" xml:space="preserve"><value>Upload to Nextcloud</value></data>
+  <data name="Admin.Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Admin.Editor.Title" xml:space="preserve"><value>Game editor</value></data>
+  <data name="Admin.Editor.Subtitle" xml:space="preserve"><value>Scan game folders, edit data and generate metadata.json</value></data>
+  <data name="Admin.Editor.FolderPlaceholder" xml:space="preserve"><value>Path to games folder (e.g. ~/Nextcloud/Games)</value></data>
+  <data name="Admin.Editor.Scan" xml:space="preserve"><value>Scan</value></data>
+  <data name="Admin.Editor.AddGame" xml:space="preserve"><value>Add game</value></data>
+  <data name="Admin.Editor.Generate" xml:space="preserve"><value>Generate metadata.json</value></data>
+  <data name="Admin.Editor.GamesCount" xml:space="preserve"><value>{0} games in folder</value></data>
+  <data name="Admin.Editor.GameDetails" xml:space="preserve"><value>Game details</value></data>
+  <data name="Admin.Editor.Id" xml:space="preserve"><value>ID (slug):</value></data>
+  <data name="Admin.Editor.Name" xml:space="preserve"><value>Name:</value></data>
+  <data name="Admin.Editor.Version" xml:space="preserve"><value>Version:</value></data>
+  <data name="Admin.Editor.Tags" xml:space="preserve"><value>Tags (comma separated):</value></data>
+  <data name="Admin.Editor.Dependencies" xml:space="preserve"><value>Dependencies:</value></data>
+  <data name="Admin.Editor.Description" xml:space="preserve"><value>Description:</value></data>
+  <data name="Admin.Editor.DescriptionPlaceholder" xml:space="preserve"><value>Game description shown in the launcher</value></data>
+  <data name="Admin.Editor.Files" xml:space="preserve"><value>Files</value></data>
+  <data name="Admin.Editor.LocalFolder" xml:space="preserve"><value>Local folder:</value></data>
+  <data name="Admin.Editor.LocalFolderPlaceholder" xml:space="preserve"><value>Set automatically after scanning</value></data>
+  <data name="Admin.Editor.ManifestUrl" xml:space="preserve"><value>manifest.json:</value></data>
+  <data name="Admin.Editor.ManifestUrlPlaceholder" xml:space="preserve"><value>Relative to the Games/ folder (e.g. witcher-3/manifest.json)</value></data>
+  <data name="Admin.Editor.Screenshots" xml:space="preserve"><value>PNG/JPG files:</value></data>
+  <data name="Admin.Editor.ScreenshotCount" xml:space="preserve"><value>{0} files</value></data>
+  <data name="Admin.Editor.Launch" xml:space="preserve"><value>Launching</value></data>
+  <data name="Admin.Editor.LaunchExecutable" xml:space="preserve"><value>Executable file:</value></data>
+  <data name="Admin.Editor.LaunchExecutablePlaceholder" xml:space="preserve"><value>e.g. bin/win64/game.exe</value></data>
+  <data name="Admin.Editor.LaunchWorkingDir" xml:space="preserve"><value>Working directory:</value></data>
+  <data name="Admin.Editor.Optional" xml:space="preserve"><value>Optional</value></data>
+  <data name="Admin.Editor.LaunchArgs" xml:space="preserve"><value>Arguments (comma separated):</value></data>
+  <data name="Admin.Editor.LaunchArgsPlaceholder" xml:space="preserve"><value>e.g. -fullscreen, -nointro</value></data>
+  <data name="Admin.Editor.ScreenshotsTitle" xml:space="preserve"><value>Screenshots</value></data>
+  <data name="Admin.Editor.RemoveGame" xml:space="preserve"><value>Remove game from list</value></data>
+  <data name="Admin.Editor.SelectHint" xml:space="preserve"><value>Select a game from the list to edit its data</value></data>
+  <data name="Admin.Editor.SelectHint2" xml:space="preserve"><value>First scan the games folder (Scan button).</value></data>
+  <data name="Admin.Editor.ErrFolderPath" xml:space="preserve"><value>Provide a path to the games folder (e.g. /home/user/Nextcloud/Games).</value></data>
+  <data name="Admin.Editor.ErrFolderMissing" xml:space="preserve"><value>Folder does not exist: {0}</value></data>
+  <data name="Admin.Editor.ScanDone" xml:space="preserve"><value>Found {0} games in folder. Kept manual descriptions for {1} games.</value></data>
+  <data name="Admin.Editor.ErrNoFiles" xml:space="preserve"><value>No game files in subfolders. Each game must be in a separate subfolder with game files.</value></data>
+  <data name="Admin.Editor.ErrScan" xml:space="preserve"><value>Scan error: {0}</value></data>
+  <data name="Admin.Editor.ErrNoGames" xml:space="preserve"><value>No games. Scan the games folder first.</value></data>
+  <data name="Admin.Editor.GenerateDone" xml:space="preserve"><value>Generated {0} ({1} games).</value></data>
+  <data name="Admin.Editor.ErrGenerate" xml:space="preserve"><value>Failed to generate metadata.json: {0}</value></data>
+  <data name="Admin.Upload.Title" xml:space="preserve"><value>Upload to Nextcloud</value></data>
+  <data name="Admin.Upload.Subtitle" xml:space="preserve"><value>Upload metadata.json, .zip archives and screenshots to the shared Games folder</value></data>
+  <data name="Admin.Upload.HelpTitle" xml:space="preserve"><value>How to get access data:</value></data>
+  <data name="Admin.Upload.Help1" xml:space="preserve"><value>1. Log in to Nextcloud in a browser → Avatar → Personal settings → Security.</value></data>
+  <data name="Admin.Upload.Help2" xml:space="preserve"><value>2. Create a new app password (Section: App passwords) - it will be needed to upload files.</value></data>
+  <data name="Admin.Upload.Help3" xml:space="preserve"><value>3. The WebDAV address is in Personal settings → WebDAV (e.g. https://your-server/remote.php/dav/files/your-user).</value></data>
+  <data name="Admin.Upload.Help4" xml:space="preserve"><value>4. The account needs write permissions in the Games folder. After uploading, share the Games folder as a public link - the launcher will fetch it from there.</value></data>
+  <data name="Admin.Upload.Credentials" xml:space="preserve"><value>Access data (write)</value></data>
+  <data name="Admin.Upload.WebDavUrl" xml:space="preserve"><value>WebDAV address:</value></data>
+  <data name="Admin.Upload.WebDavPlaceholder" xml:space="preserve"><value>https://your-server/remote.php/dav/files/your-user</value></data>
+  <data name="Admin.Upload.User" xml:space="preserve"><value>User:</value></data>
+  <data name="Admin.Upload.Password" xml:space="preserve"><value>App password:</value></data>
+  <data name="Admin.Upload.Files" xml:space="preserve"><value>Files to upload</value></data>
+  <data name="Admin.Upload.Metadata" xml:space="preserve"><value>metadata.json:</value></data>
+  <data name="Admin.Upload.FilesHint" xml:space="preserve"><value>.zip archives and screenshots are taken from the game list in the editor (Game editor tab).</value></data>
+  <data name="Admin.Upload.ProgressTitle" xml:space="preserve"><value>Upload</value></data>
+  <data name="Admin.Upload.Start" xml:space="preserve"><value>Start upload</value></data>
+  <data name="Admin.Upload.ErrCredentials" xml:space="preserve"><value>Fill in the WebDAV address, username and app password.</value></data>
+  <data name="Admin.Upload.ErrMetadata" xml:space="preserve"><value>No metadata.json file. Generate it in the Game editor tab.</value></data>
+  <data name="Admin.Upload.ErrGames" xml:space="preserve"><value>No games to upload. Scan the folder in the Game editor tab.</value></data>
+  <data name="Admin.Upload.Preparing" xml:space="preserve"><value>Preparing file list...</value></data>
+  <data name="Admin.Upload.ErrNoFiles" xml:space="preserve"><value>Nothing to upload - all files are already up to date on the server.</value></data>
+  <data name="Admin.Upload.UploadingFile" xml:space="preserve"><value>Uploading: {0} ({1} MB)</value></data>
+  <data name="Admin.Upload.UploadingMetadata" xml:space="preserve"><value>Uploading: metadata.json</value></data>
+  <data name="Admin.Upload.Done" xml:space="preserve"><value>Done! {0} files uploaded to Nextcloud.</value></data>
+  <data name="Admin.Upload.Error" xml:space="preserve"><value>Upload error: {0}</value></data>
+  <data name="Admin.Upload.Failed" xml:space="preserve"><value>Upload failed.</value></data>
+</root>

@@ -39,6 +39,24 @@ public class WebDavService : IWebDavService
         return games;
     }
 
+    public async Task<GameManifest> DownloadManifestAsync(string manifestUrl, CancellationToken ct = default)
+    {
+        _logger.LogInformation("Downloading manifest from {Url}", manifestUrl);
+
+        var response = await _httpClient.GetAsync(manifestUrl, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var manifest = JsonSerializer.Deserialize<GameManifest>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? throw new InvalidOperationException("Manifest is empty or invalid");
+
+        _logger.LogInformation("Loaded manifest for version {Version} with {Count} files",
+            manifest.Version, manifest.Files.Length);
+        return manifest;
+    }
+
     /// <summary>
     /// Wykrywa katalog bazowy udostępnienia: sprawdza czy metadata.json leży w korzeniu,
     /// a jeśli nie - w podfolderze "Games". Zwraca konfigurację z ustawionym RootFolder.

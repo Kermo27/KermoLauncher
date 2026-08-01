@@ -8,9 +8,8 @@ public record Game(
     string[] Tags,
     string[] Dependencies,
     string[] ScreenshotUrls,
-    string RemoteZipUrl,
+    string ManifestUrl,
     long SizeBytes,
-    string Sha256,
     LaunchConfig? LaunchConfig = null
 );
 
@@ -18,6 +17,18 @@ public record LaunchConfig(
     string ExecutablePath,
     string? WorkingDirectory = null,
     string[]? LaunchArgs = null
+);
+
+public record GameFile(
+    string Path,
+    long SizeBytes,
+    string Sha256
+);
+
+public record GameManifest(
+    string Version,
+    long TotalBytes,
+    GameFile[] Files
 );
 
 public enum InstallStatus
@@ -34,5 +45,7 @@ public record GameLocalState(
     InstallStatus Status,
     string? InstalledPath = null,
     long PlayTimeSeconds = 0,
-    DateTime? LastPlayed = null
+    DateTime? LastPlayed = null,
+    string? InstalledVersion = null,
+    GameManifest? InstalledManifest = null
 );

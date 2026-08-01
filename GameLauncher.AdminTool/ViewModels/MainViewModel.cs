@@ -10,7 +10,7 @@ public partial class MainViewModel : ViewModelBase
     private ViewModelBase _currentView = null!;
 
     [ObservableProperty]
-    private string _statusText = "Gotowy";
+    private string _statusText = "";
 
     [ObservableProperty]
     private bool _isGameEditorActive;
@@ -21,6 +21,12 @@ public partial class MainViewModel : ViewModelBase
     public GameEditorViewModel GameEditorVm { get; }
     public UploadViewModel UploadVm { get; }
 
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        StatusText = L["Admin.Ready"];
+    }
+
     public MainViewModel(
         GameEditorViewModel gameEditorVm,
         UploadViewModel uploadVm)
@@ -30,6 +36,7 @@ public partial class MainViewModel : ViewModelBase
 
         CurrentView = GameEditorVm;
         IsGameEditorActive = true;
+        StatusText = L["Admin.Ready"];
     }
 
     partial void OnCurrentViewChanged(ViewModelBase value)

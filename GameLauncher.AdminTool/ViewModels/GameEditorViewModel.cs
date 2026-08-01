@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.Input;
 using GameLauncher.AdminTool.Services;
 using GameLauncher.Core.Models;
+using GameLauncher.Core.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace GameLauncher.AdminTool.ViewModels;
@@ -36,6 +37,29 @@ public partial class GameEditorViewModel : ViewModelBase
     private bool _isGenerating;
 
     public string GeneratedMetadataPath { get; } = "metadata.json";
+
+    public string GamesCountText => string.Format(L["Admin.Editor.GamesCount"], Games.Length);
+
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        OnPropertyChanged(nameof(GamesCountText));
+        AttachLocalization();
+    }
+
+    partial void OnGamesChanged(GameMetadata[] value)
+    {
+        AttachLocalization();
+        OnPropertyChanged(nameof(GamesCountText));
+    }
+
+    private void AttachLocalization()
+    {
+        foreach (var game in Games)
+        {
+            game.L = L;
+        }
+    }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -85,8 +109,7 @@ public partial class GameEditorViewModel : ViewModelBase
                 Games = state.Games;
                 ScanFolderPath = state.ScanFolderPath ?? "";
                 SelectedGame = Games.FirstOrDefault(g => g.Id == state.SelectedGameId);
-            }
-        }
+            }        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load AdminTool state");
@@ -142,13 +165,13 @@ public partial class GameEditorViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(ScanFolderPath))
         {
-            ErrorText = "Podaj ścieżkę do folderu z grami (np. /home/user/Nextcloud/Games).";
+            ErrorText = L["Admin.Editor.ErrFolderPath"];
             return;
         }
 
         if (!Directory.Exists(ScanFolderPath))
         {
-            ErrorText = $"Folder nie istnieje: {ScanFolderPath}";
+            ErrorText = string.Format(L["Admin.Editor.ErrFolderMissing"], ScanFolderPath);
             return;
         }
 
@@ -169,13 +192,12 @@ public partial class GameEditorViewModel : ViewModelBase
                     game.Dependencies = old.Dependencies;
                     game.LaunchConfig = old.LaunchConfig;
                     game.Name = old.Name;
-                    if (!string.IsNullOrWhiteSpace(old.LocalZipPath) && File.Exists(old.LocalZipPath))
-                    {
-                        game.LocalZipPath = old.LocalZipPath;
-                    }
+                    game.Version = old.Version;
                     if (old.ScreenshotPaths.Length > 0)
                     {
-                        var existing = old.ScreenshotPaths.Where(File.Exists).ToArray();
+                        var existing = old.ScreenshotPaths
+                            .Where(p => File.Exists(Path.Combine(game.LocalFolder, p)))
+                            .ToArray();
                         if (existing.Length > 0)
                         {
                             game.ScreenshotPaths = existing.Concat(game.ScreenshotPaths).Distinct().ToArray();
@@ -190,16 +212,16 @@ public partial class GameEditorViewModel : ViewModelBase
                 SelectedGame = Games.FirstOrDefault(g => g.Id == SelectedGame.Id);
             }
             SaveState();
-            StatusText = $"Znaleziono {games.Length} gier w folderze. Zachowano ręczne opisy dla {preserved} gier.";
+            StatusText = string.Format(L["Admin.Editor.ScanDone"], games.Length, preserved);
             if (games.Length == 0)
             {
-                ErrorText = "Brak plików .zip w podfolderach. Każda gra musi być w osobnym podfolderze z archiwum .zip.";
+                ErrorText = L["Admin.Editor.ErrNoFiles"];
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to scan folder");
-            ErrorText = $"Błąd skanowania: {ex.Message}";
+            ErrorText = string.Format(L["Admin.Editor.ErrScan"], ex.Message);
         }
         finally
         {
@@ -219,9 +241,10 @@ public partial class GameEditorViewModel : ViewModelBase
             Tags = [],
             Dependencies = [],
             ScreenshotPaths = [],
-            LocalZipPath = "",
-            RemoteZipPath = "nowa-gra/nowa-gra-v1.0.0.zip",
-            RemoteFolder = "nowa-gra"
+            LocalFolder = "",
+            ManifestUrl = "nowa-gra/manifest.json",
+            RemoteFolder = "nowa-gra",
+            Files = []
         };
         
         var list = Games.ToList();
@@ -248,7 +271,7 @@ public partial class GameEditorViewModel : ViewModelBase
     {
         if (Games.Length == 0)
         {
-            ErrorText = "Brak gier. Zeskanuj najpierw folder z grami.";
+            ErrorText = L["Admin.Editor.ErrNoGames"];
             return;
         }
 
@@ -257,12 +280,12 @@ public partial class GameEditorViewModel : ViewModelBase
         try
         {
             await _metadataGenerator.GenerateMetadataJsonAsync(Games, GeneratedMetadataPath);
-            StatusText = $"Wygenerowano {GeneratedMetadataPath} ({Games.Length} gier).";
+            StatusText = string.Format(L["Admin.Editor.GenerateDone"], GeneratedMetadataPath, Games.Length);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate metadata");
-            ErrorText = $"Błąd generowania metadata.json: {ex.Message}";
+            ErrorText = string.Format(L["Admin.Editor.ErrGenerate"], ex.Message);
         }
         finally
         {
@@ -280,12 +303,15 @@ public partial class GameMetadata : ObservableObject
     [ObservableProperty] private string[] _tags = [];
     [ObservableProperty] private string[] _dependencies = [];
     [ObservableProperty] private string[] _screenshotPaths = [];
-    [ObservableProperty] private string _localZipPath = "";
-    [ObservableProperty] private string _remoteZipPath = "";
+    [ObservableProperty] private string _localFolder = "";
+    [ObservableProperty] private string _manifestUrl = "";
     [ObservableProperty] private string _remoteFolder = "";
     [ObservableProperty] private long _sizeBytes;
-    [ObservableProperty] private string _sha256 = "";
+    [ObservableProperty] private GameFile[] _files = [];
     [ObservableProperty] private LaunchConfig? _launchConfig = null;
+
+    [JsonIgnore]
+    public ILocalizationService? L { get; set; }
 
     [JsonIgnore]
     public string TagsString
@@ -303,6 +329,13 @@ public partial class GameMetadata : ObservableObject
 
     [JsonIgnore]
     public string SizeText => SizeBytes > 0 ? $"{SizeBytes / (1024d * 1024d * 1024d):F1} GB" : "";
+
+    [JsonIgnore]
+    public string ScreenshotCountText => L == null
+        ? ""
+        : string.Format(L["Admin.Editor.ScreenshotCount"], ScreenshotPaths.Length);
+
+    partial void OnScreenshotPathsChanged(string[] value) => OnPropertyChanged(nameof(ScreenshotCountText));
 
     [JsonIgnore]
     public string LaunchExecutable

@@ -1,6 +1,5 @@
 using GameLauncher.AdminTool.ViewModels;
 using GameLauncher.Core.Models;
-using GameLauncher.Core.Utils;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -48,33 +47,38 @@ public class MetadataGenerator
     private async Task<GameMetadata?> ScanGameDirectoryAsync(string dir)
     {
         var dirName = Path.GetFileName(dir);
-        
-        // Look for zip file
-        var zipFiles = Directory.GetFiles(dir, "*.zip", SearchOption.TopDirectoryOnly);
-        var zipPath = zipFiles.FirstOrDefault();
-        
-        if (zipPath == null)
+
+        // Collect game files: everything except screenshots/ and manifest.json
+        var screenshotPaths = CollectScreenshots(dir);
+        var gameFiles = Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
+            .Where(f => !IsExcluded(dir, f, screenshotPaths))
+            .Select(f => Path.GetRelativePath(dir, f).Replace(Path.DirectorySeparatorChar, '/'))
+            .OrderBy(p => p)
+            .ToArray();
+
+        if (gameFiles.Length == 0)
         {
-            _logger.LogWarning("No zip file found in {Dir}", dir);
+            _logger.LogWarning("No game files found in {Dir}", dir);
             return null;
         }
 
-        // Look for screenshots
-        var screenshotsDir = Path.Combine(dir, "screenshots");
-        var screenshotPaths = Directory.Exists(screenshotsDir) 
-            ? Directory.GetFiles(screenshotsDir, "*.jpg")
-                .Concat(Directory.GetFiles(screenshotsDir, "*.png"))
-                .Concat(Directory.GetFiles(screenshotsDir, "*.jpeg"))
-                .Select(f => Path.GetRelativePath(dir, f))
-                .ToArray()
-            : [];
+        // Reuse version + hashes from an existing manifest if present
+        var existingManifest = TryLoadManifest(Path.Combine(dir, "manifest.json"));
 
-        // Compute SHA256 and size
-        var fileInfo = new FileInfo(zipPath);
-        var sha256 = await ComputeSha256Async(zipPath);
-
-        // Try to parse version from zip filename
-        var version = ExtractVersionFromFilename(Path.GetFileName(zipPath)) ?? "1.0.0";
+        var files = new GameFile[gameFiles.Length];
+        var totalBytes = 0L;
+        for (var i = 0; i < gameFiles.Length; i++)
+        {
+            var absPath = Path.Combine(dir, gameFiles[i]);
+            var size = new FileInfo(absPath).Length;
+            var existing = existingManifest?.Files.FirstOrDefault(f =>
+                string.Equals(f.Path, gameFiles[i], StringComparison.OrdinalIgnoreCase));
+            var sha = existing != null && existing.SizeBytes == size
+                ? existing.Sha256
+                : await ComputeSha256Async(absPath);
+            files[i] = new GameFile(gameFiles[i], size, sha);
+            totalBytes += size;
+        }
 
         var id = dirName.ToLowerInvariant().Replace(' ', '-');
 
@@ -82,37 +86,60 @@ public class MetadataGenerator
         {
             Id = id,
             Name = FormatGameName(dirName),
-            Version = version,
+            Version = existingManifest?.Version ?? "1.0.0",
             Description = "",
             Tags = [],
             Dependencies = [],
             ScreenshotPaths = screenshotPaths,
-            LocalZipPath = zipPath,
-            RemoteZipPath = $"{dirName}/{Path.GetFileName(zipPath)}",
+            LocalFolder = dir,
             RemoteFolder = dirName,
-            SizeBytes = fileInfo.Length,
-            Sha256 = sha256
+            ManifestUrl = $"{dirName}/manifest.json",
+            Files = files,
+            SizeBytes = totalBytes
         };
     }
 
-    private static string? ExtractVersionFromFilename(string filename)
+    private static bool IsExcluded(string gameDir, string filePath, string[] screenshotPaths)
     {
-        // Try to extract version from patterns like: game-v1.0.0.zip, game_1.0.0.zip
-        var patterns = new[]
-        {
-            @"v?(\d+\.\d+\.\d+)",
-            @"v?(\d+\.\d+)",
-        };
+        var relative = Path.GetRelativePath(gameDir, filePath);
+        if (string.Equals(relative, "manifest.json", StringComparison.OrdinalIgnoreCase)) return true;
+        if (relative.StartsWith("screenshots" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return true;
+        if (relative.StartsWith("screenshots/", StringComparison.OrdinalIgnoreCase)) return true;
+        return screenshotPaths.Contains(relative);
+    }
 
-        foreach (var pattern in patterns)
+    private static string[] CollectScreenshots(string dir)
+    {
+        var screenshotsDir = Path.Combine(dir, "screenshots");
+        return Directory.Exists(screenshotsDir)
+            ? Directory.GetFiles(screenshotsDir, "*.jpg")
+                .Concat(Directory.GetFiles(screenshotsDir, "*.png"))
+                .Concat(Directory.GetFiles(screenshotsDir, "*.jpeg"))
+                .Select(f => Path.GetRelativePath(dir, f).Replace(Path.DirectorySeparatorChar, '/'))
+                .ToArray()
+            : [];
+    }
+
+    private static GameManifest? TryLoadManifest(string path)
+    {
+        try
         {
-            var match = System.Text.RegularExpressions.Regex.Match(filename, pattern);
-            if (match.Success)
+            if (!File.Exists(path)) return null;
+            var json = File.ReadAllText(path);
+            var manifest = JsonSerializer.Deserialize<GameManifest>(json, new JsonSerializerOptions
             {
-                return match.Groups[1].Value;
+                PropertyNameCaseInsensitive = true
+            });
+            if (manifest == null || string.IsNullOrWhiteSpace(manifest.Version) || manifest.Files is null)
+            {
+                return null;
             }
+            return manifest;
         }
-        return null;
+        catch
+        {
+            return null;
+        }
     }
 
     private static string FormatGameName(string dirName)
@@ -121,19 +148,34 @@ public class MetadataGenerator
         return string.Join(' ', dirName.Split('-', '_').Select(w => char.ToUpper(w[0]) + w[1..]));
     }
 
-    private static async Task<string> ComputeSha256Async(string filePath)
+    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct = default)
     {
-        return await Task.Run(() =>
+        return await Task.Run(async () =>
         {
             using var sha256 = SHA256.Create();
-            using var stream = File.OpenRead(filePath);
-            var hash = sha256.ComputeHash(stream);
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+            var hash = await sha256.ComputeHashAsync(stream, ct);
             return Convert.ToHexString(hash).ToLowerInvariant();
-        });
+        }, ct);
     }
 
     public async Task GenerateMetadataJsonAsync(GameMetadata[] games, string outputPath)
     {
+        // 1. Write manifest.json into each game folder
+        foreach (var game in games)
+        {
+            if (string.IsNullOrWhiteSpace(game.LocalFolder) || !Directory.Exists(game.LocalFolder)) continue;
+
+            var manifest = new GameManifest(game.Version, game.SizeBytes, game.Files);
+            var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+            await File.WriteAllTextAsync(Path.Combine(game.LocalFolder, "manifest.json"), manifestJson);
+        }
+
+        // 2. Build metadata.json
         var gameModels = games.Select(g => new Game(
             g.Id,
             g.Name,
@@ -142,9 +184,8 @@ public class MetadataGenerator
             g.Tags,
             g.Dependencies,
             g.ScreenshotPaths.Select(p => $"{g.RemoteFolder}/screenshots/{Path.GetFileName(p)}").ToArray(),
-            g.RemoteZipPath,
+            g.ManifestUrl,
             g.SizeBytes,
-            g.Sha256,
             g.LaunchConfig
         )).ToArray();
 

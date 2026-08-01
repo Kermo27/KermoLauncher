@@ -48,26 +48,62 @@ public partial class UploadViewModel : ViewModelBase
         _logger = logger;
     }
 
-    private List<(string LocalPath, string RemotePath)> BuildFileList(string baseUrl)
+    private record UploadItem(string LocalPath, string RemotePath);
+
+    private async Task<List<UploadItem>> BuildFileListAsync(string baseUrl, string user, string password, CancellationToken ct = default)
     {
-        var files = new List<(string, string)>();
+        var files = new List<UploadItem>();
 
         foreach (var game in _gameEditor.Games)
         {
-            if (!string.IsNullOrWhiteSpace(game.LocalZipPath) && File.Exists(game.LocalZipPath))
+            var gameBase = $"{baseUrl}/{game.RemoteFolder}";
+
+            // Game files (skip unchanged: same remote size)
+            foreach (var file in game.Files)
             {
-                files.Add((game.LocalZipPath, $"{baseUrl}/{game.RemoteZipPath}"));
+                if (string.IsNullOrWhiteSpace(game.LocalFolder)) continue;
+                var localPath = Path.Combine(game.LocalFolder, file.Path.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(localPath)) continue;
+                if (await IsSameAsRemoteAsync($"{gameBase}/{file.Path}", localPath, user, password, ct)) continue;
+                files.Add(new UploadItem(localPath, $"{gameBase}/{file.Path}"));
             }
+
+            // Screenshots
             foreach (var shot in game.ScreenshotPaths)
             {
-                if (File.Exists(shot))
-                {
-                    files.Add((shot, $"{baseUrl}/{game.RemoteFolder}/screenshots/{Path.GetFileName(shot)}"));
-                }
+                if (string.IsNullOrWhiteSpace(game.LocalFolder)) continue;
+                var localPath = Path.Combine(game.LocalFolder, shot.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(localPath)) continue;
+                var remotePath = $"{gameBase}/screenshots/{Path.GetFileName(shot)}";
+                if (await IsSameAsRemoteAsync(remotePath, localPath, user, password, ct)) continue;
+                files.Add(new UploadItem(localPath, remotePath));
+            }
+
+            // Manifest
+            if (string.IsNullOrWhiteSpace(game.LocalFolder)) continue;
+            var localManifest = Path.Combine(game.LocalFolder, "manifest.json");
+            if (File.Exists(localManifest))
+            {
+                files.Add(new UploadItem(localManifest, $"{gameBase}/manifest.json"));
             }
         }
 
         return files;
+    }
+
+    private async Task<bool> IsSameAsRemoteAsync(string remotePath, string localPath, string user, string password, CancellationToken ct = default)
+    {
+        try
+        {
+            if (!await _webDav.FileExistsAsync(remotePath, ct)) return false;
+            var remoteSize = await _webDav.GetFileSizeAsync(remotePath, ct);
+            var localSize = new FileInfo(localPath).Length;
+            return remoteSize == localSize;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     [RelayCommand]
@@ -81,37 +117,38 @@ public partial class UploadViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
         {
-            ErrorText = "Uzupełnij adres WebDAV, nazwę użytkownika i hasło aplikacji.";
+            ErrorText = L["Admin.Upload.ErrCredentials"];
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_gameEditor.GeneratedMetadataPath) || !File.Exists(_gameEditor.GeneratedMetadataPath))
         {
-            ErrorText = "Brak pliku metadata.json. Wygeneruj go w zakładce Edytor gier.";
+            ErrorText = L["Admin.Upload.ErrMetadata"];
             return;
         }
 
         if (_gameEditor.Games.Length == 0)
         {
-            ErrorText = "Brak gier do wysłania. Zeskanuj folder w zakładce Edytor gier.";
+            ErrorText = L["Admin.Upload.ErrGames"];
             return;
         }
 
         IsUploading = true;
         UploadProgress = 0;
         ErrorText = null;
-        StatusText = "Przygotowywanie listy plików...";
+        StatusText = L["Admin.Upload.Preparing"];
         CurrentFileText = null;
 
         try
         {
             var baseUrl = $"{url.TrimEnd('/')}/Games";
-            var files = BuildFileList(baseUrl);
+            var files = await BuildFileListAsync(baseUrl, user, password);
 
             if (files.Count == 0)
             {
-                ErrorText = "Nie znaleziono lokalnych plików .zip do wysłania (sprawdź ścieżki ZIP w edytorze gier).";
-                return;
+            ErrorText = L["Admin.Upload.ErrNoFiles"];
+            StatusText = "";
+            return;
             }
 
             // 1. Create directory structure (metadata goes last)
@@ -126,31 +163,32 @@ public partial class UploadViewModel : ViewModelBase
                 }
             }
 
-            // 2. Upload game files
+            // 2. Upload files
             var total = files.Count + 1;
             var completed = 0;
-            foreach (var (localPath, remotePath) in files)
+            foreach (var item in files)
             {
-                CurrentFileText = $"Przesyłanie: {Path.GetFileName(localPath)} ({new FileInfo(localPath).Length / 1024 / 1024} MB)";
-                await _webDav.UploadFileAsync(remotePath, localPath, user, password);
+                CurrentFileText = string.Format(L["Admin.Upload.UploadingFile"],
+                    Path.GetFileName(item.LocalPath), new FileInfo(item.LocalPath).Length / 1024 / 1024);
+                await _webDav.UploadFileAsync(item.RemotePath, item.LocalPath, user, password);
                 completed++;
                 UploadProgress = completed * 90.0 / total;
             }
 
             // 3. Upload metadata.json last
-            CurrentFileText = "Przesyłanie: metadata.json";
+            CurrentFileText = L["Admin.Upload.UploadingMetadata"];
             await _webDav.UploadFileAsync($"{baseUrl}/metadata.json", _gameEditor.GeneratedMetadataPath, user, password);
             completed++;
             UploadProgress = completed * 100.0 / total;
 
-            StatusText = "Gotowe! Wszystkie pliki zostały wysłane na Nextcloud.";
+            StatusText = string.Format(L["Admin.Upload.Done"], files.Count);
             CurrentFileText = null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Upload failed");
-            ErrorText = $"Błąd wysyłki: {ex.Message}";
-            StatusText = "Wysyłka nie powiodła się.";
+            ErrorText = string.Format(L["Admin.Upload.Error"], ex.Message);
+            StatusText = L["Admin.Upload.Failed"];
         }
         finally
         {

@@ -7,7 +7,7 @@ using GameLauncher.UI.Services;
 
 namespace GameLauncher.UI.ViewModels;
 
-public partial class DownloadItemViewModel : ObservableObject
+public partial class DownloadItemViewModel : ViewModelBase
 {
     [ObservableProperty]
     private DownloadTask _task;
@@ -39,30 +39,38 @@ public partial class DownloadItemViewModel : ObservableObject
     public string GameId => Task.GameId;
     public string StatusText => Task.Status switch
     {
-        DownloadStatus.Queued => "W kolejce",
+        DownloadStatus.Queued => L["Downloads.Status.Queued"],
         DownloadStatus.Downloading => Task.InstallStage switch
         {
-            InstallStage.Preparing => "Przygotowywanie...",
-            InstallStage.Downloading => $"Pobieranie {Task.DownloadedBytes / 1024 / 1024:F1} / {Task.TotalBytes / 1024 / 1024:F1} MB",
-            InstallStage.Verifying => "Weryfikowanie...",
-            InstallStage.Extracting => "Rozpakowywanie...",
-            InstallStage.Completed => "Zainstalowano",
-            InstallStage.Failed => $"Błąd: {Task.Error}",
-            _ => $"Pobieranie {Task.DownloadedBytes / 1024 / 1024:F1} / {Task.TotalBytes / 1024 / 1024:F1} MB"
+            InstallStage.Preparing => L["Downloads.Status.Preparing"],
+            InstallStage.Downloading => string.Format(L["Downloads.Status.Downloading"],
+                Task.DownloadedBytes / 1024 / 1024, Task.TotalBytes / 1024 / 1024),
+            InstallStage.Verifying => L["Downloads.Status.Verifying"],
+            InstallStage.Extracting => L["Downloads.Status.Extracting"],
+            InstallStage.Completed => L["Downloads.Status.Installed"],
+            InstallStage.Failed => string.Format(L["Downloads.Status.Error"], Task.Error),
+            _ => string.Format(L["Downloads.Status.Downloading"],
+                Task.DownloadedBytes / 1024 / 1024, Task.TotalBytes / 1024 / 1024)
         },
-        DownloadStatus.Paused => "Wstrzymano",
+        DownloadStatus.Paused => L["Downloads.Status.Paused"],
         DownloadStatus.Completed => Task.InstallStage switch
         {
-            InstallStage.Verifying => "Weryfikowanie...",
-            InstallStage.Extracting => "Rozpakowywanie...",
-            InstallStage.Completed => "Zainstalowano",
-            InstallStage.Failed => $"Błąd: {Task.Error}",
-            _ => "Zakończono"
+            InstallStage.Verifying => L["Downloads.Status.Verifying"],
+            InstallStage.Extracting => L["Downloads.Status.Extracting"],
+            InstallStage.Completed => L["Downloads.Status.Installed"],
+            InstallStage.Failed => string.Format(L["Downloads.Status.Error"], Task.Error),
+            _ => L["Downloads.Status.Done"]
         },
-        DownloadStatus.Failed => $"Błąd: {Task.Error}",
-        DownloadStatus.Cancelled => "Anulowano",
+        DownloadStatus.Failed => string.Format(L["Downloads.Status.Error"], Task.Error),
+        DownloadStatus.Cancelled => L["Downloads.Status.Cancelled"],
         _ => Task.Status.ToString()
     };
+
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        OnPropertyChanged(nameof(StatusText));
+    }
 
     public double Progress => Task.TotalBytes > 0 ? (double)Task.DownloadedBytes / Task.TotalBytes : 0;
     public double Speed => SpeedBytesPerSecond;
@@ -75,16 +83,20 @@ public partial class DownloadItemViewModel : ObservableObject
 public partial class DownloadsViewModel : ViewModelBase
 {
     private readonly IDownloadService _downloadService;
+    private readonly IGameService _gameService;
     private readonly Dictionary<string, DownloadItemViewModel> _items = [];
 
     [ObservableProperty]
     private DownloadItemViewModel[] _downloads = [];
 
-    public DownloadsViewModel(IDownloadService downloadService)
+    public DownloadsViewModel(IDownloadService downloadService, IGameService gameService)
     {
         _downloadService = downloadService;
+        _gameService = gameService;
         _downloadService.OnTaskUpdated += OnTaskUpdated;
         _downloadService.OnProgress += OnProgress;
+        _gameService.OnTaskUpdated += OnTaskUpdated;
+        _gameService.OnProgress += OnProgress;
         _ = RefreshAsync();
     }
 

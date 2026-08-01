@@ -28,8 +28,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _shareToken = "";
 
-    public string[] ThemeOptions { get; } = ["Jasny", "Ciemny", "Systemowy"];
     public string[] ThemeValues { get; } = ["Light", "Dark", "System"];
+    public string[] LanguageValues { get; } = ["System", "en", "pl"];
+
+    public string[] ThemeOptions =>
+        [L["Settings.Theme.Light"], L["Settings.Theme.Dark"], L["Settings.Theme.System"]];
+
+    public string[] LanguageOptions =>
+        [L["Settings.Language.System"], L["Settings.Language.English"], L["Settings.Language.Polish"]];
 
     public int SelectedThemeIndex
     {
@@ -43,9 +49,29 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    public int SelectedLanguageIndex
+    {
+        get => Array.IndexOf(LanguageValues, Settings.Language);
+        set
+        {
+            if (value >= 0 && value < LanguageValues.Length)
+            {
+                Settings.Language = LanguageValues[value];
+            }
+        }
+    }
+
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        OnPropertyChanged(nameof(ThemeOptions));
+        OnPropertyChanged(nameof(LanguageOptions));
+    }
+
     partial void OnSettingsChanged(AppSettings value)
     {
         OnPropertyChanged(nameof(SelectedThemeIndex));
+        OnPropertyChanged(nameof(SelectedLanguageIndex));
         DownloadFolder = value.DownloadFolder;
         InstallFolder = value.InstallFolder;
     }
@@ -94,7 +120,8 @@ public partial class SettingsViewModel : ViewModelBase
 
         await _db.SaveSettingsAsync(Settings);
         App.ApplyTheme(Settings.Theme);
-        _notificationService.Show("Zapisano ustawienia", "Ustawienia zostały zapisane.");
+        L.SetLanguage(Settings.Language);
+        _notificationService.Show(L["Settings.SavedTitle"], L["Settings.SavedMessage"]);
     }
 
     [RelayCommand]
@@ -123,8 +150,7 @@ public partial class SettingsViewModel : ViewModelBase
         var shareUrl = ShareUrl?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(shareUrl))
         {
-            await _dialogService.ShowMessageAsync("Brak konfiguracji",
-                "Wklej link udostępniania Nextcloud, zanim przetestujesz połączenie.");
+            await _dialogService.ShowMessageAsync(L["Settings.NoConfigTitle"], L["Settings.NoConfigMessage"]);
             return;
         }
 
@@ -132,16 +158,15 @@ public partial class SettingsViewModel : ViewModelBase
         {
             var config = await _webDav.ResolveConfigAsync(new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? ""));
             var games = await _webDav.DownloadMetadataAsync(config);
-            var baseFolder = config.RootFolder.Length > 0 ? $" w katalogu {config.RootFolder}/" : " w katalogu głównym";
-            _notificationService.Show("Połączenie OK",
-                games.Length > 0
-                    ? $"Znaleziono {games.Length} gier{baseFolder} udostępnienia."
-                    : $"Połączenie działa, ale katalog jest pusty (metadata.json{baseFolder}).");
+            var message = games.Length > 0
+                ? string.Format(L["Settings.ConnectionOkFound"], games.Length, config.RootFolder.Length > 0 ? config.RootFolder : "/")
+                : L["Settings.ConnectionOkEmpty"];
+            _notificationService.Show(L["Settings.ConnectionOkTitle"], message);
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageAsync("Błąd połączenia",
-                $"Nie udało się pobrać metadata.json: {ex.Message}");
+            await _dialogService.ShowMessageAsync(L["Settings.ConnectionErrorTitle"],
+                string.Format(L["Settings.ConnectionErrorMessage"], ex.Message));
         }
     }
 }

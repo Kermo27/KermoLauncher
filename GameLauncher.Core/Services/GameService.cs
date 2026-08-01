@@ -1,6 +1,7 @@
 namespace GameLauncher.Core.Services;
 
 using System.Diagnostics;
+using System.Security.Cryptography;
 using Models;
 using Interfaces;
 using Utils;
@@ -14,6 +15,8 @@ public class GameService : IGameService
     private readonly ILogger<GameService> _logger;
 
     public event Action<GameLocalState>? OnGameStateChanged;
+    public event Action<DownloadTask>? OnTaskUpdated;
+    public event Action<DownloadProgress>? OnProgress;
 
     public GameService(
         IDownloadService downloadService,
@@ -27,87 +30,187 @@ public class GameService : IGameService
         _logger = logger;
     }
 
-    public async Task InstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
+    public Task InstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
+        => InstallOrUpdateAsync(game, isUpdate: false, progress, ct);
+
+    public Task UpdateAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
+        => InstallOrUpdateAsync(game, isUpdate: true, progress, ct);
+
+    private async Task InstallOrUpdateAsync(Game game, bool isUpdate, IProgress<InstallProgress>? progress, CancellationToken ct)
     {
         var localState = await _db.GetLocalStateAsync(game.Id) ?? new GameLocalState(game.Id, InstallStatus.NotInstalled);
-        
+        var settings = await _db.GetSettingsAsync();
+        if (settings.Nextcloud == null)
+        {
+            throw new InvalidOperationException("Nextcloud is not configured");
+        }
+        var config = settings.Nextcloud;
+
+        var installRoot = string.IsNullOrWhiteSpace(settings.InstallFolder)
+            ? Path.Combine(Utils.AppPaths.DataDirectory, "games")
+            : settings.InstallFolder;
+
+        var taskId = Guid.NewGuid().ToString();
+        var downloadTask = new DownloadTask(
+            Id: taskId,
+            GameId: game.Id,
+            RemoteUrl: config.GetFileUrl(game.ManifestUrl),
+            LocalPath: Path.Combine(installRoot, ".update", game.Id),
+            TotalBytes: 0,
+            DownloadedBytes: 0,
+            Status: DownloadStatus.Queued,
+            StartedAt: DateTime.UtcNow
+        );
+        await _db.UpsertDownloadTaskAsync(downloadTask);
+        OnTaskUpdated?.Invoke(downloadTask);
+
+        var stagingDir = downloadTask.LocalPath;
+        var safeName = string.Join("", game.Name.Split(Path.GetInvalidFileNameChars()));
+        var finalDir = Path.Combine(installRoot, safeName);
+        var installedManifest = localState.Status == InstallStatus.Installed ? localState.InstalledManifest : null;
+
         try
         {
-            // Stage 1: Download
-            progress?.Report(new InstallProgress(game.Id, InstallStage.Downloading, 0));
             localState = localState with { Status = InstallStatus.Downloading };
             await _db.UpsertLocalStateAsync(localState);
             OnGameStateChanged?.Invoke(localState);
 
-            var downloadTask = await _downloadService.QueueDownloadAsync(game);
-            
-            // Wait for download to complete
-            while (true)
+            // Stage 1: Fetch manifest
+            progress?.Report(new InstallProgress(game.Id, InstallStage.Preparing, 0));
+            await UpdateStageAsync(downloadTask.Id, InstallStage.Preparing);
+            var manifest = await _webDav.DownloadManifestAsync(downloadTask.RemoteUrl, ct);
+
+            if (installedManifest != null && installedManifest.Version == manifest.Version)
             {
-                ct.ThrowIfCancellationRequested();
-                var task = await _downloadService.GetTaskAsync(downloadTask.Id);
-                if (task == null) throw new InvalidOperationException("Download task disappeared");
-                
-                if (task.Status == DownloadStatus.Completed) break;
-                if (task.Status == DownloadStatus.Failed) throw new Exception(task.Error ?? "Download failed");
-                if (task.Status == DownloadStatus.Cancelled) throw new OperationCanceledException("Download cancelled");
-                
-                progress?.Report(new InstallProgress(game.Id, InstallStage.Downloading, 
-                    task.TotalBytes > 0 ? (double)task.DownloadedBytes / task.TotalBytes * 100 : 0));
-                
-                await Task.Delay(500, ct);
+                // Already up to date
+                await CompleteTaskAsync(downloadTask.Id);
+                return;
             }
 
-            // Stage 2: Verify
+            var toDownload = ManifestDiff.ComputeFilesToDownload(manifest, installedManifest);
+            var staleFiles = installedManifest != null ? ManifestDiff.ComputeStaleFiles(manifest, installedManifest) : Array.Empty<GameFile>();
+            var totalBytes = toDownload.Sum(f => f.SizeBytes);
+            var updatedTask = downloadTask with { TotalBytes = totalBytes, Status = DownloadStatus.Downloading };
+            await _db.UpsertDownloadTaskAsync(updatedTask);
+            OnTaskUpdated?.Invoke(updatedTask);
+
+            // Stage 2: Prepare staging (copy unchanged files from existing install for updates)
+            progress?.Report(new InstallProgress(game.Id, InstallStage.Downloading, 0));
+            await UpdateStageAsync(downloadTask.Id, InstallStage.Downloading);
+            if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+            Directory.CreateDirectory(stagingDir);
+
+            if (installedManifest != null && Directory.Exists(finalDir))
+            {
+                foreach (var file in installedManifest.Files)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (toDownload.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
+                    if (staleFiles.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
+
+                    var source = Path.Combine(finalDir, file.Path);
+                    if (!File.Exists(source)) continue;
+
+                    var target = Path.Combine(stagingDir, file.Path);
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(source, target);
+                }
+            }
+
+            // Stage 3: Download changed files (parallel)
+            var maxParallel = settings.MaxParallelDownloads > 0 ? settings.MaxParallelDownloads : 2;
+            var semaphore = new SemaphoreSlim(maxParallel, maxParallel);
+            var downloadedBytes = 0L;
+            var startTime = DateTime.UtcNow;
+
+            await Task.WhenAll(toDownload.Select(async file =>
+            {
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    var localPath = Path.Combine(stagingDir, file.Path);
+                    Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+                    if (File.Exists(localPath)) File.Delete(localPath);
+
+                    await _webDav.DownloadFileAsync(config.GetFileUrl(file.Path), localPath, downloadTask.Id, null, ct);
+
+                    var done = Interlocked.Add(ref downloadedBytes, file.SizeBytes);
+                    var elapsed = DateTime.UtcNow - startTime;
+                    var speed = elapsed.TotalSeconds > 0 ? done / elapsed.TotalSeconds : 0;
+                    await _db.UpsertDownloadTaskAsync(downloadTask with
+                    {
+                        DownloadedBytes = done,
+                        Status = DownloadStatus.Downloading,
+                        InstallStage = InstallStage.Downloading
+                    });
+                    OnTaskUpdated?.Invoke(downloadTask with { DownloadedBytes = done });
+                    OnProgress?.Invoke(new DownloadProgress(downloadTask.Id, done, totalBytes, speed, null));
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }));
+
+            // Stage 4: Verify checksums of downloaded files
             progress?.Report(new InstallProgress(game.Id, InstallStage.Verifying, 0));
-            await _downloadService.UpdateInstallStageAsync(downloadTask.Id, InstallStage.Verifying);
-            localState = localState with { Status = InstallStatus.Installing };
-            await _db.UpsertLocalStateAsync(localState);
-            OnGameStateChanged?.Invoke(localState);
+            await UpdateStageAsync(downloadTask.Id, InstallStage.Verifying);
+            foreach (var file in toDownload)
+            {
+                ct.ThrowIfCancellationRequested();
+                var localPath = Path.Combine(stagingDir, file.Path);
+                var sha256 = await ComputeSha256Async(localPath, ct);
+                if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"Checksum mismatch for {file.Path}");
+                }
+            }
 
-            var zipPath = downloadTask.LocalPath;
-            await ZipHelper.VerifyChecksumAsync(zipPath, game.Sha256, ct);
-
-            // Stage 3: Extract
+            // Stage 5: Finalize (move into place, with backup for updates)
             progress?.Report(new InstallProgress(game.Id, InstallStage.Extracting, 0));
-            await _downloadService.UpdateInstallStageAsync(downloadTask.Id, InstallStage.Extracting);
-            var settings = await _db.GetSettingsAsync();
-            var installRoot = string.IsNullOrWhiteSpace(settings.InstallFolder)
-                ? Path.GetDirectoryName(zipPath)!
-                : settings.InstallFolder;
-            // Use sanitized game name for folder (readable, e.g. "Shift At Midnight")
-            var safeName = string.Join("", game.Name.Split(Path.GetInvalidFileNameChars()));
-            var extractDir = Path.Combine(installRoot, safeName);
-            Directory.CreateDirectory(extractDir);
-            
-            var extractProgress = new Progress<double>(p => 
-                progress?.Report(new InstallProgress(game.Id, InstallStage.Extracting, p * 100)));
-            await ZipHelper.ExtractAsync(zipPath, extractDir, extractProgress, ct);
+            await UpdateStageAsync(downloadTask.Id, InstallStage.Extracting);
 
-            // Clean up zip
-            File.Delete(zipPath);
+            if (Directory.Exists(finalDir))
+            {
+                var backupDir = finalDir + ".backup";
+                if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
+                Directory.Move(finalDir, backupDir);
+                try
+                {
+                    Directory.Move(stagingDir, finalDir);
+                }
+                catch
+                {
+                    if (Directory.Exists(finalDir)) Directory.Delete(finalDir, true);
+                    Directory.Move(backupDir, finalDir);
+                    throw;
+                }
+                Directory.Delete(backupDir, true);
+            }
+            else
+            {
+                Directory.Move(stagingDir, finalDir);
+            }
 
-            // Stage 5: Complete
-            localState = localState with 
-            { 
+            // Stage 6: Complete
+            localState = localState with
+            {
                 Status = InstallStatus.Installed,
-                InstalledPath = extractDir
+                InstalledPath = finalDir,
+                InstalledVersion = manifest.Version,
+                InstalledManifest = manifest
             };
             await _db.UpsertLocalStateAsync(localState);
             OnGameStateChanged?.Invoke(localState);
 
             progress?.Report(new InstallProgress(game.Id, InstallStage.Completed, 100));
-            await _downloadService.UpdateInstallStageAsync(downloadTask.Id, InstallStage.Completed);
-
-            // Auto-remove download task after successful install
-            try
-            {
-                await _downloadService.RemoveAsync(downloadTask.Id);
-            }
-            catch
-            {
-                // Ignore cleanup errors
-            }
+            await CompleteTaskAsync(downloadTask.Id);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Install cancelled for game {GameId}", game.Id);
+            await FailTaskAsync(downloadTask.Id, "Cancelled", cancelled: true);
+            throw;
         }
         catch (Exception ex)
         {
@@ -115,7 +218,64 @@ public class GameService : IGameService
             localState = localState with { Status = InstallStatus.Failed };
             await _db.UpsertLocalStateAsync(localState);
             OnGameStateChanged?.Invoke(localState);
+            await FailTaskAsync(downloadTask.Id, ex.Message, cancelled: false);
             throw;
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+            }
+            catch
+            {
+                // Best effort cleanup
+            }
+        }
+    }
+
+    private async Task UpdateStageAsync(string taskId, InstallStage stage)
+    {
+        await _downloadService.UpdateInstallStageAsync(taskId, stage);
+    }
+
+    private async Task CompleteTaskAsync(string taskId)
+    {
+        var task = await _db.GetDownloadTaskAsync(taskId);
+        if (task != null)
+        {
+            var done = task with
+            {
+                Status = DownloadStatus.Completed,
+                DownloadedBytes = task.TotalBytes,
+                CompletedAt = DateTime.UtcNow,
+                InstallStage = InstallStage.Completed
+            };
+            await _db.UpsertDownloadTaskAsync(done);
+            OnTaskUpdated?.Invoke(done);
+        }
+        try
+        {
+            await _db.DeleteDownloadTaskAsync(taskId);
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
+    }
+
+    private async Task FailTaskAsync(string taskId, string error, bool cancelled)
+    {
+        var task = await _db.GetDownloadTaskAsync(taskId);
+        if (task != null)
+        {
+            var failed = task with
+            {
+                Status = cancelled ? DownloadStatus.Cancelled : DownloadStatus.Failed,
+                Error = error
+            };
+            await _db.UpsertDownloadTaskAsync(failed);
+            OnTaskUpdated?.Invoke(failed);
         }
     }
 
@@ -140,7 +300,7 @@ public class GameService : IGameService
         }
 
         var newState = localState ?? new GameLocalState(gameId, InstallStatus.NotInstalled);
-        newState = newState with { Status = InstallStatus.NotInstalled, InstalledPath = null };
+        newState = newState with { Status = InstallStatus.NotInstalled, InstalledPath = null, InstalledVersion = null, InstalledManifest = null };
         await _db.UpsertLocalStateAsync(newState);
         OnGameStateChanged?.Invoke(newState);
     }
@@ -253,13 +413,49 @@ public class GameService : IGameService
     public async Task VerifyInstallAsync(string gameId)
     {
         var localState = await _db.GetLocalStateAsync(gameId);
-        var game = await _db.GetGameAsync(gameId);
-        
-        if (localState?.InstalledPath == null || game == null) return;
-        
-        // Could verify checksums of extracted files here
-        // For now just update last verified
-        await Task.CompletedTask;
+        if (localState?.InstalledManifest == null || localState.InstalledPath == null) return;
+
+        foreach (var file in localState.InstalledManifest.Files)
+        {
+            var path = Path.Combine(localState.InstalledPath, file.Path);
+            if (!File.Exists(path))
+            {
+                await MarkCorruptAsync(localState, $"Missing file: {file.Path}");
+                return;
+            }
+            var sha256 = await ComputeSha256Async(path);
+            if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                await MarkCorruptAsync(localState, $"Checksum mismatch: {file.Path}");
+                return;
+            }
+        }
+
+        if (localState.Status != InstallStatus.Installed)
+        {
+            var ok = localState with { Status = InstallStatus.Installed };
+            await _db.UpsertLocalStateAsync(ok);
+            OnGameStateChanged?.Invoke(ok);
+        }
+    }
+
+    private async Task MarkCorruptAsync(GameLocalState state, string reason)
+    {
+        _logger.LogWarning("Install verification failed for {GameId}: {Reason}", state.GameId, reason);
+        var failed = state with { Status = InstallStatus.Failed };
+        await _db.UpsertLocalStateAsync(failed);
+        OnGameStateChanged?.Invoke(failed);
+    }
+
+    private static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct = default)
+    {
+        return await Task.Run(async () =>
+        {
+            using var sha256 = SHA256.Create();
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+            var hash = await sha256.ComputeHashAsync(stream, ct);
+            return Convert.ToHexString(hash).ToLowerInvariant();
+        }, ct);
     }
 
     public async Task<Game[]> GetAllGamesAsync()
@@ -284,5 +480,4 @@ public class GameService : IGameService
         _logger.LogInformation("Synced {Count} games from Nextcloud", games.Length);
         return games.Length;
     }
-
 }

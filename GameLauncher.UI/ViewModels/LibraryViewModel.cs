@@ -7,7 +7,7 @@ using GameLauncher.UI.Services;
 
 namespace GameLauncher.UI.ViewModels;
 
-public partial class GameItemViewModel : ObservableObject
+public partial class GameItemViewModel : ViewModelBase
 {
     private readonly IScreenshotService _screenshots;
 
@@ -49,6 +49,8 @@ public partial class GameItemViewModel : ObservableObject
         OnPropertyChanged(nameof(CanInstall));
         OnPropertyChanged(nameof(CanUninstall));
         OnPropertyChanged(nameof(CanLaunch));
+        OnPropertyChanged(nameof(CanUpdate));
+        OnPropertyChanged(nameof(IsUpdateAvailable));
         OnPropertyChanged(nameof(StatusText));
     }
 
@@ -60,15 +62,31 @@ public partial class GameItemViewModel : ObservableObject
 
     public bool CanLaunch => LocalState?.Status == InstallStatus.Installed;
 
+    public bool IsUpdateAvailable => LocalState?.Status == InstallStatus.Installed &&
+                                     LocalState.InstalledVersion != null &&
+                                     LocalState.InstalledVersion != Game.Version;
+
+    public bool CanUpdate => IsUpdateAvailable && !IsBusy;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUpdate))]
+    private bool _isBusy;
+
     public string StatusText => (LocalState?.Status ?? InstallStatus.NotInstalled) switch
     {
-        InstallStatus.NotInstalled => "Nie zainstalowano",
-        InstallStatus.Downloading => "Pobieranie...",
-        InstallStatus.Installing => "Instalowanie...",
-        InstallStatus.Installed => "Zainstalowano",
-        InstallStatus.Failed => "Błąd",
-        _ => "Nieznany"
+        InstallStatus.NotInstalled => L["Library.Status.NotInstalled"],
+        InstallStatus.Downloading => L["Library.Status.Downloading"],
+        InstallStatus.Installing => L["Library.Status.Installing"],
+        InstallStatus.Installed => IsUpdateAvailable ? L["Library.Status.UpdateAvailable"] : L["Library.Status.Installed"],
+        InstallStatus.Failed => L["Library.Status.Failed"],
+        _ => L["Library.Status.Unknown"]
     };
+
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        OnPropertyChanged(nameof(StatusText));
+    }
 
     public string SizeText => Game.SizeBytes > 0
         ? $"{Game.SizeBytes / (1024d * 1024d * 1024d):F1} GB"
@@ -160,7 +178,7 @@ public partial class LibraryViewModel : ViewModelBase
             tags.Insert(0, "All");
 
             var loadError = games.Length == 0 && !_hasRefreshed
-                ? "Brak gier w bibliotece. Ustaw adres udostępniania Nextcloud w zakładce Ustawienia, a następnie kliknij Odśwież."
+                ? L["Library.EmptyLoadError"]
                 : null;
 
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -176,7 +194,7 @@ public partial class LibraryViewModel : ViewModelBase
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                LoadError = $"Błąd ładowania biblioteki: {ex.Message}";
+                LoadError = string.Format(L["Library.LoadError"], ex.Message);
                 IsLoading = false;
             });
         }
@@ -200,18 +218,18 @@ public partial class LibraryViewModel : ViewModelBase
         {
             var count = await _gameService.RefreshFromRemoteAsync();
             await LoadAsync();
-            _notificationService.Show("Synchronizacja",
-                count > 0 ? $"Pobrano {count} gier z Nextcloud." : "Katalog jest pusty lub Nextcloud nie jest skonfigurowany.");
+            _notificationService.Show(L["Library.SyncTitle"],
+                count > 0 ? string.Format(L["Library.SyncDone"], count) : L["Library.SyncEmpty"]);
             if (count == 0)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
-                    LoadError = "Nie znaleziono gier. Sprawdź ustawienia Nextcloud (Ustawienia) i zawartość folderu udostępnionego.");
+                    LoadError = L["Library.SyncNotFound"]);
             }
         }
         catch (Exception ex)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => LoadError = $"Błąd pobierania katalogu: {ex.Message}");
-            _notificationService.Show("Błąd synchronizacji", ex.Message);
+            await Dispatcher.UIThread.InvokeAsync(() => LoadError = string.Format(L["Library.RefreshError"], ex.Message));
+            _notificationService.Show(L["Library.SyncErrorTitle"], ex.Message);
         }
         finally
         {
@@ -314,42 +332,73 @@ public partial class LibraryViewModel : ViewModelBase
     {
         if (item.LocalState?.Status == InstallStatus.Installed)
         {
-            await _dialogService.ShowMessageAsync("Już zainstalowano", $"{item.Name} jest już zainstalowana.");
+            await _dialogService.ShowMessageAsync(L["Library.AlreadyInstalledTitle"],
+                string.Format(L["Library.AlreadyInstalledMessage"], item.Name));
             return;
         }
 
         if (item.LocalState?.Status == InstallStatus.Downloading || item.LocalState?.Status == InstallStatus.Installing)
         {
-            await _dialogService.ShowMessageAsync("W trakcie", $"{item.Name} jest już instalowana.");
+            await _dialogService.ShowMessageAsync(L["Library.InProgressTitle"],
+                string.Format(L["Library.InProgressMessage"], item.Name));
             return;
         }
 
         try
         {
-            _notificationService.Show("Rozpoczęto instalację", $"Instalacja {item.Name} rozpoczęta.");
+            _notificationService.Show(L["Library.InstallStartedTitle"],
+                string.Format(L["Library.InstallStartedMessage"], item.Name));
             await _gameService.InstallAsync(item.Game);
-            _notificationService.Show("Instalacja zakończona", $"{item.Name} została zainstalowana.");
+            _notificationService.Show(L["Library.InstallDoneTitle"],
+                string.Format(L["Library.InstallDoneMessage"], item.Name));
         }
         catch (Exception ex)
         {
-            _notificationService.Show("Błąd instalacji", $"{item.Name}: {ex.Message}");
+            _notificationService.Show(L["Library.InstallErrorTitle"],
+                string.Format(L["Library.InstallErrorMessage"], item.Name, ex.Message));
+        }
+    }
+
+    [RelayCommand]
+    private async Task UpdateAsync(GameItemViewModel item)
+    {
+        if (item.IsBusy) return;
+        item.IsBusy = true;
+        try
+        {
+            _notificationService.Show(L["Library.UpdateStartedTitle"],
+                string.Format(L["Library.UpdateStartedMessage"], item.Name));
+            await _gameService.UpdateAsync(item.Game);
+            _notificationService.Show(L["Library.UpdateDoneTitle"],
+                string.Format(L["Library.UpdateDoneMessage"], item.Name, item.Game.Version));
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.UpdateErrorTitle"],
+                string.Format(L["Library.InstallErrorMessage"], item.Name, ex.Message));
+        }
+        finally
+        {
+            item.IsBusy = false;
         }
     }
 
     [RelayCommand]
     private async Task UninstallAsync(GameItemViewModel item)
     {
-        var confirmed = await _dialogService.ShowConfirmAsync("Odinstalowanie", $"Czy na pewno chcesz odinstalować {item.Name}?");
+        var confirmed = await _dialogService.ShowConfirmAsync(L["Library.UninstallTitle"],
+            string.Format(L["Library.UninstallConfirm"], item.Name));
         if (!confirmed) return;
 
         try
         {
             await _gameService.UninstallAsync(item.Game.Id);
-            _notificationService.Show("Odinstalowano", $"{item.Name} została odinstalowana.");
+            _notificationService.Show(L["Library.UninstalledTitle"],
+                string.Format(L["Library.UninstalledMessage"], item.Name));
         }
         catch (Exception ex)
         {
-            _notificationService.Show("Błąd odinstalowania", ex.Message);
+            _notificationService.Show(L["Library.UninstallErrorTitle"], ex.Message);
         }
     }
 
@@ -358,25 +407,26 @@ public partial class LibraryViewModel : ViewModelBase
     {
         if (item.LocalState?.Status != InstallStatus.Installed)
         {
-            await _dialogService.ShowMessageAsync("Nie zainstalowano", $"{item.Name} nie jest zainstalowana.");
+            await _dialogService.ShowMessageAsync(L["Library.NotInstalledTitle"],
+                string.Format(L["Library.NotInstalledMessage"], item.Name));
             return;
         }
 
         var result = await _gameService.LaunchAsync(item.Game.Id);
         if (!result.Success)
         {
-            _notificationService.Show("Błąd uruchamiania", result.Error ?? "Nieznany błąd");
+            _notificationService.Show(L["Library.LaunchErrorTitle"], result.Error ?? L["Library.UnknownError"]);
         }
     }
 
     [RelayCommand]
     private async Task ShowDetailsAsync(GameItemViewModel item)
     {
-        var size = item.SizeText.Length > 0 ? $"Rozmiar: {item.SizeText}" : "";
-        var tags = item.Tags.Length > 0 ? $"Tagi: {string.Join(", ", item.Tags)}" : "";
+        var size = item.SizeText.Length > 0 ? string.Format(L["Library.DetailsSize"], item.SizeText) : "";
+        var tags = item.Tags.Length > 0 ? string.Format(L["Library.DetailsTags"], string.Join(", ", item.Tags)) : "";
         var parts = new[] { item.Description, tags, size }.Where(p => p.Length > 0);
         var details = string.Join("\n\n", parts);
-        if (details.Length == 0) details = "Brak opisu dla tej gry.";
-        await _dialogService.ShowMessageAsync($"{item.Name}  (wersja {item.Version})", details);
+        if (details.Length == 0) details = L["Library.NoDescription"];
+        await _dialogService.ShowMessageAsync(string.Format(L["Library.DetailsTitle"], item.Name, item.Version), details);
     }
 }

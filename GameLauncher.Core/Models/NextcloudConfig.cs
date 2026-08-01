@@ -56,9 +56,7 @@ public record NextcloudConfig(
 
     public string MetadataUrl => $"{WebDavBase}/metadata.json";
 
-    public string GetGameZipUrl(string remoteZipUrl) => $"{WebDavBase}/{EscapePath(remoteZipUrl)}";
-
-    public string GetScreenshotUrl(string screenshotPath) => $"{WebDavBase}/{EscapePath(screenshotPath)}";
+    public string GetFileUrl(string relativePath) => $"{WebDavBase}/{EscapePath(relativePath)}";
 
     private static string EscapePath(string path)
     {
@@ -74,4 +72,5 @@ public class AppSettings
     public int MaxParallelDownloads { get; set; } = 2;
     public bool AutoUpdate { get; set; } = true;
     public string Theme { get; set; } = "System";
+    public string Language { get; set; } = "System";
 }

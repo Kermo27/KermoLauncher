@@ -3,7 +3,7 @@
         xmlns:vm="using:GameLauncher.AdminTool.ViewModels"
         x:Class="GameLauncher.AdminTool.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="KermoLauncher - Panel administratora"
+        Title="{Binding L[Admin.WindowTitle]}"
         Width="1000"
         Height="700"
         MinWidth="860"
@@ -48,7 +48,7 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="KermoLauncher" FontSize="16" FontWeight="Bold"
                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
-                            <TextBlock Text="Panel administratora" FontSize="11"
+                            <TextBlock Text="{Binding L[Admin.Sidebar.Subtitle]}" FontSize="11"
                                        Foreground="{DynamicResource TextMutedBrush}"/>
                         </StackPanel>
                     </StackPanel>
@@ -74,7 +74,7 @@
                             <TextBlock Grid.Column="0" Text="&#127918;" FontSize="15"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Edytor gier" Classes="NavLabel"
+                            <TextBlock Grid.Column="1" Text="{Binding L[Admin.Nav.Editor]}" Classes="NavLabel"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </Grid>
@@ -86,7 +86,7 @@
                             <TextBlock Grid.Column="0" Text="&#11014;" FontSize="15"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Wysyłka na Nextcloud" Classes="NavLabel"
+                            <TextBlock Grid.Column="1" Text="{Binding L[Admin.Nav.Upload]}" Classes="NavLabel"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </Grid>

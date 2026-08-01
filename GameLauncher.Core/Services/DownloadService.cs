@@ -29,43 +29,7 @@ public class DownloadService : IDownloadService, IDisposable
         _downloadSemaphore = new SemaphoreSlim(maxParallelDownloads, maxParallelDownloads);
     }
 
-    public async Task<DownloadTask> QueueDownloadAsync(Game game)
-    {
-        var settings = await _db.GetSettingsAsync();
-        if (settings.Nextcloud == null)
-        {
-            throw new InvalidOperationException("Nextcloud nie jest skonfigurowany. Uzupełnij dane w zakładce Ustawienia.");
-        }
-
-        var installDir = string.IsNullOrEmpty(settings.InstallFolder)
-            ? Path.Combine(Utils.AppPaths.DataDirectory, "games")
-            : settings.InstallFolder;
-        
-        // Download zip directly to install folder (temp name), extraction will create final folder
-        var zipPath = Path.Combine(installDir, $"{game.Id}.zip");
-
-        Directory.CreateDirectory(installDir);
-
-        var task = new DownloadTask(
-            Id: Guid.NewGuid().ToString(),
-            GameId: game.Id,
-            RemoteUrl: settings.Nextcloud.GetGameZipUrl(game.RemoteZipUrl),
-            LocalPath: zipPath,
-            TotalBytes: game.SizeBytes,
-            DownloadedBytes: 0,
-            Status: DownloadStatus.Queued,
-            StartedAt: DateTime.UtcNow
-        );
-
-        await _db.UpsertDownloadTaskAsync(task);
-        OnTaskUpdated?.Invoke(task);
-        
-        _ = Task.Run(() => ProcessDownloadAsync(task, game));
-        
-        return task;
-    }
-
-    private async Task ProcessDownloadAsync(DownloadTask task, Game game)
+    private async Task ProcessDownloadAsync(DownloadTask task)
     {
         await _downloadSemaphore.WaitAsync();
         try
@@ -131,15 +95,12 @@ public class DownloadService : IDownloadService, IDisposable
         var task = await _db.GetDownloadTaskAsync(taskId);
         if (task == null) return;
 
-        var game = await _db.GetGameAsync(task.GameId);
-        if (game == null) return;
-
         if (task.Status == DownloadStatus.Paused || task.Status == DownloadStatus.Failed)
         {
             var resumedTask = task with { Status = DownloadStatus.Queued };
             await _db.UpsertDownloadTaskAsync(resumedTask);
             OnTaskUpdated?.Invoke(resumedTask);
-            _ = Task.Run(() => ProcessDownloadAsync(resumedTask, game));
+            _ = Task.Run(() => ProcessDownloadAsync(resumedTask));
         }
     }
 

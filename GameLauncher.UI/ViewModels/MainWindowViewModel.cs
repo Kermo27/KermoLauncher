@@ -160,8 +160,8 @@ public partial class MainWindowViewModel : ViewModelBase
             var update = await _autoUpdateService.CheckForUpdatesAsync();
             if (update != null)
             {
-                _notificationService.Show("Dostępna aktualizacja",
-                    $"Nowa wersja {update.Version} launchera jest dostępna na GitHub.");
+                _notificationService.Show(L["Updates.AvailableTitle"],
+                    string.Format(L["Updates.AvailableMessage"], update.Version));
             }
         }
         catch

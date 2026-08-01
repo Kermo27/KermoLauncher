@@ -30,9 +30,9 @@
 
     <DockPanel Margin="20">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
-            <TextBlock Text="Pobieranie" FontSize="24" FontWeight="Bold"
+            <TextBlock Text="{Binding L[Downloads.Title]}" FontSize="24" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimaryBrush}"/>
-            <TextBlock Text="Lista pobrań i postęp instalacji" FontSize="12" Margin="0,2,0,0"
+            <TextBlock Text="{Binding L[Downloads.Subtitle]}" FontSize="12" Margin="0,2,0,0"
                        Foreground="{DynamicResource TextMutedBrush}"/>
         </StackPanel>
 
@@ -44,10 +44,10 @@
             <StackPanel Spacing="12" HorizontalAlignment="Center">
                 <TextBlock Text="&#11015;" FontSize="44" HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextMutedBrush}"/>
-                <TextBlock Text="Brak aktywnych pobrań" FontSize="16" FontWeight="SemiBold"
+                <TextBlock Text="{Binding L[Downloads.EmptyTitle]}" FontSize="16" FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                <TextBlock Text="Zainstaluj grę z zakładki Biblioteka, aby rozpocząć pobieranie."
+                <TextBlock Text="{Binding L[Downloads.EmptyHint]}"
                            FontSize="12" HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
@@ -63,7 +63,7 @@
                   BorderThickness="1"
                   HeadersVisibility="Column">
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Gra" Width="2*">
+                <DataGridTemplateColumn Header="{Binding L[Downloads.ColumnGame]}" Width="2*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="vm:DownloadItemViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -83,7 +83,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Postęp" Width="3*">
+                <DataGridTemplateColumn Header="{Binding L[Downloads.ColumnProgress]}" Width="3*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="vm:DownloadItemViewModel">
                             <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
@@ -100,7 +100,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Prędkość" Width="110">
+                <DataGridTemplateColumn Header="{Binding L[Downloads.ColumnSpeed]}" Width="110">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="vm:DownloadItemViewModel">
                             <TextBlock Text="{Binding Speed, Converter={x:Static conv:ObjectConverters.BytesToMBps}}"
@@ -110,23 +110,23 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Akcje" Width="260">
+                <DataGridTemplateColumn Header="{Binding L[Downloads.ColumnActions]}" Width="260">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="vm:DownloadItemViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <Button Content="Pauza" FontSize="11" Padding="10,5" Classes="ghost"
+                                <Button Content="{Binding L[Downloads.Pause]}" FontSize="11" Padding="10,5" Classes="ghost"
                                         Command="{Binding $parent[UserControl].DataContext.PauseCommand}"
                                         CommandParameter="{Binding}"
                                         IsVisible="{Binding CanPause}"/>
-                                <Button Content="Wznów" FontSize="11" Padding="10,5" Classes="ghost"
+                                <Button Content="{Binding L[Downloads.Resume]}" FontSize="11" Padding="10,5" Classes="ghost"
                                         Command="{Binding $parent[UserControl].DataContext.ResumeCommand}"
                                         CommandParameter="{Binding}"
                                         IsVisible="{Binding CanResume}"/>
-                                <Button Content="Anuluj" FontSize="11" Padding="10,5" Classes="ghost"
+                                <Button Content="{Binding L[Downloads.Cancel]}" FontSize="11" Padding="10,5" Classes="ghost"
                                         Command="{Binding $parent[UserControl].DataContext.CancelCommand}"
                                         CommandParameter="{Binding}"
                                         IsVisible="{Binding CanCancel}"/>
-                                <Button Content="Usuń" FontSize="11" Padding="10,5" Classes="ghost"
+                                <Button Content="{Binding L[Downloads.Remove]}" FontSize="11" Padding="10,5" Classes="ghost"
                                         Command="{Binding $parent[UserControl].DataContext.RemoveCommand}"
                                         CommandParameter="{Binding}"
                                         IsVisible="{Binding CanRemove}"/>

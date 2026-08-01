@@ -85,11 +85,40 @@ public class LocalDbService : ILocalDbService
                 );
             """);
 
+            await MigrateSchemaAsync(conn);
+
             _initialized = true;
         }
         finally
         {
             _initLock.Release();
+        }
+    }
+
+    private static async Task MigrateSchemaAsync(SqliteConnection conn)
+    {
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS schema_version (
+                version INTEGER NOT NULL
+            );
+        """);
+
+        var versionRow = await conn.QueryFirstOrDefaultAsync<int>("SELECT COALESCE(MAX(version), 0) FROM schema_version");
+        if (versionRow < 2)
+        {
+            await AddColumnIfMissingAsync(conn, "games", "manifest_url", "TEXT");
+            await AddColumnIfMissingAsync(conn, "game_local_state", "installed_version", "TEXT");
+            await AddColumnIfMissingAsync(conn, "game_local_state", "installed_manifest", "TEXT");
+            await conn.ExecuteAsync("INSERT INTO schema_version (version) VALUES (2)");
+        }
+    }
+
+    private static async Task AddColumnIfMissingAsync(SqliteConnection conn, string table, string column, string type)
+    {
+        var cols = await conn.QueryAsync<string>($"PRAGMA table_info({table})");
+        if (!cols.Any(c => string.Equals(c, column, StringComparison.OrdinalIgnoreCase)))
+        {
+            await conn.ExecuteAsync($"ALTER TABLE {table} ADD COLUMN {column} {type}");
         }
     }
 
@@ -110,12 +139,12 @@ public class LocalDbService : ILocalDbService
                 var launchConfigJson = game.LaunchConfig != null ? JsonSerializer.Serialize(game.LaunchConfig) : null;
 
                 await conn.ExecuteAsync("""
-                    INSERT INTO games (id, name, version, description, tags, dependencies, screenshot_urls, remote_zip_url, size_bytes, sha256, launch_config)
-                    VALUES (@Id, @Name, @Version, @Description, @Tags, @Dependencies, @ScreenshotUrls, @RemoteZipUrl, @SizeBytes, @Sha256, @LaunchConfig)
+                    INSERT INTO games (id, name, version, description, tags, dependencies, screenshot_urls, manifest_url, size_bytes, launch_config)
+                    VALUES (@Id, @Name, @Version, @Description, @Tags, @Dependencies, @ScreenshotUrls, @ManifestUrl, @SizeBytes, @LaunchConfig)
                     ON CONFLICT(id) DO UPDATE SET
                         name=@Name, version=@Version, description=@Description,
                         tags=@Tags, dependencies=@Dependencies, screenshot_urls=@ScreenshotUrls,
-                        remote_zip_url=@RemoteZipUrl, size_bytes=@SizeBytes, sha256=@Sha256, launch_config=@LaunchConfig
+                        manifest_url=@ManifestUrl, size_bytes=@SizeBytes, launch_config=@LaunchConfig
                 """, new
                 {
                     game.Id,
@@ -125,9 +154,8 @@ public class LocalDbService : ILocalDbService
                     Tags = tagsJson,
                     Dependencies = depsJson,
                     ScreenshotUrls = screenshotsJson,
-                    game.RemoteZipUrl,
+                    game.ManifestUrl,
                     game.SizeBytes,
-                    game.Sha256,
                     LaunchConfig = launchConfigJson
                 }, tx);
             }
@@ -147,7 +175,7 @@ public class LocalDbService : ILocalDbService
         await conn.OpenAsync();
         
         var row = await conn.QueryFirstOrDefaultAsync("""
-            SELECT id, name, version, description, tags, dependencies, screenshot_urls, remote_zip_url, size_bytes, sha256, launch_config
+            SELECT id, name, version, description, tags, dependencies, screenshot_urls, manifest_url, size_bytes, launch_config
             FROM games WHERE id = @Id
         """, new { Id = gameId });
 
@@ -193,8 +221,8 @@ public class LocalDbService : ILocalDbService
 
         return new Game(
             row.id, row.name, row.version, row.description,
-            tags, deps, screenshots, row.remote_zip_url,
-            (long)row.size_bytes, row.sha256, launchConfig
+            tags, deps, screenshots, row.manifest_url,
+            (long)row.size_bytes, launchConfig
         );
     }
 
@@ -207,18 +235,24 @@ public class LocalDbService : ILocalDbService
         long? lastPlayed = state.LastPlayed.HasValue 
             ? new DateTimeOffset(state.LastPlayed.Value).ToUnixTimeSeconds() 
             : null;
+        var installedManifestJson = state.InstalledManifest != null
+            ? JsonSerializer.Serialize(state.InstalledManifest)
+            : null;
         await conn.ExecuteAsync("""
-            INSERT INTO game_local_state (game_id, status, installed_path, play_time_seconds, last_played)
-            VALUES (@GameId, @Status, @InstalledPath, @PlayTimeSeconds, @LastPlayed)
+            INSERT INTO game_local_state (game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest)
+            VALUES (@GameId, @Status, @InstalledPath, @PlayTimeSeconds, @LastPlayed, @InstalledVersion, @InstalledManifest)
             ON CONFLICT(game_id) DO UPDATE SET
-                status=@Status, installed_path=@InstalledPath, play_time_seconds=@PlayTimeSeconds, last_played=@LastPlayed
+                status=@Status, installed_path=@InstalledPath, play_time_seconds=@PlayTimeSeconds,
+                last_played=@LastPlayed, installed_version=@InstalledVersion, installed_manifest=@InstalledManifest
         """, new
         {
             state.GameId,
             Status = state.Status.ToString(),
             state.InstalledPath,
             state.PlayTimeSeconds,
-            LastPlayed = lastPlayed
+            LastPlayed = lastPlayed,
+            state.InstalledVersion,
+            InstalledManifest = installedManifestJson
         });
     }
 
@@ -229,7 +263,7 @@ public class LocalDbService : ILocalDbService
         await conn.OpenAsync();
 
         var row = await conn.QueryFirstOrDefaultAsync("""
-            SELECT game_id, status, installed_path, play_time_seconds, last_played
+            SELECT game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest
             FROM game_local_state WHERE game_id = @GameId
         """, new { GameId = gameId });
 
@@ -252,13 +286,20 @@ public class LocalDbService : ILocalDbService
         DateTime? lastPlayed = lastPlayedUnix != 0 
             ? DateTimeOffset.FromUnixTimeSeconds(lastPlayedUnix).DateTime 
             : null;
-        
+
+        var manifestJson = row.installed_manifest as string;
+        var manifest = manifestJson != null
+            ? JsonSerializer.Deserialize<GameManifest>(manifestJson)
+            : null;
+
         return new GameLocalState(
             row.game_id,
             Enum.Parse<InstallStatus>(row.status as string ?? "NotInstalled"),
             row.installed_path as string,
             (long)row.play_time_seconds,
-            lastPlayed
+            lastPlayed,
+            row.installed_version as string,
+            manifest
         );
     }
 

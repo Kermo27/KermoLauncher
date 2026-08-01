@@ -41,23 +41,23 @@
             <StackPanel Spacing="10">
                 <StackPanel Orientation="Horizontal" Spacing="16">
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Edytor gier" FontSize="24" FontWeight="Bold"
+                        <TextBlock Text="{Binding L[Admin.Editor.Title]}" FontSize="24" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <TextBlock Text="Skanowanie folderu z grami, edycja danych i generowanie metadata.json"
+                        <TextBlock Text="{Binding L[Admin.Editor.Subtitle]}"
                                    FontSize="12" Margin="0,2,0,0"
                                    Foreground="{DynamicResource TextMutedBrush}"/>
                     </StackPanel>
 
                     <TextBox Classes="field" Width="340" VerticalAlignment="Center"
                              Text="{Binding ScanFolderPath}"
-                             Watermark="Ścieżka do folderu z grami (np. ~/Nextcloud/Games)"/>
+                             Watermark="{Binding L[Admin.Editor.FolderPlaceholder]}"/>
 
                     <Button Classes="ghost" VerticalAlignment="Center"
                             Command="{Binding ScanCommand}"
                             IsEnabled="{Binding IsScanning, Converter={x:Static conv:ObjectConverters.Not}}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="&#128269;" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Skanuj" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding L[Admin.Editor.Scan]}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -65,7 +65,7 @@
                             Command="{Binding AddGameCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="&#10133;" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Dodaj grę" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding L[Admin.Editor.AddGame]}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -74,7 +74,7 @@
                             IsEnabled="{Binding IsGenerating, Converter={x:Static conv:ObjectConverters.Not}}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="&#128424;" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Generuj metadata.json" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding L[Admin.Editor.Generate]}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -102,7 +102,7 @@
             <Border Grid.Column="0" Classes="Section" Margin="0,0,14,0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10"
-                               Text="{Binding Games.Length, StringFormat='{} gier w katalogu'}"
+                               Text="{Binding GamesCountText}"
                                FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <ListBox Classes="GameList"
@@ -133,78 +133,78 @@
                     IsVisible="{Binding SelectedGame, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
                 <ScrollViewer>
                     <StackPanel Spacing="10" DataContext="{Binding SelectedGame}">
-                        <TextBlock Text="Szczegóły gry" FontSize="18" FontWeight="Bold"
+                        <TextBlock Text="{Binding L[Admin.Editor.GameDetails]}" FontSize="18" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
 
                         <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="ID (slug):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Admin.Editor.Id]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
                                      Text="{Binding Id}" Margin="0,6" Grid.ColumnSpan="3"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Nazwa:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Admin.Editor.Name]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
                                      Text="{Binding Name}" Margin="0,6"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="Wersja:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding L[Admin.Editor.Version]}" Classes="FieldLabel" Margin="8,6,0,6"/>
                             <TextBox Grid.Row="1" Grid.Column="3" Classes="field"
                                      Text="{Binding Version}" Margin="8,6,0,6"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Tagi (po przecinku):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding L[Admin.Editor.Tags]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Classes="field"
                                      Text="{Binding TagsString}" Margin="0,6"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Zależności:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding L[Admin.Editor.Dependencies]}" Classes="FieldLabel" Margin="8,6,0,6"/>
                             <TextBox Grid.Row="2" Grid.Column="3" Classes="field"
                                      Text="{Binding DependenciesString}" Margin="8,6,0,6"/>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Opis:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding L[Admin.Editor.Description]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="3" Grid.Column="1" Classes="field" Grid.ColumnSpan="3"
                                      Text="{Binding Description}" AcceptsReturn="True" Height="70" Margin="0,6"
-                                     Watermark="Opis gry wyświetlany w launcherze"/>
+                                     Watermark="{Binding L[Admin.Editor.DescriptionPlaceholder]}"/>
                         </Grid>
 
-                        <TextBlock Text="Pliki" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
+                        <TextBlock Text="{Binding L[Admin.Editor.Files]}" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
                         <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Lokalny plik ZIP:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Admin.Editor.LocalFolder]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
-                                     Text="{Binding LocalZipPath}" Margin="0,6" Grid.ColumnSpan="3"
-                                     Watermark="Ustawiany automatycznie po skanowaniu"/>
+                                     Text="{Binding LocalFolder}" Margin="0,6" Grid.ColumnSpan="3"
+                                     Watermark="{Binding L[Admin.Editor.LocalFolderPlaceholder]}"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Ścieżka zdalna:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Admin.Editor.ManifestUrl]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Classes="field" IsReadOnly="True"
-                                     Text="{Binding RemoteZipPath}" Margin="0,6" Grid.ColumnSpan="3"
-                                     Watermark="Względna do folderu Games/ (np. witcher-3/witcher-3.zip)"/>
+                                     Text="{Binding ManifestUrl}" Margin="0,6" Grid.ColumnSpan="3"
+                                     Watermark="{Binding L[Admin.Editor.ManifestUrlPlaceholder]}"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Pliki PNG/JPG:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding L[Admin.Editor.Screenshots]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Classes="field" IsReadOnly="True"
-                                     Text="{Binding ScreenshotPaths.Count, StringFormat='{} plików'}"
+                                     Text="{Binding ScreenshotCountText}"
                                      Margin="0,6"/>
                         </Grid>
 
-                        <TextBlock Text="Uruchamianie" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
+                        <TextBlock Text="{Binding L[Admin.Editor.Launch]}" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
                         <Grid ColumnDefinitions="150,*,150,*" RowDefinitions="Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Plik wykonywalny:" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Admin.Editor.LaunchExecutable]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
                                      Text="{Binding LaunchExecutable}" Margin="0,6"
-                                     Watermark="np. bin/win64/game.exe"/>
+                                     Watermark="{Binding L[Admin.Editor.LaunchExecutablePlaceholder]}"/>
 
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Katalog roboczy:" Classes="FieldLabel" Margin="8,6,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding L[Admin.Editor.LaunchWorkingDir]}" Classes="FieldLabel" Margin="8,6,0,6"/>
                             <TextBox Grid.Row="0" Grid.Column="3" Classes="field"
                                      Text="{Binding LaunchWorkingDir}" Margin="8,6,0,6"
-                                     Watermark="Opcjonalnie"/>
+                                     Watermark="{Binding L[Admin.Editor.Optional]}"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Argumenty (po przecinku):" Classes="FieldLabel" Margin="0,6"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Admin.Editor.LaunchArgs]}" Classes="FieldLabel" Margin="0,6"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
                                      Text="{Binding LaunchArgsString}" Margin="0,6"
-                                     Watermark="np. -fullscreen, -nointro"/>
+                                     Watermark="{Binding L[Admin.Editor.LaunchArgsPlaceholder]}"/>
                         </Grid>
 
                         <Border Margin="0,12,0,0" CornerRadius="8" Padding="12"
                                 Background="{DynamicResource TagBgBrush}">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Zrzuty ekranu" FontWeight="SemiBold" FontSize="12"
+                                <TextBlock Text="{Binding L[Admin.Editor.ScreenshotsTitle]}" FontWeight="SemiBold" FontSize="12"
                                            Foreground="{DynamicResource TextPrimaryBrush}"/>
                                 <ItemsControl ItemsSource="{Binding ScreenshotPaths}">
                                     <ItemsControl.ItemsPanel>
@@ -233,7 +233,7 @@
                                 CommandParameter="{Binding}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="&#128465;" FontSize="13"/>
-                                <TextBlock Text="Usuń grę z listy"/>
+                                <TextBlock Text="{Binding L[Admin.Editor.RemoveGame]}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -245,10 +245,10 @@
                         IsVisible="{Binding SelectedGame, Converter={x:Static conv:ObjectConverters.IsNull}}">
                 <TextBlock Text="&#128269;" FontSize="40" HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextMutedBrush}"/>
-                <TextBlock Text="Wybierz grę z listy, aby edytować jej dane"
+                <TextBlock Text="{Binding L[Admin.Editor.SelectHint]}"
                            HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
-                <TextBlock Text="Najpierw zeskanuj folder z grami (przycisk Skanuj)."
+                <TextBlock Text="{Binding L[Admin.Editor.SelectHint2]}"
                            FontSize="11" HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextMutedBrush}"/>
             </StackPanel>

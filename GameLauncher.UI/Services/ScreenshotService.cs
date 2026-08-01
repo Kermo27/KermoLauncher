@@ -34,7 +34,7 @@ public class ScreenshotService : IScreenshotService
             return null;
         }
 
-        var url = settings.Nextcloud.GetScreenshotUrl(game.ScreenshotUrls[0]);
+        var url = settings.Nextcloud.GetFileUrl(game.ScreenshotUrls[0]);
         return await _cache.GetOrAdd(url, u => LoadAsync(u, ct));
     }
 

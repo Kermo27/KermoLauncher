@@ -27,7 +27,7 @@ public partial class App : Application
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
 
-        ApplyStoredTheme();
+        ApplyStoredSettings();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -51,17 +51,18 @@ public partial class App : Application
         };
     }
 
-    private void ApplyStoredTheme()
+    private void ApplyStoredSettings()
     {
         try
         {
             var db = Services!.GetRequiredService<ILocalDbService>();
             var settings = db.GetSettingsAsync().GetAwaiter().GetResult();
             ApplyTheme(settings.Theme);
+            Services!.GetRequiredService<ILocalizationService>().SetLanguage(settings.Language);
         }
         catch
         {
-            // Fall back to system theme
+            // Fall back to system theme/language
         }
     }
 
@@ -71,6 +72,7 @@ public partial class App : Application
         services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
 
         // Core services
+        services.AddSingleton<ILocalizationService, LocalizationService>();
         services.AddSingleton<ILocalDbService, LocalDbService>();
         services.AddSingleton<IWebDavService, WebDavService>();
         services.AddSingleton<IDownloadService>(sp =>

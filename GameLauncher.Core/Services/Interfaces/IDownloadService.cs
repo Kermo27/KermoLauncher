@@ -7,7 +7,6 @@ public interface IDownloadService
     event Action<DownloadTask>? OnTaskUpdated;
     event Action<DownloadProgress>? OnProgress;
     
-    Task<DownloadTask> QueueDownloadAsync(Game game);
     Task PauseAsync(string taskId);
     Task ResumeAsync(string taskId);
     Task CancelAsync(string taskId);
