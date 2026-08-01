@@ -94,6 +94,9 @@ public class GameService : IGameService
             await _db.UpsertDownloadTaskAsync(updatedTask);
             OnTaskUpdated?.Invoke(updatedTask);
 
+            var gameFolder = Path.GetDirectoryName(game.ManifestUrl.Replace('\\', '/'))?.TrimEnd('/') ?? "";
+            var fileUrl = (GameFile file) => GameUrl.GetFileUrl(config, game.ManifestUrl, file.Path);
+
             // Stage 2: Prepare staging (copy unchanged files from existing install for updates)
             progress?.Report(new InstallProgress(game.Id, InstallStage.Downloading, 0));
             await UpdateStageAsync(downloadTask.Id, InstallStage.Downloading);
@@ -132,7 +135,7 @@ public class GameService : IGameService
                     Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                     if (File.Exists(localPath)) File.Delete(localPath);
 
-                    await _webDav.DownloadFileAsync(config.GetFileUrl(file.Path), localPath, downloadTask.Id, null, ct);
+                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, null, ct);
 
                     var done = Interlocked.Add(ref downloadedBytes, file.SizeBytes);
                     var elapsed = DateTime.UtcNow - startTime;
