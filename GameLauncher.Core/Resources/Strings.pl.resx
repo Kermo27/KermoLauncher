@@ -126,7 +126,7 @@
   <data name="Updates.UpToDate" xml:space="preserve"><value>Masz aktualną wersję</value></data>
   <data name="Updates.UpToDateMessage" xml:space="preserve"><value>Launcher ma już najnowszą dostępną wersję.</value></data>
   <data name="Updates.CheckFailed" xml:space="preserve"><value>Nie udało się sprawdzić aktualizacji</value></data>
-  <data name="Updates.CheckFailedMessage" xml:space="preserve"><value>Nie można połączyć się z serwerem aktualizacji. Sprawdź połączenie internetowe i spróbuj ponownie.</value></data>
+  <data name="Updates.CheckFailedMessage" xml:space="preserve"><value>Nie można połączyć się z serwerem aktualizacji. Błąd: {0}</value></data>
   <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Panel administratora</value></data>
   <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Panel administratora</value></data>
   <data name="Admin.Nav.Editor" xml:space="preserve"><value>Edytor gier</value></data>

@@ -126,7 +126,7 @@
   <data name="Updates.UpToDate" xml:space="preserve"><value>You're up to date</value></data>
   <data name="Updates.UpToDateMessage" xml:space="preserve"><value>The launcher is already running the latest version.</value></data>
   <data name="Updates.CheckFailed" xml:space="preserve"><value>Update check failed</value></data>
-  <data name="Updates.CheckFailedMessage" xml:space="preserve"><value>Could not reach the update server. Check your internet connection and try again.</value></data>
+  <data name="Updates.CheckFailedMessage" xml:space="preserve"><value>Could not reach the update server. Error: {0}</value></data>
   <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Admin Panel</value></data>
   <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Admin Panel</value></data>
   <data name="Admin.Nav.Editor" xml:space="preserve"><value>Game editor</value></data>

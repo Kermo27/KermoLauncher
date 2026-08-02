@@ -133,9 +133,10 @@ public partial class SettingsViewModel : ViewModelBase
                 _notificationService.Show(L["Updates.UpToDate"], L["Updates.UpToDateMessage"]);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            _notificationService.Show(L["Updates.CheckFailed"], L["Updates.CheckFailedMessage"], NotificationType.Error);
+            _notificationService.Show(L["Updates.CheckFailed"],
+                string.Format(L["Updates.CheckFailedMessage"], ex.Message), NotificationType.Error);
         }
     }
 

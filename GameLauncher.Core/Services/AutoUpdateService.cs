@@ -45,7 +45,11 @@ public class AutoUpdateService : IAutoUpdateService
             var response = await _httpClient.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync(ct);
-            var release = JsonSerializer.Deserialize<GitHubRelease>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var release = JsonSerializer.Deserialize<GitHubRelease>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            });
             if (release == null) return null;
 
             var latestVersion = release.TagName.TrimStart('v');
@@ -84,11 +88,19 @@ public class AutoUpdateService : IAutoUpdateService
 
     private GitHubAsset? FindMatchingAsset(GitHubAsset[] assets)
     {
+        var isWindows = OperatingSystem.IsWindows();
         foreach (var asset in assets)
         {
             var name = asset.Name.ToLowerInvariant();
 
-            if (name.EndsWith(".exe") || name.EndsWith(".msi") || name.Contains("windows"))
+            if (isWindows)
+            {
+                if (name.EndsWith(".exe") || name.EndsWith(".msi") || name.Contains("windows"))
+                {
+                    return asset;
+                }
+            }
+            else if (name.Contains("linux"))
             {
                 return asset;
             }

@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.Core.Utils;
 using GameLauncher.UI.Services;
 using GameLauncher.UI.ViewModels;
 using GameLauncher.UI.Views;
@@ -69,7 +70,11 @@ public partial class App : Application
     private static void ConfigureServices(IServiceCollection services)
     {
         // Logging
-        services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
+        services.AddLogging(builder =>
+        {
+            builder.AddDebug().SetMinimumLevel(LogLevel.Information);
+            builder.AddProvider(new FileLoggerProvider(Path.Combine(AppPaths.DataDirectory, "launcher.log")));
+        });
 
         // Core services
         services.AddSingleton<ILocalizationService, LocalizationService>();
@@ -96,7 +101,7 @@ public partial class App : Application
         });
         services.AddSingleton<IGameService, GameService>();
         services.AddSingleton<IAutoUpdateService>(sp => new AutoUpdateService(
-            new HttpClient(),
+            new HttpClient { Timeout = TimeSpan.FromSeconds(15) },
             sp.GetRequiredService<ILogger<AutoUpdateService>>(),
             typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0",
             "Kermo27",
