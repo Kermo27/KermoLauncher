@@ -67,7 +67,6 @@ public record NextcloudConfig(
 public class AppSettings
 {
     public NextcloudConfig? Nextcloud { get; set; }
-    public string DownloadFolder { get; set; } = "";
     public string InstallFolder { get; set; } = "";
     public int MaxParallelDownloads { get; set; } = 2;
     public bool AutoUpdate { get; set; } = true;

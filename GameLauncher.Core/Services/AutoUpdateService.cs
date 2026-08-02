@@ -78,7 +78,7 @@ public class AutoUpdateService : IAutoUpdateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check for updates");
-            return null;
+            throw;
         }
     }
 

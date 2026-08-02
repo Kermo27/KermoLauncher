@@ -94,16 +94,15 @@
   <data name="Settings.Nextcloud.ShareTokenPlaceholder" xml:space="preserve"><value>Optional - usually extracted from the link</value></data>
   <data name="Settings.Nextcloud.SharedFolder" xml:space="preserve"><value>Folder shared</value></data>
   <data name="Settings.Folders.Title" xml:space="preserve"><value>Folders</value></data>
-  <data name="Settings.Folders.Download" xml:space="preserve"><value>Download folder:</value></data>
-  <data name="Settings.Folders.DownloadPlaceholder" xml:space="preserve"><value>Default: ~/KermoLauncher/downloads</value></data>
   <data name="Settings.Folders.Install" xml:space="preserve"><value>Install folder:</value></data>
   <data name="Settings.Folders.InstallPlaceholder" xml:space="preserve"><value>Default: ~/KermoLauncher/games</value></data>
-  <data name="Settings.Folders.Hint" xml:space="preserve"><value>The downloaded .zip archive goes to the download folder, and the extracted game to the install folder (subfolder with game ID).</value></data>
+  <data name="Settings.Folders.Hint" xml:space="preserve"><value>Games are downloaded and installed into the install folder (a subfolder per game).</value></data>
   <data name="Settings.Browse" xml:space="preserve"><value>Browse</value></data>
   <data name="Settings.General.Title" xml:space="preserve"><value>General</value></data>
   <data name="Settings.General.MaxParallel" xml:space="preserve"><value>Parallel downloads:</value></data>
   <data name="Settings.General.MaxParallelHint" xml:space="preserve"><value>(requires restart)</value></data>
   <data name="Settings.General.AutoUpdate" xml:space="preserve"><value>Automatic updates:</value></data>
+  <data name="Settings.General.CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
   <data name="Settings.General.Theme" xml:space="preserve"><value>Theme:</value></data>
   <data name="Settings.General.Language" xml:space="preserve"><value>Language:</value></data>
   <data name="Settings.Theme.Light" xml:space="preserve"><value>Light</value></data>
@@ -124,6 +123,10 @@
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Failed to fetch metadata.json: {0}</value></data>
   <data name="Updates.AvailableTitle" xml:space="preserve"><value>Update available</value></data>
   <data name="Updates.AvailableMessage" xml:space="preserve"><value>A new version {0} of the launcher is available on GitHub.</value></data>
+  <data name="Updates.UpToDate" xml:space="preserve"><value>You're up to date</value></data>
+  <data name="Updates.UpToDateMessage" xml:space="preserve"><value>The launcher is already running the latest version.</value></data>
+  <data name="Updates.CheckFailed" xml:space="preserve"><value>Update check failed</value></data>
+  <data name="Updates.CheckFailedMessage" xml:space="preserve"><value>Could not reach the update server. Check your internet connection and try again.</value></data>
   <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Admin Panel</value></data>
   <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Admin Panel</value></data>
   <data name="Admin.Nav.Editor" xml:space="preserve"><value>Game editor</value></data>

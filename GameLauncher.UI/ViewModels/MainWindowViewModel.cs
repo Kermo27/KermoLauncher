@@ -29,7 +29,7 @@ public partial class ToastItemViewModel : ObservableObject
 
     private async Task DismissAfterDelayAsync()
     {
-        await Task.Delay(5000);
+        await Task.Delay(15000);
         if (!_cts.IsCancellationRequested)
         {
             await Dispatcher.UIThread.InvokeAsync(() => _owner.RemoveToast(this));

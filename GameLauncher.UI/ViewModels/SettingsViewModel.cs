@@ -10,14 +10,12 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly ILocalDbService _db;
     private readonly IWebDavService _webDav;
+    private readonly IAutoUpdateService _autoUpdateService;
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
 
     [ObservableProperty]
     private AppSettings _settings = new();
-
-    [ObservableProperty]
-    private string _downloadFolder = "";
 
     [ObservableProperty]
     private string _installFolder = "";
@@ -72,13 +70,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(SelectedThemeIndex));
         OnPropertyChanged(nameof(SelectedLanguageIndex));
-        DownloadFolder = value.DownloadFolder;
         InstallFolder = value.InstallFolder;
-    }
-
-    partial void OnDownloadFolderChanged(string value)
-    {
-        Settings.DownloadFolder = value;
     }
 
     partial void OnInstallFolderChanged(string value)
@@ -86,10 +78,11 @@ public partial class SettingsViewModel : ViewModelBase
         Settings.InstallFolder = value;
     }
 
-    public SettingsViewModel(ILocalDbService db, IWebDavService webDav, IDialogService dialogService, INotificationService notificationService)
+    public SettingsViewModel(ILocalDbService db, IWebDavService webDav, IAutoUpdateService autoUpdateService, IDialogService dialogService, INotificationService notificationService)
     {
         _db = db;
         _webDav = webDav;
+        _autoUpdateService = autoUpdateService;
         _dialogService = dialogService;
         _notificationService = notificationService;
         _ = LoadAsync();
@@ -125,12 +118,24 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task BrowseDownloadFolderAsync()
+    private async Task CheckForUpdatesAsync()
     {
-        var folder = await _dialogService.ShowFolderPickerAsync("Select Download Folder", DownloadFolder);
-        if (!string.IsNullOrEmpty(folder))
+        try
         {
-            DownloadFolder = folder;
+            var update = await _autoUpdateService.CheckForUpdatesAsync();
+            if (update != null)
+            {
+                _notificationService.Show(L["Updates.AvailableTitle"],
+                    string.Format(L["Updates.AvailableMessage"], update.Version));
+            }
+            else
+            {
+                _notificationService.Show(L["Updates.UpToDate"], L["Updates.UpToDateMessage"]);
+            }
+        }
+        catch
+        {
+            _notificationService.Show(L["Updates.CheckFailed"], L["Updates.CheckFailedMessage"], NotificationType.Error);
         }
     }
 

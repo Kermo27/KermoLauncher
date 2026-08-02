@@ -72,20 +72,12 @@
                         <TextBlock Text="{Binding L[Settings.Folders.Title]}" Classes="SectionTitle"/>
                     </StackPanel>
 
-                    <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.Folders.Download]}" Classes="FieldLabel" Margin="0,8"/>
+                    <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.Folders.Install]}" Classes="FieldLabel" Margin="0,8"/>
                         <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
-                                 Text="{Binding DownloadFolder}" IsReadOnly="True" Margin="0,8"
-                                 Watermark="{Binding L[Settings.Folders.DownloadPlaceholder]}"/>
-                        <Button Grid.Row="0" Grid.Column="2" Content="{Binding L[Settings.Browse]}" Classes="ghost"
-                                Command="{Binding BrowseDownloadFolderCommand}"
-                                Margin="10,8,0,8" Padding="14,7"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Settings.Folders.Install]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
                                  Text="{Binding InstallFolder}" IsReadOnly="True" Margin="0,8"
                                  Watermark="{Binding L[Settings.Folders.InstallPlaceholder]}"/>
-                        <Button Grid.Row="1" Grid.Column="2" Content="{Binding L[Settings.Browse]}" Classes="ghost"
+                        <Button Grid.Row="0" Grid.Column="2" Content="{Binding L[Settings.Browse]}" Classes="ghost"
                                 Command="{Binding BrowseInstallFolderCommand}"
                                 Margin="10,8,0,8" Padding="14,7"/>
                     </Grid>
@@ -113,10 +105,13 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid ColumnDefinitions="200,*">
-                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.General.AutoUpdate]}" Classes="FieldLabel"/>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoUpdate}"
+                    <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.General.AutoUpdate]}" Classes="FieldLabel"/>
+                        <ToggleSwitch Grid.Row="0" Grid.Column="1" IsChecked="{Binding Settings.AutoUpdate}"
                                       HorizontalAlignment="Left"/>
+                        <Button Grid.Row="1" Grid.Column="1" Content="{Binding L[Settings.General.CheckUpdates]}"
+                                Command="{Binding CheckForUpdatesCommand}" Classes="ghost"
+                                HorizontalAlignment="Left" Padding="14,7" Margin="0,4,0,0"/>
                     </Grid>
 
                     <Grid ColumnDefinitions="200,*">

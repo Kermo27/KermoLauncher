@@ -346,7 +346,7 @@ public class LocalDbService : ILocalDbService
             INSERT INTO downloads (id, game_id, remote_url, local_path, total_bytes, downloaded_bytes, status, error, started_at, completed_at)
             VALUES (@Id, @GameId, @RemoteUrl, @LocalPath, @TotalBytes, @DownloadedBytes, @Status, @Error, @StartedAt, @CompletedAt)
             ON CONFLICT(id) DO UPDATE SET
-                downloaded_bytes=@DownloadedBytes, status=@Status, error=@Error, completed_at=@CompletedAt
+                total_bytes=@TotalBytes, downloaded_bytes=@DownloadedBytes, status=@Status, error=@Error, completed_at=@CompletedAt
         """, new
         {
             task.Id,

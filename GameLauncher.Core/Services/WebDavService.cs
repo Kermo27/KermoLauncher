@@ -155,7 +155,7 @@ public class WebDavService : IWebDavService
             downloadedBytes += bytesRead;
 
             var now = DateTime.UtcNow;
-            if ((now - lastReportTime).TotalMilliseconds >= 100 || progress != null)
+            if (progress != null && (now - lastReportTime).TotalMilliseconds >= 100)
             {
                 var elapsed = now - startTime;
                 var speed = elapsed.TotalSeconds > 0 ? (downloadedBytes - existingBytes) / elapsed.TotalSeconds : 0;

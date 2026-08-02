@@ -129,6 +129,29 @@ public class GameService : IGameService
             var semaphore = new SemaphoreSlim(maxParallel, maxParallel);
             var downloadedBytes = 0L;
             var startTime = DateTime.UtcNow;
+            var currentTask = updatedTask with { InstallStage = InstallStage.Downloading };
+            var lastPersistTime = DateTime.MinValue;
+            var persistLock = new object();
+
+            async Task PersistProgressAsync(long bytes, double speed, TimeSpan? remaining)
+            {
+                var shouldPersist = false;
+                lock (persistLock)
+                {
+                    if (DateTime.UtcNow - lastPersistTime >= TimeSpan.FromMilliseconds(500))
+                    {
+                        lastPersistTime = DateTime.UtcNow;
+                        shouldPersist = true;
+                    }
+                }
+                if (shouldPersist)
+                {
+                    var persisted = currentTask with { DownloadedBytes = bytes };
+                    await _db.UpsertDownloadTaskAsync(persisted);
+                    OnTaskUpdated?.Invoke(persisted);
+                }
+                OnProgress?.Invoke(new DownloadProgress(currentTask.Id, bytes, currentTask.TotalBytes, speed, remaining));
+            }
 
             await Task.WhenAll(toDownload.Select(async file =>
             {
@@ -139,25 +162,33 @@ public class GameService : IGameService
                     Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                     if (File.Exists(localPath)) File.Delete(localPath);
 
-                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, null, ct);
+                    var baseBytes = Volatile.Read(ref downloadedBytes);
+                    var progress = new DelegatedProgress(p =>
+                        _ = PersistProgressAsync(baseBytes + p.BytesReceived, p.SpeedBytesPerSecond, p.EstimatedTimeRemaining));
+
+                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, ct);
 
                     var done = Interlocked.Add(ref downloadedBytes, file.SizeBytes);
                     var elapsed = DateTime.UtcNow - startTime;
                     var speed = elapsed.TotalSeconds > 0 ? done / elapsed.TotalSeconds : 0;
-                    await _db.UpsertDownloadTaskAsync(downloadTask with
-                    {
-                        DownloadedBytes = done,
-                        Status = DownloadStatus.Downloading,
-                        InstallStage = InstallStage.Downloading
-                    });
-                    OnTaskUpdated?.Invoke(downloadTask with { DownloadedBytes = done });
-                    OnProgress?.Invoke(new DownloadProgress(downloadTask.Id, done, totalBytes, speed, null));
+                    currentTask = currentTask with { DownloadedBytes = done };
+                    await _db.UpsertDownloadTaskAsync(currentTask);
+                    OnTaskUpdated?.Invoke(currentTask);
+                    OnProgress?.Invoke(new DownloadProgress(currentTask.Id, done, currentTask.TotalBytes, speed, null));
                 }
                 finally
                 {
                     semaphore.Release();
                 }
             }));
+
+            var finalBytes = Volatile.Read(ref downloadedBytes);
+            if (finalBytes != currentTask.DownloadedBytes)
+            {
+                currentTask = currentTask with { DownloadedBytes = finalBytes };
+                await _db.UpsertDownloadTaskAsync(currentTask);
+                OnTaskUpdated?.Invoke(currentTask);
+            }
 
             // Stage 4: Verify checksums of downloaded files
             progress?.Report(new InstallProgress(game.Id, InstallStage.Verifying, 0));
@@ -490,5 +521,20 @@ public class GameService : IGameService
         }
         _logger.LogInformation("Synced {Count} games from Nextcloud", games.Length);
         return games.Length;
+    }
+
+    private sealed class DelegatedProgress : IProgress<DownloadProgress>
+    {
+        private readonly Action<DownloadProgress> _handler;
+
+        public DelegatedProgress(Action<DownloadProgress> handler)
+        {
+            _handler = handler;
+        }
+
+        public void Report(DownloadProgress value)
+        {
+            _handler(value);
+        }
     }
 }
