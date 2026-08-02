@@ -52,6 +52,7 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanUpdate));
         OnPropertyChanged(nameof(IsUpdateAvailable));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(PlayTimeText));
     }
 
     public bool CanInstall => LocalState?.Status != InstallStatus.Installed && 
@@ -86,6 +87,24 @@ public partial class GameItemViewModel : ViewModelBase
     {
         base.OnLanguageChanged();
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(PlayTimeText));
+    }
+
+    public string PlayTimeText
+    {
+        get
+        {
+            var seconds = LocalState?.PlayTimeSeconds ?? 0;
+            if (seconds <= 0) return "";
+
+            var ts = TimeSpan.FromSeconds(seconds);
+            var duration = ts.TotalHours >= 1
+                ? $"{(int)ts.TotalHours}h {ts.Minutes}m"
+                : ts.TotalMinutes >= 1
+                    ? $"{ts.Minutes}m"
+                    : $"{ts.Seconds}s";
+            return string.Format(L["Library.Played"], duration);
+        }
     }
 
     public string SizeText => Game.SizeBytes > 0

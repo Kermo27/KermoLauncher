@@ -30,6 +30,7 @@
   <data name="Library.Status.Downloading" xml:space="preserve"><value>Pobieranie...</value></data>
   <data name="Library.Status.Installing" xml:space="preserve"><value>Instalowanie...</value></data>
   <data name="Library.Status.Installed" xml:space="preserve"><value>Zainstalowano</value></data>
+  <data name="Library.Played" xml:space="preserve"><value>Czas gry: {0}</value></data>
   <data name="Library.Status.UpdateAvailable" xml:space="preserve"><value>Aktualizacja dostępna</value></data>
   <data name="Library.Status.Failed" xml:space="preserve"><value>Błąd</value></data>
   <data name="Library.Status.Unknown" xml:space="preserve"><value>Nieznany</value></data>

@@ -30,6 +30,7 @@
   <data name="Library.Status.Downloading" xml:space="preserve"><value>Downloading...</value></data>
   <data name="Library.Status.Installing" xml:space="preserve"><value>Installing...</value></data>
   <data name="Library.Status.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Library.Played" xml:space="preserve"><value>Played: {0}</value></data>
   <data name="Library.Status.UpdateAvailable" xml:space="preserve"><value>Update available</value></data>
   <data name="Library.Status.Failed" xml:space="preserve"><value>Error</value></data>
   <data name="Library.Status.Unknown" xml:space="preserve"><value>Unknown</value></data>

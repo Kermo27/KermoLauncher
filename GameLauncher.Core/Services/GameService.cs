@@ -408,29 +408,43 @@ public class GameService : IGameService
     private async Task TrackPlaytimeAsync(string gameId, Process process, long initialPlaytime)
     {
         var startTime = DateTime.UtcNow;
+
         try
         {
-            await process.WaitForExitAsync();
+            while (!process.HasExited)
+            {
+                await Task.WhenAny(
+                    process.WaitForExitAsync(),
+                    Task.Delay(TimeSpan.FromSeconds(60)));
+
+                if (!process.HasExited)
+                {
+                    await PersistPlaytimeAsync(gameId,
+                        initialPlaytime + (long)(DateTime.UtcNow - startTime).TotalSeconds,
+                        updateLastPlayed: false);
+                }
+            }
         }
         catch
         {
             // Process may have already exited
         }
-        
-        var sessionTime = (long)(DateTime.UtcNow - startTime).TotalSeconds;
-        var totalTime = initialPlaytime + sessionTime;
-        
+
+        await PersistPlaytimeAsync(gameId,
+            initialPlaytime + (long)(DateTime.UtcNow - startTime).TotalSeconds,
+            updateLastPlayed: true);
+    }
+
+    private async Task PersistPlaytimeAsync(string gameId, long totalTime, bool updateLastPlayed)
+    {
         var localState = await _db.GetLocalStateAsync(gameId);
-        if (localState != null)
-        {
-            var updated = localState with 
-            { 
-                PlayTimeSeconds = totalTime,
-                LastPlayed = DateTime.UtcNow
-            };
-            await _db.UpsertLocalStateAsync(updated);
-            OnGameStateChanged?.Invoke(updated);
-        }
+        if (localState == null) return;
+
+        var updated = updateLastPlayed
+            ? localState with { PlayTimeSeconds = totalTime, LastPlayed = DateTime.UtcNow }
+            : localState with { PlayTimeSeconds = totalTime };
+        await _db.UpsertLocalStateAsync(updated);
+        OnGameStateChanged?.Invoke(updated);
     }
 
     public async Task<GameLocalState?> GetLocalStateAsync(string gameId)
