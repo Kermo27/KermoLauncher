@@ -108,22 +108,24 @@ public class AutoUpdateService : IAutoUpdateService
         return null;
     }
 
-    public async Task DownloadAndInstallUpdateAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default)
+    public string GetCachedDownloadPath(UpdateInfo update)
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "KermoLauncher_Update");
-        Directory.CreateDirectory(tempDir);
-        
         var fileName = Path.GetFileName(new Uri(update.DownloadUrl).LocalPath);
-        var downloadPath = Path.Combine(tempDir, fileName);
-        
-        _logger.LogInformation("Downloading update from {Url}", update.DownloadUrl);
+        return Path.Combine(Path.GetTempPath(), "KermoLauncher_Update", fileName);
+    }
+
+    public async Task<string> DownloadUpdateAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default)
+    {
+        var downloadPath = GetCachedDownloadPath(update);
+        Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
+
+        _logger.LogInformation("Downloading update from {Url} to {Path}", update.DownloadUrl, downloadPath);
 
         using var response = await _httpClient.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? 0;
         var downloadedBytes = 0L;
-        var startTime = DateTime.UtcNow;
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         await using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
@@ -150,10 +152,10 @@ public class AutoUpdateService : IAutoUpdateService
             await ZipHelper.VerifyChecksumAsync(downloadPath, update.Sha256, ct);
         }
 
-        await ApplyUpdateAsync(downloadPath, ct);
+        return downloadPath;
     }
 
-    private async Task ApplyUpdateAsync(string downloadPath, CancellationToken ct)
+    public async Task ApplyUpdateAsync(string downloadPath, CancellationToken ct = default)
     {
         var currentExe = Environment.ProcessPath;
         if (string.IsNullOrEmpty(currentExe))
@@ -176,6 +178,7 @@ public class AutoUpdateService : IAutoUpdateService
         Process.Start(psi);
         
         Environment.Exit(0);
+        await Task.CompletedTask;
     }
 
     public Task<bool> IsUpdatePendingAsync()
@@ -185,6 +188,27 @@ public class AutoUpdateService : IAutoUpdateService
         
         var backupPath = currentExe + ".old";
         return Task.FromResult(File.Exists(backupPath));
+    }
+
+    public Task CleanupPendingUpdateAsync()
+    {
+        var currentExe = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(currentExe)) return Task.CompletedTask;
+
+        var backupPath = currentExe + ".old";
+        try
+        {
+            if (File.Exists(backupPath))
+            {
+                File.Delete(backupPath);
+                _logger.LogInformation("Cleaned up update backup {Path}", backupPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up update backup {Path}", backupPath);
+        }
+        return Task.CompletedTask;
     }
 
     private record GitHubRelease(

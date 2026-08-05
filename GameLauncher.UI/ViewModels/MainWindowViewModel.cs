@@ -18,36 +18,58 @@ public partial class ToastItemViewModel : ObservableObject
     public string Message { get; }
     public NotificationType Type { get; }
 
-    public ToastItemViewModel(Notification notification, MainWindowViewModel owner)
+    [ObservableProperty]
+    private double? _progress;
+
+    public bool IsProgressVisible => Progress != null;
+
+    public ToastItemViewModel(Notification notification, MainWindowViewModel owner, bool autoDismiss = true)
     {
         _owner = owner;
         Title = notification.Title;
         Message = notification.Message;
         Type = notification.Type;
-        _ = DismissAfterDelayAsync();
+        if (autoDismiss)
+        {
+            _ = DismissAfterDelayAsync();
+        }
     }
+
+    private static int GetDurationMs(NotificationType type) => type switch
+    {
+        NotificationType.Warning or NotificationType.Error => 10000,
+        _ => 6000
+    };
 
     private async Task DismissAfterDelayAsync()
     {
-        await Task.Delay(15000);
+        await Task.Delay(GetDurationMs(Type));
         if (!_cts.IsCancellationRequested)
         {
             await Dispatcher.UIThread.InvokeAsync(() => _owner.RemoveToast(this));
         }
     }
 
+    public void ReportProgress(double pct) => Progress = pct;
+
     [RelayCommand]
     private void Close() => _owner.RemoveToast(this);
 
     public void Detach() => _cts.Cancel();
+
+    partial void OnProgressChanged(double? value)
+    {
+        OnPropertyChanged(nameof(IsProgressVisible));
+    }
 }
 
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly INotificationService _notificationService;
-    private readonly IDownloadService _downloadService;
     private readonly IAutoUpdateService _autoUpdateService;
+    private readonly IUpdateFlowService _updateFlow;
     private readonly ILocalDbService _db;
+    private ToastItemViewModel? _updateToast;
 
     [ObservableProperty]
     private ViewModelBase _currentView;
@@ -56,13 +78,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _windowTitle = "KermoLauncher";
 
     [ObservableProperty]
-    private int _activeDownloadsCount;
-
-    [ObservableProperty]
     private bool _isLibraryActive;
-
-    [ObservableProperty]
-    private bool _isDownloadsActive;
 
     [ObservableProperty]
     private bool _isSettingsActive;
@@ -72,36 +88,60 @@ public partial class MainWindowViewModel : ViewModelBase
     public string WindowVersion => "v" + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
 
     public LibraryViewModel LibraryVm { get; }
-    public DownloadsViewModel DownloadsVm { get; }
     public SettingsViewModel SettingsVm { get; }
 
     public MainWindowViewModel(
         LibraryViewModel libraryVm,
-        DownloadsViewModel downloadsVm,
         SettingsViewModel settingsVm,
         INotificationService notificationService,
-        IDownloadService downloadService,
         IAutoUpdateService autoUpdateService,
+        IUpdateFlowService updateFlow,
         ILocalDbService db)
     {
         _notificationService = notificationService;
-        _downloadService = downloadService;
         _autoUpdateService = autoUpdateService;
+        _updateFlow = updateFlow;
         _db = db;
 
         LibraryVm = libraryVm;
-        DownloadsVm = downloadsVm;
         SettingsVm = settingsVm;
 
         CurrentView = LibraryVm;
         IsLibraryActive = true;
 
         _notificationService.NotificationRaised += OnNotificationRaised;
+        _updateFlow.DownloadProgress += OnUpdateDownloadProgress;
 
         _ = LibraryVm.InitializeAsync();
 
-        downloadService.OnTaskUpdated += OnDownloadTaskUpdated;
+        _ = CleanupPendingUpdateAsync();
         _ = CheckForUpdatesAsync();
+    }
+
+    private void OnUpdateDownloadProgress(double pct)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (pct >= 100)
+            {
+                if (_updateToast != null)
+                {
+                    RemoveToast(_updateToast);
+                    _updateToast = null;
+                }
+                return;
+            }
+
+            if (_updateToast == null)
+            {
+                _updateToast = new ToastItemViewModel(
+                    new Notification(L["Updates.DownloadingTitle"], L["Updates.DownloadingMessage"], NotificationType.Info),
+                    this,
+                    autoDismiss: false);
+                Toasts.Add(_updateToast);
+            }
+            _updateToast.ReportProgress(pct);
+        });
     }
 
     private void OnNotificationRaised(Notification notification)
@@ -126,29 +166,29 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnCurrentViewChanged(ViewModelBase value)
     {
         IsLibraryActive = value == LibraryVm;
-        IsDownloadsActive = value == DownloadsVm;
         IsSettingsActive = value == SettingsVm;
-    }
-
-    private void OnDownloadTaskUpdated(DownloadTask task)
-    {
-        _ = UpdateDownloadCountAsync();
-    }
-
-    private async Task UpdateDownloadCountAsync()
-    {
-        var tasks = await _downloadService.GetAllTasksAsync();
-        ActiveDownloadsCount = tasks.Count(t => t.Status == DownloadStatus.Downloading);
     }
 
     [RelayCommand]
     private void ShowLibrary() => CurrentView = LibraryVm;
 
     [RelayCommand]
-    private void ShowDownloads() => CurrentView = DownloadsVm;
-
-    [RelayCommand]
     private void ShowSettings() => CurrentView = SettingsVm;
+
+    private async Task CleanupPendingUpdateAsync()
+    {
+        try
+        {
+            if (await _autoUpdateService.IsUpdatePendingAsync())
+            {
+                await _autoUpdateService.CleanupPendingUpdateAsync();
+            }
+        }
+        catch
+        {
+            // Best effort
+        }
+    }
 
     private async Task CheckForUpdatesAsync()
     {
@@ -160,8 +200,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var update = await _autoUpdateService.CheckForUpdatesAsync();
             if (update != null)
             {
-                _notificationService.Show(L["Updates.AvailableTitle"],
-                    string.Format(L["Updates.AvailableMessage"], update.Version));
+                await _updateFlow.RunAsync(update);
             }
         }
         catch

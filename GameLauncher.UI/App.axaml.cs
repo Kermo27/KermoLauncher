@@ -114,6 +114,7 @@ public partial class App : Application
         // UI Services
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<INotificationService, NotificationService>();
+        services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
         services.AddSingleton<IScreenshotService>(sp => new ScreenshotService(
             sp.GetRequiredService<ILocalDbService>(),
             new HttpClient { Timeout = TimeSpan.FromSeconds(30) },
@@ -122,7 +123,6 @@ public partial class App : Application
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LibraryViewModel>();
-        services.AddTransient<DownloadsViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         // Views

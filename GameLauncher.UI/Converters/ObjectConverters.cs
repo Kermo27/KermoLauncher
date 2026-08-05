@@ -24,6 +24,8 @@ public static class ObjectConverters
     public static readonly IValueConverter BoolToBrush = new BoolToBrushConverter();
     public static readonly IValueConverter ToastBrush = new ToastBrushConverter();
     public static readonly IValueConverter ToastIcon = new ToastIconConverter();
+    public static readonly IValueConverter TagChipBg = new TagChipBackgroundConverter();
+    public static readonly IValueConverter TagChipFg = new TagChipForegroundConverter();
 }
 
 public class IsZeroConverter : IValueConverter
@@ -229,4 +231,50 @@ public class ToastIconConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+}
+
+public class TagChipBackgroundConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return string.Equals(value?.ToString(), parameter?.ToString())
+            ? ResourceBrush("AccentBrush")
+            : ResourceBrush("TagBgBrush");
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+
+    private static IBrush? ResourceBrush(string key)
+    {
+        if (Avalonia.Application.Current is App app &&
+            app.Resources.TryGetResource(key, app.RequestedThemeVariant, out var value) &&
+            value is IBrush brush)
+        {
+            return brush;
+        }
+        return null;
+    }
+}
+
+public class TagChipForegroundConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return string.Equals(value?.ToString(), parameter?.ToString())
+            ? Brushes.White
+            : ResourceBrush("TextSecondaryBrush");
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+
+    private static IBrush? ResourceBrush(string key)
+    {
+        if (Avalonia.Application.Current is App app &&
+            app.Resources.TryGetResource(key, app.RequestedThemeVariant, out var value) &&
+            value is IBrush brush)
+        {
+            return brush;
+        }
+        return null;
+    }
 }

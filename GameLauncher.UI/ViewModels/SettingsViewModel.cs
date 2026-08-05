@@ -11,6 +11,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly ILocalDbService _db;
     private readonly IWebDavService _webDav;
     private readonly IAutoUpdateService _autoUpdateService;
+    private readonly IUpdateFlowService _updateFlow;
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
 
@@ -78,11 +79,12 @@ public partial class SettingsViewModel : ViewModelBase
         Settings.InstallFolder = value;
     }
 
-    public SettingsViewModel(ILocalDbService db, IWebDavService webDav, IAutoUpdateService autoUpdateService, IDialogService dialogService, INotificationService notificationService)
+    public SettingsViewModel(ILocalDbService db, IWebDavService webDav, IAutoUpdateService autoUpdateService, IUpdateFlowService updateFlow, IDialogService dialogService, INotificationService notificationService)
     {
         _db = db;
         _webDav = webDav;
         _autoUpdateService = autoUpdateService;
+        _updateFlow = updateFlow;
         _dialogService = dialogService;
         _notificationService = notificationService;
         _ = LoadAsync();
@@ -125,8 +127,7 @@ public partial class SettingsViewModel : ViewModelBase
             var update = await _autoUpdateService.CheckForUpdatesAsync();
             if (update != null)
             {
-                _notificationService.Show(L["Updates.AvailableTitle"],
-                    string.Format(L["Updates.AvailableMessage"], update.Version));
+                await _updateFlow.RunAsync(update);
             }
             else
             {

@@ -1,8 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
 using System;
 using System.IO;
@@ -12,87 +14,143 @@ namespace GameLauncher.UI.Services;
 
 public interface IDialogService
 {
-    Task<bool> ShowConfirmAsync(string title, string message);
-    Task ShowMessageAsync(string title, string message);
+    Task<bool> ShowConfirmAsync(string title, string message, string? confirmText = null, string? cancelText = null);
+    Task ShowMessageAsync(string title, string message, bool isError = false);
     Task<string?> ShowFolderPickerAsync(string title, string? initialPath = null);
     Task<string?> ShowFilePickerAsync(string title, string? initialPath = null);
 }
 
 public class DialogService : IDialogService
 {
-    public async Task<bool> ShowConfirmAsync(string title, string message)
+    private readonly ILocalizationService _l;
+
+    public DialogService(ILocalizationService localization)
     {
-        var window = GetMainWindow();
-        if (window == null) return false;
+        _l = localization;
+    }
 
-        var dialog = new Window
-        {
-            Title = title,
-            Width = 400,
-            Height = 200,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
-        };
+    public async Task<bool> ShowConfirmAsync(string title, string message, string? confirmText = null, string? cancelText = null)
+    {
+        var owner = GetMainWindow();
+        if (owner == null) return false;
 
-        var cancelButton = new Button { Content = "Cancel" };
-        var confirmButton = new Button { Content = "Confirm", Classes = { "Accent" } };
+        var cancelButton = new Button { Content = cancelText ?? _l["Dialog.Cancel"], Classes = { "ghost" } };
+        var confirmButton = new Button { Content = confirmText ?? _l["Dialog.Confirm"], Classes = { "primary" } };
+
+        var dialog = BuildDialog(title, message, "\u26A0\uFE0F", "WarningBrush", cancelButton, confirmButton);
 
         cancelButton.Click += (_, _) => dialog.Close(false);
         confirmButton.Click += (_, _) => dialog.Close(true);
 
-        dialog.Content = new StackPanel
+        dialog.KeyDown += (_, e) =>
         {
-            Margin = new Avalonia.Thickness(20),
-            Spacing = 20,
-            Children =
+            if (e.Key == Key.Escape)
             {
-                new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
-                new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    Spacing = 10,
-                    Children = { cancelButton, confirmButton }
-                }
+                e.Handled = true;
+                dialog.Close(false);
             }
         };
 
-        return await dialog.ShowDialog<bool>(window);
+        return await dialog.ShowDialog<bool>(owner);
     }
 
-    public async Task ShowMessageAsync(string title, string message)
+    public async Task ShowMessageAsync(string title, string message, bool isError = false)
     {
-        var window = GetMainWindow();
-        if (window == null) return;
+        var owner = GetMainWindow();
+        if (owner == null) return;
 
+        var okButton = new Button { Content = _l["Dialog.Ok"], Classes = { "primary" } };
+
+        var dialog = BuildDialog(title, message, isError ? "\u274C" : "\u2139\uFE0F",
+            isError ? "DangerBrush" : "AccentBrush", okButton);
+
+        okButton.Click += (_, _) => dialog.Close();
+        dialog.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                dialog.Close();
+            }
+        };
+
+        await dialog.ShowDialog(owner);
+    }
+
+    private Window BuildDialog(string title, string message, string icon, string accentKey, params Button[] buttons)
+    {
         var dialog = new Window
         {
             Title = title,
-            Width = 400,
-            Height = 180,
+            Width = 440,
+            CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            Background = (IBrush?)Res("WindowBgBrush")
         };
 
-        var okButton = new Button
+        var iconText = new TextBlock
         {
-            Content = "OK",
-            HorizontalAlignment = HorizontalAlignment.Right
+            Text = icon,
+            FontSize = 28,
+            VerticalAlignment = VerticalAlignment.Top,
+            Foreground = (IBrush?)Res(accentKey)
         };
-        okButton.Click += (_, _) => dialog.Close();
 
-        dialog.Content = new StackPanel
+        var titleText = new TextBlock
         {
-            Margin = new Avalonia.Thickness(20),
-            Spacing = 20,
-            Children =
-            {
-                new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
-                okButton
-            }
+            Text = title,
+            FontSize = 15,
+            FontWeight = FontWeight.Bold,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (IBrush?)Res("TextPrimaryBrush")
         };
 
-        await dialog.ShowDialog(window);
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        iconText.Margin = new Thickness(0, 2, 12, 0);
+        header.Children.Add(iconText);
+        header.Children.Add(titleText);
+        Grid.SetColumn(titleText, 1);
+
+        var messageText = new TextBlock
+        {
+            Text = message,
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (IBrush?)Res("TextSecondaryBrush"),
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+
+        var footer = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 10,
+            Margin = new Thickness(0, 24, 0, 0)
+        };
+        foreach (var button in buttons)
+        {
+            footer.Children.Add(button);
+        }
+
+        var panel = new DockPanel { Margin = new Thickness(22) };
+        DockPanel.SetDock(footer, Dock.Bottom);
+        DockPanel.SetDock(messageText, Dock.Bottom);
+        panel.Children.Add(footer);
+        panel.Children.Add(messageText);
+        panel.Children.Add(header);
+
+        dialog.Content = panel;
+        return dialog;
+    }
+
+    private static object? Res(string key)
+    {
+        if (Application.Current is App app &&
+            app.Resources.TryGetResource(key, app.RequestedThemeVariant, out var value))
+        {
+            return value;
+        }
+        return null;
     }
 
     public async Task<string?> ShowFolderPickerAsync(string title, string? initialPath = null)

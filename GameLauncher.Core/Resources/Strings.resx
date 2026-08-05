@@ -44,6 +44,9 @@
   <data name="Library.AlreadyInstalledMessage" xml:space="preserve"><value>{0} is already installed.</value></data>
   <data name="Library.InProgressTitle" xml:space="preserve"><value>In progress</value></data>
   <data name="Library.InProgressMessage" xml:space="preserve"><value>{0} is already being installed.</value></data>
+  <data name="Library.CancelDownload" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Library.DownloadCancelledTitle" xml:space="preserve"><value>Download cancelled</value></data>
+  <data name="Library.DownloadCancelledMessage" xml:space="preserve"><value>Download of {0} was cancelled.</value></data>
   <data name="Library.InstallStartedTitle" xml:space="preserve"><value>Installation started</value></data>
   <data name="Library.InstallStartedMessage" xml:space="preserve"><value>Installation of {0} started.</value></data>
   <data name="Library.InstallDoneTitle" xml:space="preserve"><value>Installation complete</value></data>
@@ -59,10 +62,21 @@
   <data name="Library.NotInstalledMessage" xml:space="preserve"><value>{0} is not installed.</value></data>
   <data name="Library.LaunchErrorTitle" xml:space="preserve"><value>Launch error</value></data>
   <data name="Library.UnknownError" xml:space="preserve"><value>Unknown error</value></data>
-  <data name="Library.DetailsSize" xml:space="preserve"><value>Size: {0}</value></data>
-  <data name="Library.DetailsTags" xml:space="preserve"><value>Tags: {0}</value></data>
+  <data name="Library.DetailsSize" xml:space="preserve"><value>Size</value></data>
+  <data name="Library.DetailsVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="Library.DetailsPlayed" xml:space="preserve"><value>Played</value></data>
   <data name="Library.NoDescription" xml:space="preserve"><value>No description for this game.</value></data>
-  <data name="Library.DetailsTitle" xml:space="preserve"><value>{0}  (version {1})</value></data>
+  <data name="Library.CountGames" xml:space="preserve"><value>{0} games</value></data>
+  <data name="Library.SortName" xml:space="preserve"><value>Name</value></data>
+  <data name="Library.SortPlayTime" xml:space="preserve"><value>Play time</value></data>
+  <data name="Library.SortSize" xml:space="preserve"><value>Size</value></data>
+  <data name="Library.NoResultsTitle" xml:space="preserve"><value>No games match your filters</value></data>
+  <data name="Library.NoResultsMessage" xml:space="preserve"><value>Try a different search phrase or select another tag.</value></data>
+  <data name="Library.ClearFilters" xml:space="preserve"><value>Clear filters</value></data>
+  <data name="Library.Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Dialog.Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Dialog.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Dialog.Confirm" xml:space="preserve"><value>Confirm</value></data>
   <data name="Downloads.Title" xml:space="preserve"><value>Downloads</value></data>
   <data name="Downloads.Subtitle" xml:space="preserve"><value>Download list and install progress</value></data>
   <data name="Downloads.EmptyTitle" xml:space="preserve"><value>No active downloads</value></data>
@@ -122,8 +136,18 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Connection works, but the folder is empty (metadata.json in the root).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Connection error</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Failed to fetch metadata.json: {0}</value></data>
-  <data name="Updates.AvailableTitle" xml:space="preserve"><value>Update available</value></data>
-  <data name="Updates.AvailableMessage" xml:space="preserve"><value>A new version {0} of the launcher is available on GitHub.</value></data>
+  <data name="Updates.DownloadingTitle" xml:space="preserve"><value>Downloading update</value></data>
+  <data name="Updates.DownloadingMessage" xml:space="preserve"><value>The new version is being downloaded in the background...</value></data>
+  <data name="Updates.ReadyTitle" xml:space="preserve"><value>Update ready</value></data>
+  <data name="Updates.ReadyMessage" xml:space="preserve"><value>Version {0} has been downloaded. Restart KermoLauncher now to apply the update?</value></data>
+  <data name="Updates.RestartNow" xml:space="preserve"><value>Restart now</value></data>
+  <data name="Updates.RestartLater" xml:space="preserve"><value>Later</value></data>
+  <data name="Updates.InstallingTitle" xml:space="preserve"><value>Applying update</value></data>
+  <data name="Updates.InstallingMessage" xml:space="preserve"><value>The launcher will restart in a moment...</value></data>
+  <data name="Updates.InstallLaterTitle" xml:space="preserve"><value>Update postponed</value></data>
+  <data name="Updates.InstallLaterMessage" xml:space="preserve"><value>The update will be applied on the next launch. You can also start it from Settings.</value></data>
+  <data name="Updates.InstallFailedTitle" xml:space="preserve"><value>Update failed</value></data>
+  <data name="Updates.InstallFailedMessage" xml:space="preserve"><value>Failed to install the update: {0}</value></data>
   <data name="Updates.UpToDate" xml:space="preserve"><value>You're up to date</value></data>
   <data name="Updates.UpToDateMessage" xml:space="preserve"><value>The launcher is already running the latest version.</value></data>
   <data name="Updates.CheckFailed" xml:space="preserve"><value>Update check failed</value></data>

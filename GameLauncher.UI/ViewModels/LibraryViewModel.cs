@@ -53,7 +53,10 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsUpdateAvailable));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(PlayTimeText));
+        OnPropertyChanged(nameof(CanCancelDownload));
     }
+
+    public bool CanCancelDownload => LocalState?.Status == InstallStatus.Downloading;
 
     public bool CanInstall => LocalState?.Status != InstallStatus.Installed && 
                               LocalState?.Status != InstallStatus.Downloading && 
@@ -88,6 +91,7 @@ public partial class GameItemViewModel : ViewModelBase
         base.OnLanguageChanged();
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(PlayTimeText));
+        OnPropertyChanged(nameof(DescriptionText));
     }
 
     public string PlayTimeText
@@ -116,6 +120,17 @@ public partial class GameItemViewModel : ViewModelBase
     public string[] Tags => Game.Tags;
     public string[] ScreenshotUrls => Game.ScreenshotUrls;
     public string Description => Game.Description;
+
+    public string DescriptionText => string.IsNullOrWhiteSpace(Game.Description)
+        ? L["Library.NoDescription"]
+        : Game.Description;
+}
+
+public enum LibrarySortMode
+{
+    Name,
+    PlayTime,
+    Size
 }
 
 public partial class LibraryViewModel : ViewModelBase
@@ -149,7 +164,24 @@ public partial class LibraryViewModel : ViewModelBase
     [ObservableProperty]
     private string? _loadError;
 
+    [ObservableProperty]
+    private LibrarySortMode _sortMode = LibrarySortMode.Name;
+
     private bool _hasRefreshed;
+
+    public string[] SortOptions => [L["Library.SortName"], L["Library.SortPlayTime"], L["Library.SortSize"]];
+
+    public int SelectedSortIndex
+    {
+        get => (int)SortMode;
+        set
+        {
+            if (value >= 0 && value < Enum.GetValues<LibrarySortMode>().Length)
+            {
+                SortMode = (LibrarySortMode)value;
+            }
+        }
+    }
 
     public LibraryViewModel(
         IGameService gameService,
@@ -281,10 +313,10 @@ public partial class LibraryViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            var item = GameItems.FirstOrDefault(i => i.Game.Id == task.GameId);
-            if (item != null && item.LocalState != null)
-            {
-                var newStatus = task.Status switch
+        var item = GameItems.FirstOrDefault(i => i.Game.Id == task.GameId);
+        if (item != null && item.LocalState != null)
+        {
+            var newStatus = task.Status switch
                 {
                     DownloadStatus.Downloading => InstallStatus.Downloading,
                     DownloadStatus.Completed => task.InstallStage == InstallStage.Completed
@@ -322,28 +354,73 @@ public partial class LibraryViewModel : ViewModelBase
                 query = query.Where(g => g.Tags.Contains(SelectedTag));
             }
             
-            return query.OrderBy(g => g.Name);
+            return SortMode switch
+            {
+                LibrarySortMode.PlayTime => query.OrderByDescending(g => g.LocalState?.PlayTimeSeconds ?? 0),
+                LibrarySortMode.Size => query.OrderByDescending(g => g.Game.SizeBytes),
+                _ => query.OrderBy(g => g.Name)
+            };
         }
     }
 
     public int FilteredCount => FilteredGameItems.Count();
 
+    public string CountText => string.Format(L["Library.CountGames"], FilteredCount);
+
+    public bool HasNoFilteredResults => !IsLoading && GameItems.Length > 0 && FilteredCount == 0;
+
+    partial void OnIsLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasNoFilteredResults));
+    }
+
     partial void OnSearchTextChanged(string value)
     {
         OnPropertyChanged(nameof(FilteredGameItems));
         OnPropertyChanged(nameof(FilteredCount));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(HasNoFilteredResults));
     }
 
     partial void OnSelectedTagChanged(string value)
     {
         OnPropertyChanged(nameof(FilteredGameItems));
         OnPropertyChanged(nameof(FilteredCount));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(HasNoFilteredResults));
+    }
+
+    partial void OnSortModeChanged(LibrarySortMode value)
+    {
+        OnPropertyChanged(nameof(FilteredGameItems));
+        OnPropertyChanged(nameof(FilteredCount));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(HasNoFilteredResults));
     }
 
     partial void OnGameItemsChanged(GameItemViewModel[] value)
     {
         OnPropertyChanged(nameof(FilteredGameItems));
         OnPropertyChanged(nameof(FilteredCount));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(HasNoFilteredResults));
+    }
+
+    protected override void OnLanguageChanged()
+    {
+        base.OnLanguageChanged();
+        OnPropertyChanged(nameof(SortOptions));
+        OnPropertyChanged(nameof(CountText));
+    }
+
+    [RelayCommand]
+    private void SelectTag(string tag) => SelectedTag = tag;
+
+    [RelayCommand]
+    private void ClearFilters()
+    {
+        SearchText = "";
+        SelectedTag = "All";
     }
 
     [RelayCommand]
@@ -371,6 +448,10 @@ public partial class LibraryViewModel : ViewModelBase
             _notificationService.Show(L["Library.InstallDoneTitle"],
                 string.Format(L["Library.InstallDoneMessage"], item.Name));
         }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by the user - the cancel notification is shown separately
+        }
         catch (Exception ex)
         {
             _notificationService.Show(L["Library.InstallErrorTitle"],
@@ -391,6 +472,10 @@ public partial class LibraryViewModel : ViewModelBase
             _notificationService.Show(L["Library.UpdateDoneTitle"],
                 string.Format(L["Library.UpdateDoneMessage"], item.Name, item.Game.Version));
         }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by the user
+        }
         catch (Exception ex)
         {
             _notificationService.Show(L["Library.UpdateErrorTitle"],
@@ -399,6 +484,23 @@ public partial class LibraryViewModel : ViewModelBase
         finally
         {
             item.IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CancelDownloadAsync(GameItemViewModel item)
+    {
+        if (item.LocalState?.Status != InstallStatus.Downloading) return;
+
+        try
+        {
+            await _gameService.CancelInstallAsync(item.Game.Id);
+            _notificationService.Show(L["Library.DownloadCancelledTitle"],
+                string.Format(L["Library.DownloadCancelledMessage"], item.Name));
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.InstallErrorTitle"], ex.Message);
         }
     }
 
@@ -436,16 +538,5 @@ public partial class LibraryViewModel : ViewModelBase
         {
             _notificationService.Show(L["Library.LaunchErrorTitle"], result.Error ?? L["Library.UnknownError"]);
         }
-    }
-
-    [RelayCommand]
-    private async Task ShowDetailsAsync(GameItemViewModel item)
-    {
-        var size = item.SizeText.Length > 0 ? string.Format(L["Library.DetailsSize"], item.SizeText) : "";
-        var tags = item.Tags.Length > 0 ? string.Format(L["Library.DetailsTags"], string.Join(", ", item.Tags)) : "";
-        var parts = new[] { item.Description, tags, size }.Where(p => p.Length > 0);
-        var details = string.Join("\n\n", parts);
-        if (details.Length == 0) details = L["Library.NoDescription"];
-        await _dialogService.ShowMessageAsync(string.Format(L["Library.DetailsTitle"], item.Name, item.Version), details);
     }
 }

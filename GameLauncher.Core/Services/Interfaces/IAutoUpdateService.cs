@@ -6,8 +6,11 @@ public interface IAutoUpdateService
     event Action<double>? OnUpdateDownloadProgress;
     
     Task<UpdateInfo?> CheckForUpdatesAsync(CancellationToken ct = default);
-    Task DownloadAndInstallUpdateAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default);
+    string GetCachedDownloadPath(UpdateInfo update);
+    Task<string> DownloadUpdateAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default);
+    Task ApplyUpdateAsync(string downloadPath, CancellationToken ct = default);
     Task<bool> IsUpdatePendingAsync();
+    Task CleanupPendingUpdateAsync();
 }
 
 public record UpdateInfo(

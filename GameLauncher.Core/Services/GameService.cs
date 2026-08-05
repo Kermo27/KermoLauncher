@@ -13,6 +13,8 @@ public class GameService : IGameService
     private readonly ILocalDbService _db;
     private readonly IWebDavService _webDav;
     private readonly ILogger<GameService> _logger;
+    private readonly object _installLock = new();
+    private readonly Dictionary<string, CancellationTokenSource> _activeInstalls = new();
 
     public event Action<GameLocalState>? OnGameStateChanged;
     public event Action<DownloadTask>? OnTaskUpdated;
@@ -36,9 +38,22 @@ public class GameService : IGameService
     public Task UpdateAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
         => InstallOrUpdateAsync(game, isUpdate: true, progress, ct);
 
+    public Task CancelInstallAsync(string gameId)
+    {
+        lock (_installLock)
+        {
+            if (_activeInstalls.TryGetValue(gameId, out var cts))
+            {
+                cts.Cancel();
+            }
+        }
+        return Task.CompletedTask;
+    }
+
     private async Task InstallOrUpdateAsync(Game game, bool isUpdate, IProgress<InstallProgress>? progress, CancellationToken ct)
     {
         var localState = await _db.GetLocalStateAsync(game.Id) ?? new GameLocalState(game.Id, InstallStatus.NotInstalled);
+        var initialState = localState;
         var settings = await _db.GetSettingsAsync();
         if (settings.Nextcloud == null)
         {
@@ -69,6 +84,10 @@ public class GameService : IGameService
         var finalDir = Path.Combine(installRoot, safeName);
         var installedManifest = localState.Status == InstallStatus.Installed ? localState.InstalledManifest : null;
 
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var token = linkedCts.Token;
+        lock (_installLock) _activeInstalls[game.Id] = linkedCts;
+
         try
         {
             localState = localState with { Status = InstallStatus.Downloading };
@@ -78,7 +97,7 @@ public class GameService : IGameService
             // Stage 1: Fetch manifest
             progress?.Report(new InstallProgress(game.Id, InstallStage.Preparing, 0));
             await UpdateStageAsync(downloadTask.Id, InstallStage.Preparing);
-            var manifest = await _webDav.DownloadManifestAsync(downloadTask.RemoteUrl, ct);
+            var manifest = await _webDav.DownloadManifestAsync(downloadTask.RemoteUrl, token);
 
             var toDownload = ManifestDiff.ComputeFilesToDownload(manifest, installedManifest);
             var staleFiles = installedManifest != null ? ManifestDiff.ComputeStaleFiles(manifest, installedManifest) : Array.Empty<GameFile>();
@@ -111,7 +130,7 @@ public class GameService : IGameService
             {
                 foreach (var file in installedManifest.Files)
                 {
-                    ct.ThrowIfCancellationRequested();
+                    token.ThrowIfCancellationRequested();
                     if (toDownload.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
                     if (staleFiles.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
 
@@ -155,7 +174,7 @@ public class GameService : IGameService
 
             await Task.WhenAll(toDownload.Select(async file =>
             {
-                await semaphore.WaitAsync(ct);
+                await semaphore.WaitAsync(token);
                 try
                 {
                     var localPath = Path.Combine(stagingDir, file.Path);
@@ -166,7 +185,7 @@ public class GameService : IGameService
                     var progress = new DelegatedProgress(p =>
                         _ = PersistProgressAsync(baseBytes + p.BytesReceived, p.SpeedBytesPerSecond, p.EstimatedTimeRemaining));
 
-                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, ct);
+                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, token);
 
                     var done = Interlocked.Add(ref downloadedBytes, file.SizeBytes);
                     var elapsed = DateTime.UtcNow - startTime;
@@ -195,9 +214,9 @@ public class GameService : IGameService
             await UpdateStageAsync(downloadTask.Id, InstallStage.Verifying);
             foreach (var file in toDownload)
             {
-                ct.ThrowIfCancellationRequested();
+                token.ThrowIfCancellationRequested();
                 var localPath = Path.Combine(stagingDir, file.Path);
-                var sha256 = await ComputeSha256Async(localPath, ct);
+                var sha256 = await ComputeSha256Async(localPath, token);
                 if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException($"Checksum mismatch for {file.Path}");
@@ -247,6 +266,9 @@ public class GameService : IGameService
         catch (OperationCanceledException)
         {
             _logger.LogInformation("Install cancelled for game {GameId}", game.Id);
+            localState = localState with { Status = initialState.Status };
+            await _db.UpsertLocalStateAsync(localState);
+            OnGameStateChanged?.Invoke(localState);
             await FailTaskAsync(downloadTask.Id, "Cancelled", cancelled: true);
             throw;
         }
@@ -261,6 +283,7 @@ public class GameService : IGameService
         }
         finally
         {
+            lock (_installLock) _activeInstalls.Remove(game.Id);
             try
             {
                 if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);

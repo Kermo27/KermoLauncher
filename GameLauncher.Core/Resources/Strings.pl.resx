@@ -44,6 +44,9 @@
   <data name="Library.AlreadyInstalledMessage" xml:space="preserve"><value>{0} jest już zainstalowana.</value></data>
   <data name="Library.InProgressTitle" xml:space="preserve"><value>W trakcie</value></data>
   <data name="Library.InProgressMessage" xml:space="preserve"><value>{0} jest już instalowana.</value></data>
+  <data name="Library.CancelDownload" xml:space="preserve"><value>Anuluj</value></data>
+  <data name="Library.DownloadCancelledTitle" xml:space="preserve"><value>Pobieranie anulowane</value></data>
+  <data name="Library.DownloadCancelledMessage" xml:space="preserve"><value>Pobieranie gry {0} zostało anulowane.</value></data>
   <data name="Library.InstallStartedTitle" xml:space="preserve"><value>Rozpoczęto instalację</value></data>
   <data name="Library.InstallStartedMessage" xml:space="preserve"><value>Instalacja {0} rozpoczęta.</value></data>
   <data name="Library.InstallDoneTitle" xml:space="preserve"><value>Instalacja zakończona</value></data>
@@ -59,10 +62,21 @@
   <data name="Library.NotInstalledMessage" xml:space="preserve"><value>{0} nie jest zainstalowana.</value></data>
   <data name="Library.LaunchErrorTitle" xml:space="preserve"><value>Błąd uruchamiania</value></data>
   <data name="Library.UnknownError" xml:space="preserve"><value>Nieznany błąd</value></data>
-  <data name="Library.DetailsSize" xml:space="preserve"><value>Rozmiar: {0}</value></data>
-  <data name="Library.DetailsTags" xml:space="preserve"><value>Tagi: {0}</value></data>
+  <data name="Library.DetailsSize" xml:space="preserve"><value>Rozmiar</value></data>
+  <data name="Library.DetailsVersion" xml:space="preserve"><value>Wersja</value></data>
+  <data name="Library.DetailsPlayed" xml:space="preserve"><value>Czas gry</value></data>
   <data name="Library.NoDescription" xml:space="preserve"><value>Brak opisu dla tej gry.</value></data>
-  <data name="Library.DetailsTitle" xml:space="preserve"><value>{0}  (wersja {1})</value></data>
+  <data name="Library.CountGames" xml:space="preserve"><value>Gry: {0}</value></data>
+  <data name="Library.SortName" xml:space="preserve"><value>Nazwa</value></data>
+  <data name="Library.SortPlayTime" xml:space="preserve"><value>Czas gry</value></data>
+  <data name="Library.SortSize" xml:space="preserve"><value>Rozmiar</value></data>
+  <data name="Library.NoResultsTitle" xml:space="preserve"><value>Brak gier pasujących do filtrów</value></data>
+  <data name="Library.NoResultsMessage" xml:space="preserve"><value>Zmień frazę wyszukiwania lub wybierz inny tag.</value></data>
+  <data name="Library.ClearFilters" xml:space="preserve"><value>Wyczyść filtry</value></data>
+  <data name="Library.Back" xml:space="preserve"><value>Wstecz</value></data>
+  <data name="Dialog.Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Dialog.Cancel" xml:space="preserve"><value>Anuluj</value></data>
+  <data name="Dialog.Confirm" xml:space="preserve"><value>Potwierdź</value></data>
   <data name="Downloads.Title" xml:space="preserve"><value>Pobieranie</value></data>
   <data name="Downloads.Subtitle" xml:space="preserve"><value>Lista pobrań i postęp instalacji</value></data>
   <data name="Downloads.EmptyTitle" xml:space="preserve"><value>Brak aktywnych pobrań</value></data>
@@ -122,8 +136,18 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Połączenie działa, ale katalog jest pusty (metadata.json w katalogu głównym).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Błąd połączenia</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Nie udało się pobrać metadata.json: {0}</value></data>
-  <data name="Updates.AvailableTitle" xml:space="preserve"><value>Dostępna aktualizacja</value></data>
-  <data name="Updates.AvailableMessage" xml:space="preserve"><value>Nowa wersja {0} launchera jest dostępna na GitHub.</value></data>
+  <data name="Updates.DownloadingTitle" xml:space="preserve"><value>Pobieranie aktualizacji</value></data>
+  <data name="Updates.DownloadingMessage" xml:space="preserve"><value>Nowa wersja jest pobierana w tle...</value></data>
+  <data name="Updates.ReadyTitle" xml:space="preserve"><value>Aktualizacja gotowa</value></data>
+  <data name="Updates.ReadyMessage" xml:space="preserve"><value>Pobrano wersję {0}. Uruchomić KermoLauncher ponownie, aby zainstalować aktualizację?</value></data>
+  <data name="Updates.RestartNow" xml:space="preserve"><value>Uruchom teraz</value></data>
+  <data name="Updates.RestartLater" xml:space="preserve"><value>Później</value></data>
+  <data name="Updates.InstallingTitle" xml:space="preserve"><value>Instalowanie aktualizacji</value></data>
+  <data name="Updates.InstallingMessage" xml:space="preserve"><value>Launcher zaraz zostanie ponownie uruchomiony...</value></data>
+  <data name="Updates.InstallLaterTitle" xml:space="preserve"><value>Aktualizacja przełożona</value></data>
+  <data name="Updates.InstallLaterMessage" xml:space="preserve"><value>Aktualizacja zostanie zainstalowana przy następnym uruchomieniu. Możesz ją też uruchomić z Ustawień.</value></data>
+  <data name="Updates.InstallFailedTitle" xml:space="preserve"><value>Błąd aktualizacji</value></data>
+  <data name="Updates.InstallFailedMessage" xml:space="preserve"><value>Nie udało się zainstalować aktualizacji: {0}</value></data>
   <data name="Updates.UpToDate" xml:space="preserve"><value>Masz aktualną wersję</value></data>
   <data name="Updates.UpToDateMessage" xml:space="preserve"><value>Launcher ma już najnowszą dostępną wersję.</value></data>
   <data name="Updates.CheckFailed" xml:space="preserve"><value>Nie udało się sprawdzić aktualizacji</value></data>

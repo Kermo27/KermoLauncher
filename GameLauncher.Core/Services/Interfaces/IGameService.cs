@@ -10,6 +10,7 @@ public interface IGameService
     
     Task InstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default);
     Task UpdateAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default);
+    Task CancelInstallAsync(string gameId);
     Task UninstallAsync(string gameId);
     Task<LaunchResult> LaunchAsync(string gameId);
     Task<GameLocalState?> GetLocalStateAsync(string gameId);
