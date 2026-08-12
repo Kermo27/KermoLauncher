@@ -13,7 +13,7 @@ public interface IAutoUpdateService
     Task CleanupPendingUpdateAsync();
 }
 
-/// <summary>Parametry sprawdzania aktualizacji — wstrzykiwane, żeby serwis dał się zarejestrować jako typed client.</summary>
+/// <summary>Update check parameters, injected so the service can be registered as a typed client.</summary>
 public record AutoUpdateOptions(
     string CurrentVersion,
     string RepoOwner,

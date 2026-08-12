@@ -18,8 +18,8 @@ public partial class ViewModelBase : ObservableObject, IDisposable
     protected virtual void OnLanguageChanged() => OnPropertyChanged(nameof(L));
 
     /// <summary>
-    /// ILocalizationService jest singletonem, więc niezdjęta subskrypcja trzymała każdy
-    /// utworzony ViewModel do końca życia procesu.
+    /// ILocalizationService is a singleton, so a subscription that is never dropped keeps every
+    /// ViewModel ever created alive for the lifetime of the process.
     /// </summary>
     public void Dispose()
     {

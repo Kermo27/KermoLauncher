@@ -3,8 +3,8 @@ using Avalonia.Threading;
 namespace GameLauncher.UI.Services;
 
 /// <summary>
-/// Cienka warstwa nad wątkiem UI. ViewModele wołają ją zamiast statycznego Dispatcher.UIThread,
-/// więc dają się testować bez uruchomionej aplikacji Avalonia.
+/// A thin layer over the UI thread. ViewModels call this instead of the static
+/// Dispatcher.UIThread, which makes them testable without a running Avalonia application.
 /// </summary>
 public interface IUiDispatcher
 {

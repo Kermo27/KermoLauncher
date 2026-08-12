@@ -19,7 +19,7 @@ public partial class App : Application
 
     private ServiceProvider? _provider;
 
-    /// <summary>Wypełniany przez Program.Main przed startem Avalonii.</summary>
+    /// <summary>Filled in by Program.Main before the Avalonia lifetime starts.</summary>
     public static StartupContext? Startup { get; set; }
 
     public static IServiceProvider? Services { get; private set; }
@@ -39,10 +39,10 @@ public partial class App : Application
         _provider = services.BuildServiceProvider();
         Services = _provider;
 
-        // Bez tego wyjątek z porzuconego zadania kończy się cicho w finalizatorze.
+        // Without this, an exception from an abandoned task dies quietly in the finalizer.
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
-        // Motyw i język są znane od pierwszej klatki, bez blokowania wątku UI na dysku.
+        // Theme and language are known from the first frame, without hitting the disk here.
         ApplyTheme(startup.Settings.Theme);
         _provider.GetRequiredService<ILocalizationService>().SetLanguage(startup.Settings.Language);
 
@@ -54,8 +54,8 @@ public partial class App : Application
             desktop.MainWindow = mainWindow;
             desktop.ShutdownRequested += OnShutdownRequested;
 
-            // Sieć i dysk startują po pokazaniu okna. Hak frameworka jest synchroniczny,
-            // więc zadanie leci bez oczekiwania, ale z pełną obsługą wyjątków.
+            // Network and disk work starts after the window is shown. This framework hook is
+            // synchronous, so the task is not awaited, but every exception is still handled.
             _ = RunStartupAsync(mainVm);
         }
 
@@ -89,8 +89,8 @@ public partial class App : Application
 
         TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
 
-        // Kontener zwalnia singletony: przerywa pobrania, zdejmuje subskrypcje ViewModeli
-        // i domyka plik logu. Wcześniej przy wyjściu nic z tego się nie działo.
+        // Disposing the container cancels downloads, drops ViewModel subscriptions and closes
+        // the log file. None of that used to happen on exit.
         _provider?.Dispose();
         _provider = null;
         Services = null;

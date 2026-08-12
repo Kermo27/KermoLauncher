@@ -65,27 +65,39 @@ public class AutoUpdateService : IAutoUpdateService
             });
             if (release == null) return null;
 
-            var latestVersion = release.TagName.TrimStart('v');
-            if (string.IsNullOrEmpty(latestVersion)) return null;
+            var latest = UpdateVersion.Parse(release.TagName);
+            var current = UpdateVersion.Parse(_currentVersion);
+            if (latest == null || current == null)
+            {
+                _logger.LogWarning(
+                    "Cannot compare versions. Current: {Current}, tag: {Tag}", _currentVersion, release.TagName);
+                return null;
+            }
 
-            if (Version.Parse(latestVersion) <= Version.Parse(_currentVersion))
+            var latestVersion = release.TagName.TrimStart('v', 'V');
+            if (latest <= current)
             {
                 _logger.LogInformation("No update available. Current: {Current}, Latest: {Latest}", _currentVersion, latestVersion);
                 return null;
             }
 
-            var asset = FindMatchingAsset(release.Assets);
+            var assets = release.Assets
+                .Select(a => new ReleaseAsset(a.Name, a.BrowserDownloadUrl))
+                .ToArray();
+
+            var rid = UpdateAssetMatcher.CurrentRid;
+            var asset = UpdateAssetMatcher.Find(assets, rid);
             if (asset == null)
             {
-                _logger.LogWarning("No matching asset found for current platform");
+                _logger.LogWarning("Release {Tag} has no asset for {Rid}", release.TagName, rid);
                 return null;
             }
 
             var updateInfo = new UpdateInfo(
                 Version: latestVersion,
                 ReleaseNotes: release.Body ?? "",
-                DownloadUrl: asset.BrowserDownloadUrl,
-                Sha256: "",
+                DownloadUrl: asset.DownloadUrl,
+                Sha256: await TryGetChecksumAsync(assets, asset.Name, ct),
                 IsMandatory: false
             );
 
@@ -99,26 +111,38 @@ public class AutoUpdateService : IAutoUpdateService
         }
     }
 
-    private GitHubAsset? FindMatchingAsset(GitHubAsset[] assets)
+    /// <summary>
+    /// Checksum read from the SHA256SUMS asset of the release. An empty result means no
+    /// verification, which is how releases made before the workflow looked, so it is not fatal.
+    /// </summary>
+    private async Task<string> TryGetChecksumAsync(
+        IReadOnlyList<ReleaseAsset> assets, string assetName, CancellationToken ct)
     {
-        var isWindows = OperatingSystem.IsWindows();
-        foreach (var asset in assets)
-        {
-            var name = asset.Name.ToLowerInvariant();
+        var checksums = assets.FirstOrDefault(
+            a => a.Name.Equals(UpdateAssetMatcher.ChecksumAssetName, StringComparison.OrdinalIgnoreCase));
 
-            if (isWindows)
-            {
-                if (name.EndsWith(".exe") || name.EndsWith(".msi") || name.Contains("windows"))
-                {
-                    return asset;
-                }
-            }
-            else if (name.Contains("linux"))
-            {
-                return asset;
-            }
+        if (checksums == null)
+        {
+            _logger.LogWarning(
+                "Release has no {File}, the download will not be verified", UpdateAssetMatcher.ChecksumAssetName);
+            return "";
         }
-        return null;
+
+        try
+        {
+            var content = await _httpClient.GetStringAsync(checksums.DownloadUrl, ct);
+            var hash = ChecksumFile.Find(content, assetName);
+            if (hash == null)
+            {
+                _logger.LogWarning("{File} has no entry for {Asset}", UpdateAssetMatcher.ChecksumAssetName, assetName);
+            }
+            return hash ?? "";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Failed to read {File}", UpdateAssetMatcher.ChecksumAssetName);
+            return "";
+        }
     }
 
     public string GetCachedDownloadPath(UpdateInfo update)
@@ -129,10 +153,51 @@ public class AutoUpdateService : IAutoUpdateService
 
     public async Task<string> DownloadUpdateAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        var downloadPath = GetCachedDownloadPath(update);
-        Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
+        var finalPath = GetCachedDownloadPath(update);
+        Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
 
-        _logger.LogInformation("Downloading update from {Url} to {Path}", update.DownloadUrl, downloadPath);
+        if (File.Exists(finalPath))
+        {
+            if (await MatchesChecksumAsync(finalPath, update.Sha256, ct))
+            {
+                _logger.LogInformation("Reusing verified update file {Path}", finalPath);
+                progress?.Report(100);
+                return finalPath;
+            }
+
+            // An interrupted download leaves a truncated file behind. It used to be swapped
+            // straight into place, which produced an install that could not start.
+            _logger.LogInformation("Discarding unverified cached update file {Path}", finalPath);
+            File.Delete(finalPath);
+        }
+
+        // The file only takes its final name once it is fully downloaded and verified.
+        var partPath = finalPath + ".part";
+        try
+        {
+            await DownloadToFileAsync(update, partPath, progress, ct);
+
+            if (!string.IsNullOrEmpty(update.Sha256))
+            {
+                await ZipHelper.VerifyChecksumAsync(partPath, update.Sha256, ct);
+            }
+
+            File.Move(partPath, finalPath, overwrite: true);
+        }
+        catch
+        {
+            TryDelete(partPath);
+            throw;
+        }
+
+        _logger.LogInformation("Update downloaded to {Path}", finalPath);
+        return finalPath;
+    }
+
+    private async Task DownloadToFileAsync(
+        UpdateInfo update, string path, IProgress<double>? progress, CancellationToken ct)
+    {
+        _logger.LogInformation("Downloading update from {Url} to {Path}", update.DownloadUrl, path);
 
         using var response = await _httpClient.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
@@ -141,7 +206,7 @@ public class AutoUpdateService : IAutoUpdateService
         var downloadedBytes = 0L;
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        await using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+        await using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
         var buffer = new byte[8192];
         int bytesRead;
@@ -157,20 +222,39 @@ public class AutoUpdateService : IAutoUpdateService
                 OnUpdateDownloadProgress?.Invoke(pct);
             }
         }
+    }
 
-        _logger.LogInformation("Update downloaded to {Path}", downloadPath);
+    /// <summary>Without a checksum there is no way to confirm the file is complete, so it is rejected.</summary>
+    private static async Task<bool> MatchesChecksumAsync(string path, string expected, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(expected)) return false;
 
-        if (!string.IsNullOrEmpty(update.Sha256))
+        try
         {
-            await ZipHelper.VerifyChecksumAsync(downloadPath, update.Sha256, ct);
+            var actual = await ZipHelper.ComputeSha256Async(path, ct);
+            return actual.Equals(expected, StringComparison.OrdinalIgnoreCase);
         }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
 
-        return downloadPath;
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // It will be overwritten on the next attempt.
+        }
     }
 
     /// <summary>
-    /// Podmienia plik wykonywalny i startuje nową instancję. Zamknięcie tej instancji
-    /// jest zadaniem wołającego — Environment.Exit ucinał trwające zapisy do bazy i pobrania.
+    /// Swaps the executable and starts a new instance. Shutting this instance down is the
+    /// caller's job: Environment.Exit used to cut off in-flight database writes and downloads.
     /// </summary>
     public Task ApplyUpdateAsync(string downloadPath, CancellationToken ct = default)
     {
@@ -180,10 +264,7 @@ public class AutoUpdateService : IAutoUpdateService
             throw new InvalidOperationException("Cannot determine current executable path");
         }
 
-        var backupPath = currentExe + ".old";
-        if (File.Exists(backupPath)) File.Delete(backupPath);
-        File.Move(currentExe, backupPath);
-        File.Move(downloadPath, currentExe);
+        SwapExecutable(currentExe, downloadPath);
 
         _logger.LogInformation("Update applied, starting new instance");
 
@@ -194,6 +275,41 @@ public class AutoUpdateService : IAutoUpdateService
         };
         Process.Start(psi);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Replaces the executable, keeping the previous one as .old. If putting the new file in
+    /// place fails, the previous one is restored, otherwise the install is left with no binary.
+    /// Public because that rollback cannot be tested any other way than on a real pair of files.
+    /// </summary>
+    public static void SwapExecutable(string currentExe, string newFile)
+    {
+        var backupPath = currentExe + ".old";
+        if (File.Exists(backupPath)) File.Delete(backupPath);
+
+        File.Move(currentExe, backupPath);
+        try
+        {
+            File.Move(newFile, currentExe);
+            MakeExecutable(currentExe);
+        }
+        catch
+        {
+            File.Move(backupPath, currentExe, overwrite: true);
+            throw;
+        }
+    }
+
+    /// <summary>A downloaded file carries no executable bit, so on Unix the new version would not start.</summary>
+    private static void MakeExecutable(string path)
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        File.SetUnixFileMode(
+            path,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
     }
 
     public Task<bool> IsUpdatePendingAsync()

@@ -20,8 +20,8 @@ public class LocalDbService : ILocalDbService
     }
 
     /// <summary>
-    /// Otwiera połączenie i włącza klucze obce. PRAGMA foreign_keys obowiązuje wyłącznie
-    /// w obrębie połączenia, więc musi być ustawiana za każdym razem, inaczej ON DELETE CASCADE nie działa.
+    /// Opens a connection and turns foreign keys on. PRAGMA foreign_keys is scoped to a single
+    /// connection, so it has to be set every time or ON DELETE CASCADE silently does nothing.
     /// </summary>
     private async Task<SqliteConnection> OpenConnectionAsync()
     {
@@ -424,8 +424,8 @@ public class LocalDbService : ILocalDbService
     }
 
     /// <summary>
-    /// Ustawienia są czytane na każdą instalację i każdą okładkę, więc trzymamy je w pamięci.
-    /// Zwracana jest kopia, bo wołający mutują AppSettings (np. podmieniają wykryty RootFolder).
+    /// Settings are read for every install and every cover, so they are kept in memory.
+    /// A copy is returned because callers mutate AppSettings (e.g. to store a detected RootFolder).
     /// </summary>
     public async Task<AppSettings> GetSettingsAsync()
     {

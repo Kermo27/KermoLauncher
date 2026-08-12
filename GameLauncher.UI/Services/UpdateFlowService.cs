@@ -40,7 +40,8 @@ public class UpdateFlowService : IUpdateFlowService
     {
         try
         {
-            var path = await DownloadAsync(update);
+            var path = await _autoUpdateService.DownloadUpdateAsync(
+                update, new Progress<double>(p => DownloadProgress?.Invoke(p)));
 
             var restart = await _dialogService.ShowConfirmAsync(
                 _l["Updates.ReadyTitle"],
@@ -65,17 +66,5 @@ public class UpdateFlowService : IUpdateFlowService
             _notificationService.Show(_l["Updates.InstallFailedTitle"],
                 string.Format(_l["Updates.InstallFailedMessage"], ex.Message), NotificationType.Error);
         }
-    }
-
-    private async Task<string> DownloadAsync(UpdateInfo update)
-    {
-        var cachedPath = _autoUpdateService.GetCachedDownloadPath(update);
-        if (File.Exists(cachedPath))
-        {
-            _logger.LogInformation("Reusing cached update file {Path}", cachedPath);
-            return cachedPath;
-        }
-
-        return await _autoUpdateService.DownloadUpdateAsync(update, new Progress<double>(p => DownloadProgress?.Invoke(p)));
     }
 }

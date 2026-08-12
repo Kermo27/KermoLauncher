@@ -64,13 +64,13 @@ public partial class ToastItemViewModel : ObservableObject, IDisposable
     {
         try
         {
-            // Token przekazany do Delay — wcześniej opóźnienie dobiegało końca nawet po zamknięciu toasta.
+            // The token goes into Delay: the wait used to run to completion even after the toast closed.
             await Task.Delay(GetDurationMs(Type), _cts.Token);
             await _dispatcher.InvokeAsync(() => _owner.RemoveToast(this));
         }
         catch (OperationCanceledException)
         {
-            // Toast zamknięty ręcznie albo wypchnięty przez nowsze powiadomienia.
+            // The toast was closed by hand or pushed out by newer notifications.
         }
     }
 
@@ -148,8 +148,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Wszystko, co dotyka sieci i dysku, dzieje się tutaj, a nie w konstruktorze —
-    /// wyjątki mają gdzie wypłynąć, a start okna nie czeka na I/O.
+    /// Everything that touches the network or disk happens here rather than in the constructor,
+    /// so exceptions have somewhere to surface and showing the window does not wait on I/O.
     /// </summary>
     public async Task InitializeAsync(CancellationToken ct = default)
     {
@@ -247,7 +247,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception)
         {
-            // Brak sieci nie może przewrócić startu aplikacji.
+            // A missing network must not take the application startup down with it.
         }
     }
 

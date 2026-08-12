@@ -5,8 +5,8 @@ using Avalonia.Threading;
 namespace GameLauncher.UI.Services;
 
 /// <summary>
-/// Pozwala serwisom poprosić o zamknięcie aplikacji bez sięgania po Environment.Exit,
-/// który ubijał proces w trakcie zapisów do bazy i trwających pobrań.
+/// Lets services ask for shutdown without reaching for Environment.Exit, which used to kill
+/// the process in the middle of database writes and running downloads.
 /// </summary>
 public interface IAppShutdown
 {

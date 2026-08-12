@@ -17,8 +17,8 @@ public class ViewLocator : IDataTemplate
             return new TextBlock { Text = $"Not Found: {name}" };
         }
 
-        // Widoki mogą mieć zależności, więc najpierw pytamy kontener,
-        // a bezparametrowy konstruktor jest tylko awaryjnym wyjściem.
+        // Views can have dependencies, so the container is asked first and the
+        // parameterless constructor is only a fallback.
         var fromContainer = App.Services?.GetService(type);
         if (fromContainer is Control resolved) return resolved;
 

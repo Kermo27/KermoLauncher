@@ -20,7 +20,7 @@ public partial class App : Application
 
     private ServiceProvider? _provider;
 
-    /// <summary>Wypełniane przez Program.Main przed startem Avalonii.</summary>
+    /// <summary>Filled in by Program.Main before the Avalonia lifetime starts.</summary>
     public static (LocalDbService Db, AppSettings Settings)? Startup { get; set; }
 
     public static IServiceProvider? Services { get; private set; }
@@ -96,8 +96,8 @@ public partial class App : Application
             services.AddSingleton<ILocalDbService, LocalDbService>();
         }
 
-        // Jedna rejestracja: wcześniejszy singleton był nadpisywany przez typed client,
-        // więc realnie działała tylko druga rejestracja.
+        // One registration only: the earlier singleton was overwritten by the typed client,
+        // so just the second one actually took effect.
         services.AddHttpClient<IWebDavService, WebDavService>(c =>
         {
             c.Timeout = TimeSpan.FromSeconds(120);

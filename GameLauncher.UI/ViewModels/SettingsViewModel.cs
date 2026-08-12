@@ -15,8 +15,8 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
 
-    // Ustawienia są rozłożone na własne właściwości obserwowalne. Wcześniej XAML bindował
-    // wprost do AppSettings, które nie zgłasza zmian, więc część pól nie odświeżała widoku.
+    // Settings are spread over observable properties. XAML used to bind straight to AppSettings,
+    // which raises no change notifications, so some fields never refreshed the view.
     [ObservableProperty]
     private string _installFolder = "";
 
@@ -68,7 +68,7 @@ public partial class SettingsViewModel : ViewModelBase
         _notificationService = notificationService;
     }
 
-    /// <summary>Odczyt z bazy wyjęty z konstruktora, żeby błędy nie ginęły w niepodpiętym zadaniu.</summary>
+    /// <summary>The database read is kept out of the constructor so errors cannot vanish into an unobserved task.</summary>
     public async Task InitializeAsync()
     {
         var settings = await _db.GetSettingsAsync();

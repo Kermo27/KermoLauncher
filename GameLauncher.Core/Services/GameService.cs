@@ -56,7 +56,7 @@ public class GameService : IGameService
             }
             catch (ObjectDisposedException)
             {
-                // Instalacja zakończyła się w międzyczasie.
+                // The install already finished.
             }
         }
         return Task.CompletedTask;
@@ -159,8 +159,8 @@ public class GameService : IGameService
             var maxParallel = settings.MaxParallelDownloads > 0 ? settings.MaxParallelDownloads : 2;
             var completedBytes = 0L;
 
-            // Bajty plików w trakcie pobierania trzymamy osobno, żeby suma była poprawna
-            // niezależnie od kolejności, w jakiej równoległe pobrania raportują postęp.
+            // Bytes of in-flight files are tracked separately so the total stays correct
+            // no matter what order the parallel downloads report progress in.
             var inFlight = new ConcurrentDictionary<string, long>();
             long CurrentBytes() => Volatile.Read(ref completedBytes) + inFlight.Values.Sum();
 
@@ -187,8 +187,8 @@ public class GameService : IGameService
 
                     await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, fileToken);
 
-                    // Kolejność ma znaczenie: najpierw zdejmujemy z „w trakcie”, potem dodajemy do sumy,
-                    // żeby chwilowo zaniżyć, a nigdy nie przekroczyć całości.
+                    // Order matters: drop from in-flight before adding to the total, so the
+                    // reported sum can dip for a moment but never exceed the real one.
                     inFlight.TryRemove(file.Path, out _);
                     Interlocked.Add(ref completedBytes, file.SizeBytes);
                     pump.Report(CurrentBytes());
@@ -428,7 +428,7 @@ public class GameService : IGameService
             {
                 var exited = process.WaitForExitAsync(exitCts.Token);
 
-                // Jeden timer na całą sesję zamiast nowego Task.Delay w każdej iteracji.
+                // One timer for the whole session instead of a fresh Task.Delay per iteration.
                 while (!process.HasExited)
                 {
                     if (!await timer.WaitForNextTickAsync(CancellationToken.None)) break;
@@ -443,7 +443,7 @@ public class GameService : IGameService
                 }
                 catch (OperationCanceledException)
                 {
-                    // Proces zakończył się w trakcie oczekiwania.
+                    // The process exited while we were waiting.
                 }
             }
         }
@@ -573,9 +573,9 @@ public class GameService : IGameService
     }
 
     /// <summary>
-    /// Zbiera raporty postępu z równoległych pobrań i obsługuje je w jednym konsumencie.
-    /// Dzięki temu zdarzenia lecą z jednego wątku, a zapisy do bazy są ograniczone
-    /// do jednego na 500 ms i faktycznie oczekiwane, zamiast odpalane jako fire-and-forget.
+    /// Collects progress reports from parallel downloads and handles them in a single consumer,
+    /// so events are raised from one thread and database writes are throttled to one per 500 ms
+    /// and actually awaited instead of being fired and forgotten.
     /// </summary>
     private sealed class ProgressPump : IAsyncDisposable
     {
@@ -633,7 +633,7 @@ public class GameService : IGameService
             _onTaskUpdated?.Invoke(snapshot);
         }
 
-        /// <summary>Domyka kanał i gwarantuje jedno zdarzenie z końcową liczbą bajtów.</summary>
+        /// <summary>Closes the channel and guarantees one final event with the total byte count.</summary>
         public async Task FlushAsync(long finalBytes)
         {
             _channel.Writer.TryComplete();
@@ -650,7 +650,7 @@ public class GameService : IGameService
             }
             catch (Exception)
             {
-                // Ścieżka błędu: właściwy wyjątek instalacji propaguje się z FlushAsync.
+                // Error path: the real install exception propagates from FlushAsync.
             }
         }
     }

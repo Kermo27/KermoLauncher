@@ -8,8 +8,8 @@ class Program
 {
     public static int Main(string[] args)
     {
-        // Ustawienia czytamy przed startem Avalonii — w Main nie ma jeszcze pętli komunikatów,
-        // więc oczekiwanie nie może się zakleszczyć, a wątek UI nie czeka na dysk.
+        // Settings are read before Avalonia starts: Main has no message loop yet, so blocking
+        // here cannot deadlock and the UI thread never waits on the disk.
         App.Startup = LoadSettingsAsync().GetAwaiter().GetResult();
 
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

@@ -94,19 +94,23 @@ public static class ZipHelper
         return prefix;
     }
 
-    public static async Task VerifyChecksumAsync(string filePath, string expectedSha256, CancellationToken ct = default)
+    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct = default)
     {
-        await Task.Run(() =>
+        return await Task.Run(() =>
         {
             using var sha256 = SHA256.Create();
             using var stream = File.OpenRead(filePath);
             var hash = sha256.ComputeHash(stream);
-            var actual = Convert.ToHexString(hash).ToLowerInvariant();
-            
-            if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException($"Checksum mismatch. Expected: {expectedSha256}, Got: {actual}");
-            }
+            return Convert.ToHexString(hash).ToLowerInvariant();
         }, ct);
+    }
+
+    public static async Task VerifyChecksumAsync(string filePath, string expectedSha256, CancellationToken ct = default)
+    {
+        var actual = await ComputeSha256Async(filePath, ct);
+        if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Checksum mismatch. Expected: {expectedSha256}, Got: {actual}");
+        }
     }
 }

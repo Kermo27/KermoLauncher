@@ -4,8 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace GameLauncher.UI.Services;
 
 /// <summary>
-/// Logger plikowy trzymający jeden otwarty strumień. Wcześniej każda linia otwierała
-/// i zamykała plik pod globalną blokadą, co przy pobieraniu potrafiło zdławić wątki.
+/// A file logger that keeps one stream open. Every line used to open and close the file under a
+/// global lock, which could stall threads while downloads were running.
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
@@ -30,7 +30,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         }
         catch
         {
-            // Logowanie nie może wywrócić aplikacji.
+            // Logging must never bring the application down.
         }
     }
 
@@ -49,7 +49,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             }
             catch
             {
-                // Nic sensownego nie da się już zrobić.
+                // Nothing sensible is left to do at this point.
             }
             _writer = null;
         }
@@ -76,7 +76,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             }
             catch
             {
-                // Logowanie nie może wywrócić aplikacji.
+                // Logging must never bring the application down.
             }
         }
     }

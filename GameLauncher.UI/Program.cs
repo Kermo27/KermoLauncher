@@ -7,9 +7,9 @@ class Program
 {
     public static int Main(string[] args)
     {
-        // Ustawienia czytamy tutaj, przed uruchomieniem Avalonii: w Main nie ma jeszcze
-        // pętli komunikatów ani kontekstu synchronizacji, więc oczekiwanie na zadanie
-        // nie może się zakleszczyć — inaczej niż w OnFrameworkInitializationCompleted.
+        // Settings are read here, before Avalonia starts: Main has no message loop and no
+        // synchronization context yet, so blocking on a task cannot deadlock the way it
+        // would inside OnFrameworkInitializationCompleted.
         App.Startup = StartupContext.LoadAsync().GetAwaiter().GetResult();
 
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

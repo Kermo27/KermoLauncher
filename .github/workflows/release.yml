@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  # A manual run builds the assets for inspection without creating a release.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the v (e.g. 1.0.6)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            ext: '.exe'
+          - os: ubuntu-latest
+            rid: linux-x64
+            ext: ''
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test -c Release --nologo
+
+      - name: Publish launcher
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          dotnet publish GameLauncher.UI -c Release -r ${{ matrix.rid }} --self-contained \
+            -p:PublishSingleFile=true -p:Version="$VERSION" -o publish/launcher
+          mkdir -p assets
+          mv "publish/launcher/KermoLauncher${{ matrix.ext }}" \
+             "assets/KermoLauncher-$VERSION-${{ matrix.rid }}${{ matrix.ext }}"
+
+      # The Admin Tool stays Windows-only, like every release so far. A Linux archive would have
+      # "linux" in its name and clients before 1.0.6 would mistake it for the launcher binary.
+      - name: Publish Admin Tool
+        if: matrix.rid == 'win-x64'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          dotnet publish GameLauncher.AdminTool -c Release -r ${{ matrix.rid }} --self-contained \
+            -p:PublishSingleFile=true -p:Version="$VERSION" -o publish/admin
+          7z a "assets/KermoLauncher.AdminTool-$VERSION-${{ matrix.rid }}.zip" ./publish/admin/*
+
+      - name: Checksums
+        run: |
+          cd assets
+          sha256sum * > "../sums-${{ matrix.rid }}.txt"
+          cat "../sums-${{ matrix.rid }}.txt"
+          mv "../sums-${{ matrix.rid }}.txt" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets-${{ matrix.rid }}
+          path: assets/*
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Collect release files
+        run: |
+          mkdir -p assets
+          find dist -type f -name 'KermoLauncher*' -exec cp {} assets/ \;
+          cat dist/assets-*/sums-*.txt > assets/SHA256SUMS
+          echo "--- SHA256SUMS ---"
+          cat assets/SHA256SUMS
+          ls -la assets
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+
+          # Upload order matters: a client before 1.0.6 takes the first file that matches its
+          # platform, so the launcher binaries have to go up before anything else.
+          LAUNCHERS=$(ls assets/KermoLauncher-*-win-x64.exe assets/KermoLauncher-*-linux-x64 2>/dev/null)
+          REST=$(ls assets/SHA256SUMS assets/KermoLauncher.AdminTool-* 2>/dev/null)
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $LAUNCHERS --clobber
+          else
+            gh release create "$TAG" \
+              --title "KermoLauncher ${TAG#v}" \
+              --generate-notes \
+              --verify-tag \
+              $LAUNCHERS
+          fi
+
+          gh release upload "$TAG" $REST --clobber

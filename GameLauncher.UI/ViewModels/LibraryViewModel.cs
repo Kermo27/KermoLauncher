@@ -23,7 +23,7 @@ public partial class LibraryViewModel : ViewModelBase
 
     public ObservableCollection<GameItemViewModel> Games { get; } = [];
 
-    /// <summary>Widok listy. Przeliczany raz na zmianę filtra, nie przy każdym odczycie.</summary>
+    /// <summary>The list view. Recomputed once per filter change, not on every read.</summary>
     public ObservableCollection<GameItemViewModel> FilteredGames { get; } = [];
 
     public ObservableCollection<TagFilterViewModel> Tags { get; } = [];
@@ -48,7 +48,7 @@ public partial class LibraryViewModel : ViewModelBase
 
     private const string AllTag = "All";
 
-    /// <summary>Pusta tablica po zakończeniu ładowania, żeby szkielety nie wisiały w drzewie wizualnym.</summary>
+    /// <summary>Empty once loading is done, so the skeletons do not linger in the visual tree.</summary>
     public object[] SkeletonItems => IsLoading ? _skeletons : [];
 
     public string[] SortOptions => [L["Library.SortName"], L["Library.SortPlayTime"], L["Library.SortSize"]];
@@ -105,7 +105,7 @@ public partial class LibraryViewModel : ViewModelBase
             }
             catch
             {
-                // Synchronizacja katalogu jest opcjonalna — pokazujemy to, co mamy lokalnie.
+                // Syncing the catalog is optional; whatever is stored locally is shown instead.
             }
 
             var games = await _gameService.GetAllGamesAsync();
@@ -240,7 +240,7 @@ public partial class LibraryViewModel : ViewModelBase
                 return;
             }
 
-            // Gra doszła w trakcie sesji — dociągamy metadane bez blokowania wątku UI.
+            // The game appeared mid-session, so its metadata is fetched off the UI thread.
             _ = AddGameAsync(state);
         });
     }
@@ -301,8 +301,8 @@ public partial class LibraryViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Filtrowanie po każdym znaku przeliczało całą listę; 250 ms zwłoki wystarcza,
-    /// by pisanie nie zamrażało interfejsu przy dużym katalogu.
+    /// Filtering on every keystroke recomputed the whole list; a 250 ms delay is enough to keep
+    /// typing from freezing the interface on a large catalog.
     /// </summary>
     partial void OnSearchTextChanged(string value)
     {
@@ -323,7 +323,7 @@ public partial class LibraryViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Użytkownik wpisał kolejny znak.
+            // The user typed another character.
         }
     }
 

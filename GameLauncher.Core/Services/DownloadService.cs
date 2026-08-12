@@ -111,7 +111,7 @@ public class DownloadService : IDownloadService, IDisposable
         return Task.CompletedTask;
     }
 
-    /// <summary>Anulowanie może wyścigować się ze zwalnianiem tokenu w bloku finally.</summary>
+    /// <summary>Cancellation can race with the token source being disposed in a finally block.</summary>
     private static void TryCancel(CancellationTokenSource? cts)
     {
         if (cts == null) return;
@@ -121,7 +121,7 @@ public class DownloadService : IDownloadService, IDisposable
         }
         catch (ObjectDisposedException)
         {
-            // Pobieranie już się zakończyło.
+            // The download already finished.
         }
     }
 

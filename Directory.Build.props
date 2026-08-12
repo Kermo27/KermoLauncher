@@ -15,4 +15,16 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <Optimize>true</Optimize>
   </PropertyGroup>
+
+  <!--
+    A single-file publish has to carry the native libraries (Skia, HarfBuzz, SQLite) inside it.
+    Otherwise .so/.dll files are left next to the binary, and an update that replaces only the
+    binary leaves the native libraries behind at the previous version.
+  -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
 </Project>

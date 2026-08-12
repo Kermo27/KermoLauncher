@@ -5,10 +5,10 @@ public record NextcloudConfig(
     string ShareToken
 )
 {
-    /// <summary>Katalog bazowy w udostępnieniu: "" gdy metadata.json leży w korzeniu, "Games" gdy w podfolderze. Wykrywany automatycznie.</summary>
+    /// <summary>Base folder inside the share: "" when metadata.json sits in the root, "Games" when in a subfolder. Detected automatically.</summary>
     public string RootFolder { get; init; } = "";
 
-    /// <summary>Serwer wyciągnięty z linku udostępniania (scheme://host[:port]).</summary>
+    /// <summary>Server taken from the share link (scheme://host[:port]).</summary>
     public string ServerBase
     {
         get
@@ -21,7 +21,7 @@ public record NextcloudConfig(
         }
     }
 
-    /// <summary>Token WebDAV: z pola ShareToken albo wyciągnięty z linku (/s/&lt;token&gt;).</summary>
+    /// <summary>WebDAV token: from the ShareToken field or extracted from the link (/s/&lt;token&gt;).</summary>
     public string DavToken
     {
         get
@@ -44,7 +44,7 @@ public record NextcloudConfig(
         }
     }
 
-    /// <summary>Baza WebDAV publicznego udostępnienia: https://server/public.php/dav/files/&lt;token&gt;[/RootFolder]</summary>
+    /// <summary>WebDAV base of the public share: https://server/public.php/dav/files/&lt;token&gt;[/RootFolder]</summary>
     public string WebDavBase
     {
         get
@@ -73,7 +73,7 @@ public class AppSettings
     public string Theme { get; set; } = "System";
     public string Language { get; set; } = "System";
 
-    /// <summary>Kopia płytka wystarcza — NextcloudConfig jest rekordem niemutowalnym.</summary>
+    /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
     public AppSettings Clone() => new()
     {
         Nextcloud = Nextcloud,

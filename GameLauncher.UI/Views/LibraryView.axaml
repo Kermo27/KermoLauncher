@@ -34,7 +34,7 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <!-- Zaznaczony filtr jest stanem elementu, więc kolor bierze styl, nie konwerter -->
+        <!-- A selected filter is item state, so the colour comes from a style, not a converter -->
         <Style Selector="Button.TagChip.selected">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -43,7 +43,7 @@
             <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
 
-        <!-- Plakietka statusu: kolory z motywu, dobierane klasą -->
+        <!-- Status pill: colours come from the theme and are picked by class -->
         <Style Selector="Border.StatusPill">
             <Setter Property="Background" Value="{DynamicResource PillNeutralBgBrush}"/>
         </Style>
@@ -170,7 +170,7 @@
         <!-- ============ GAMES GRID ============ -->
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid>
-                <!-- Szkielety: kolekcja jest pusta po zakończeniu ładowania, więc nic nie zostaje w drzewie -->
+                <!-- Skeletons: the collection is empty once loading ends, so nothing stays in the tree -->
                 <ItemsControl ItemsSource="{Binding SkeletonItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -204,7 +204,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Prawdziwe karty: ItemsRepeater wirtualizuje, WrapPanel budował wszystkie naraz -->
+                <!-- Real cards: ItemsRepeater virtualizes, WrapPanel built every card up front -->
                 <ItemsRepeater IsVisible="{Binding !IsLoading}"
                                ItemsSource="{Binding FilteredGames}">
                     <ItemsRepeater.Layout>

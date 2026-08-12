@@ -26,8 +26,8 @@ KermoLauncher/
 
 ## Requirements
 
-- .NET 8 SDK
-- Windows 10/11
+- .NET 8 SDK (to build)
+- Windows 10/11 or Linux x64 (to run)
 
 ## Building
 
@@ -35,11 +35,31 @@ KermoLauncher/
 dotnet build -c Release
 ```
 
-To produce a self-contained Windows build:
+To produce a single-file self-contained build (`win-x64` or `linux-x64`):
 
 ```bash
-dotnet publish GameLauncher.UI -c Release -r win-x64 --self-contained
+dotnet publish GameLauncher.UI -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
 ```
+
+Single-file publishing bundles the native libraries (Skia, HarfBuzz, SQLite) inside the
+executable, so the result is one file with no loose `.so`/`.dll` next to it. The launcher's
+self-update relies on that: it replaces exactly one file.
+
+## Releases
+
+Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which
+builds both platforms, derives the version from the tag, and publishes:
+
+- `KermoLauncher-<version>-win-x64.exe`
+- `KermoLauncher-<version>-linux-x64` (run `chmod +x` after downloading — GitHub release assets
+  carry no file permissions; in-app updates set the bit themselves)
+- `KermoLauncher.AdminTool-<version>-win-x64.zip`
+- `SHA256SUMS` — verified by the launcher before it installs an update
+
+The workflow can also be run manually (**Run workflow**) to build the assets without creating a
+release. Two constraints keep older installs able to update: the Windows asset must stay a single
+`.exe`, and no other `.exe` may be added to a release, because clients before 1.0.6 pick the first
+matching file they find.
 
 ## Nextcloud library layout
 
@@ -103,7 +123,11 @@ When installing, the launcher downloads only files that changed since the last i
 ## App data
 
 Settings, library and install state are stored in SQLite:
-`%LOCALAPPDATA%\KermoLauncher\launcher.db` on Windows (migration from the legacy `GameLauncher` path happens automatically).
+
+- Windows: `%LOCALAPPDATA%\KermoLauncher\launcher.db` (migration from the legacy `GameLauncher` path happens automatically)
+- Linux: `~/.local/share/KermoLauncher/launcher.db`
+
+The Nextcloud share link lives only in that database — it is never part of the repo or a build.
 
 ## License
 

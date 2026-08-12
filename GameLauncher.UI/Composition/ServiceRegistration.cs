@@ -10,8 +10,8 @@ using Microsoft.Extensions.Logging;
 namespace GameLauncher.UI.Composition;
 
 /// <summary>
-/// Jedyne miejsce, w którym składany jest graf zależności. Wyciągnięte z App, żeby
-/// dało się je zweryfikować testem bez uruchamiania Avalonii.
+/// The single place where the dependency graph is put together. Pulled out of App so a test
+/// can verify it without starting Avalonia.
 /// </summary>
 public static class ServiceRegistration
 {
@@ -30,8 +30,8 @@ public static class ServiceRegistration
         services.AddSingleton<ILocalizationService, LocalizationService>();
         services.AddSingleton<ILocalDbService>(startup.Db);
 
-        // Typed clients — jedna rejestracja na serwis. Pobrania używają ResponseHeadersRead,
-        // więc Timeout ogranicza tylko czas do nagłówków, nie transfer pliku.
+        // Typed clients, one registration per service. Downloads use ResponseHeadersRead, so
+        // Timeout only caps the time to headers, not the transfer itself.
         services.AddHttpClient<IWebDavService, WebDavService>(c =>
         {
             c.Timeout = TimeSpan.FromSeconds(120);
@@ -43,8 +43,8 @@ public static class ServiceRegistration
             c.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
         });
 
-        // Nazwany klient, bo cache okładek musi żyć w jednym singletonie,
-        // a typed client rejestruje się jako transient.
+        // A named client, because the cover cache has to live in a single singleton while a
+        // typed client would be registered as transient.
         services.AddHttpClient(nameof(ScreenshotService), c =>
         {
             c.Timeout = TimeSpan.FromSeconds(30);

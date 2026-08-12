@@ -7,8 +7,8 @@ namespace GameLauncher.UI.Services;
 public interface IScreenshotService
 {
     /// <summary>
-    /// Zwraca surowe bajty okładki, a nie gotową bitmapę — bitmapa jest zasobem
-    /// niezarządzanym i musi należeć do konkretnej karty, żeby dała się zwolnić.
+    /// Returns raw cover bytes rather than a ready bitmap: a bitmap is an unmanaged resource
+    /// and has to be owned by one card so that it can be disposed.
     /// </summary>
     Task<byte[]?> LoadCoverAsync(Game game, CancellationToken ct = default);
 }
@@ -50,7 +50,7 @@ public class ScreenshotService : IScreenshotService
 
         var bytes = await DownloadAsync(url, ct);
 
-        // Nieudane pobrania nie trafiają do cache'u, więc odświeżenie biblioteki próbuje ponownie.
+        // Failed downloads are not cached, so refreshing the library retries them.
         if (bytes != null) await StoreAsync(url, bytes, ct);
         return bytes;
     }

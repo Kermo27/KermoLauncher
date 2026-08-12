@@ -9,8 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace GameLauncher.UI.ViewModels;
 
 /// <summary>
-/// Tworzy karty gier z pełnym zestawem zależności — dzięki temu komendy siedzą na elemencie,
-/// a nie na widoku listy, i XAML nie musi się wspinać po drzewie do DataContextu rodzica.
+/// Builds game cards with their full set of dependencies, which keeps the commands on the item
+/// instead of the list view so XAML never has to climb the tree to a parent DataContext.
 /// </summary>
 public interface IGameItemViewModelFactory
 {
@@ -102,7 +102,7 @@ public partial class GameItemViewModel : ViewModelBase
         _logger = logger;
     }
 
-    /// <summary>Startuje pobranie okładki. Zadanie jest trzymane, żeby wyjątki nie ginęły.</summary>
+    /// <summary>Starts the cover download. The task is kept so its exceptions cannot go unobserved.</summary>
     public void BeginLoadCover()
     {
         if (_coverLoad != null || Game.ScreenshotUrls.Length == 0) return;
@@ -116,7 +116,7 @@ public partial class GameItemViewModel : ViewModelBase
             var bytes = await _screenshots.LoadCoverAsync(Game, _cts.Token);
             if (bytes == null || _cts.IsCancellationRequested) return;
 
-            // Bitmapa powstaje per karta, więc każda karta może ją bezpiecznie zwolnić.
+            // The bitmap is created per card, so each card can safely dispose its own.
             using var ms = new MemoryStream(bytes);
             var bitmap = new Bitmap(ms);
 
@@ -134,7 +134,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Karta zniknęła z listy.
+            // The card left the list.
         }
         catch (Exception ex)
         {
@@ -176,7 +176,7 @@ public partial class GameItemViewModel : ViewModelBase
 
     public bool CanUpdate => IsUpdateAvailable && !IsBusy;
 
-    // Klasy dla plakietki statusu — kolory żyją w motywie, nie w konwerterach.
+    // Classes for the status pill; the colours live in the theme, not in converters.
     public bool IsStatusInstalled => Status == InstallStatus.Installed;
     public bool IsStatusBusy => Status is InstallStatus.Downloading or InstallStatus.Installing;
     public bool IsStatusFailed => Status == InstallStatus.Failed;
@@ -186,8 +186,8 @@ public partial class GameItemViewModel : ViewModelBase
         InstallStatus.NotInstalled => L["Library.Status.NotInstalled"],
         InstallStatus.Downloading => L["Library.Status.Downloading"],
         InstallStatus.Installing => L["Library.Status.Installing"],
-        // O dostępnej aktualizacji informuje osobna plakietka, więc pigułka statusu
-        // trzyma się stanu instalacji — inaczej ten sam napis pojawia się dwa razy.
+        // A separate badge announces an available update, so the status pill sticks to the
+        // install state; otherwise the same message shows up twice on one card.
         InstallStatus.Installed => L["Library.Status.Installed"],
         InstallStatus.Failed => L["Library.Status.Failed"],
         _ => L["Library.Status.Unknown"]
@@ -264,7 +264,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Anulowane przez użytkownika — osobne powiadomienie leci z CancelDownload.
+            // Cancelled by the user; CancelDownload raises its own notification.
         }
         catch (Exception ex)
         {
@@ -288,7 +288,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Anulowane przez użytkownika.
+            // Cancelled by the user.
         }
         catch (Exception ex)
         {
@@ -371,8 +371,8 @@ public enum LibrarySortMode
 }
 
 /// <summary>
-/// Chip filtra tagów. Zaznaczenie jest stanem elementu, więc XAML podpina je klasą stylu
-/// zamiast liczyć kolor konwerterem na każdą zmianę.
+/// A tag filter chip. Selection is item state, so XAML binds it to a style class instead of
+/// recomputing a colour through a converter on every change.
 /// </summary>
 public partial class TagFilterViewModel : ObservableObject
 {

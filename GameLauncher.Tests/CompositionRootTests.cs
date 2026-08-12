@@ -8,8 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 /// <summary>
-/// Graf zależności był dotąd sprawdzany dopiero przy uruchomieniu aplikacji.
-/// Te testy wyłapują błędy rejestracji bez potrzeby wystawiania okna.
+/// The dependency graph used to be checked only by starting the application. These tests catch
+/// registration mistakes without putting a window on screen.
 /// </summary>
 public class CompositionRootTests : IDisposable
 {
@@ -59,8 +59,8 @@ public class CompositionRootTests : IDisposable
         var services = new ServiceCollection();
         services.AddLauncherServices(StartupContext.ForTesting(_dbPath), "Tests/1.0");
 
-        // Wcześniej AddSingleton i AddHttpClient rejestrowały ten sam interfejs dwa razy,
-        // więc realnie działała tylko ostatnia rejestracja.
+        // AddSingleton and AddHttpClient used to register the same interface twice, so only the
+        // last registration actually took effect.
         Assert.Single(services, d => d.ServiceType == typeof(IWebDavService));
     }
 

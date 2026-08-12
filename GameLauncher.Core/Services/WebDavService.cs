@@ -63,8 +63,8 @@ public class WebDavService : IWebDavService
     }
 
     /// <summary>
-    /// Wykrywa katalog bazowy udostępnienia: sprawdza czy metadata.json leży w korzeniu,
-    /// a jeśli nie - w podfolderze "Games". Zwraca konfigurację z ustawionym RootFolder.
+    /// Detects the base folder of the share: checks whether metadata.json sits in the root and,
+    /// if not, in a "Games" subfolder. Returns the config with RootFolder filled in.
     /// </summary>
     public async Task<NextcloudConfig> ResolveConfigAsync(NextcloudConfig config, CancellationToken ct = default)
     {

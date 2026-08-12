@@ -45,7 +45,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
 
-        <!-- Obramowanie toasta zależy od typu; kolory z motywu, nie z konwertera -->
+        <!-- The toast border depends on its type; colours come from the theme, not a converter -->
         <Style Selector="Border.toast">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         </Style>

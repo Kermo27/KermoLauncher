@@ -6,7 +6,7 @@
     <AssemblyName>KermoLauncher</AssemblyName>
     <Product>KermoLauncher</Product>
     <OutputType>WinExe</OutputType>
-    <!-- Bindingi kompilowane: błędy w ścieżkach wychodzą na etapie budowania, bez refleksji w czasie działania -->
+    <!-- Compiled bindings: broken paths fail the build instead of using reflection at runtime -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>

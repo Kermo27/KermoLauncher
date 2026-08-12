@@ -4,8 +4,8 @@ using GameLauncher.Core.Services;
 namespace GameLauncher.UI.Services;
 
 /// <summary>
-/// Stan wczytany zanim wstanie interfejs. Dzięki temu kontener DI nie wykonuje wejścia/wyjścia,
-/// a motyw i język są znane od pierwszej klatki — bez blokowania wątku UI.
+/// State loaded before the UI comes up, which keeps I/O out of the DI container and makes the
+/// theme and language known from the first frame without blocking the UI thread.
 /// </summary>
 public sealed class StartupContext
 {
@@ -18,7 +18,7 @@ public sealed class StartupContext
         Settings = settings;
     }
 
-    /// <summary>Kontekst na bazie tymczasowej, do sprawdzania grafu zależności w testach.</summary>
+    /// <summary>Context backed by a throwaway database, for checking the dependency graph in tests.</summary>
     public static StartupContext ForTesting(string dbPath) =>
         new(new LocalDbService(dbPath), new AppSettings());
 
@@ -33,7 +33,7 @@ public sealed class StartupContext
         }
         catch
         {
-            // Uszkodzona baza nie może blokować startu — lecimy na domyślnych ustawieniach.
+            // A corrupted database must not block startup, so defaults are used instead.
             settings = new AppSettings();
         }
 

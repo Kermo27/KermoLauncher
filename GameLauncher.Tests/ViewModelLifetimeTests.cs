@@ -6,8 +6,8 @@ using GameLauncher.UI.ViewModels;
 using Xunit;
 
 /// <summary>
-/// ILocalizationService jest singletonem, więc ViewModel, który nie zdejmie subskrypcji
-/// LanguageChanged, zostaje w pamięci do końca życia procesu.
+/// ILocalizationService is a singleton, so a ViewModel that never drops its LanguageChanged
+/// subscription stays in memory for the lifetime of the process.
 /// </summary>
 public class ViewModelLifetimeTests
 {
