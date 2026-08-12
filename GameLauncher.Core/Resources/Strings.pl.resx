@@ -144,6 +144,20 @@
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Prefiks Wine:</value></data>
   <data name="Settings.Wine.PrefixPlaceholder" xml:space="preserve"><value>Domyślnie: ~/.local/share/KermoLauncher/wineprefix</value></data>
   <data name="Settings.Wine.BrowsePrefix" xml:space="preserve"><value>Wybierz prefiks Wine</value></data>
+  <data name="Onboarding.Title" xml:space="preserve"><value>Witaj</value></data>
+  <data name="Onboarding.Subtitle" xml:space="preserve"><value>Krótka konfiguracja, zanim otworzy się biblioteka.</value></data>
+  <data name="Onboarding.Welcome.Body" xml:space="preserve"><value>Wybierz motyw i język. Oba możesz później zmienić w Ustawieniach.</value></data>
+  <data name="Onboarding.Folder.Body" xml:space="preserve"><value>Wybierz folder instalacji gier. Musi być zapisywalny.</value></data>
+  <data name="Onboarding.Source.Body" xml:space="preserve"><value>Wklej prywatny link udostępniania Nextcloud. Zostaje tylko na tym komputerze, nigdy w pakiecie aplikacji.</value></data>
+  <data name="Onboarding.Next" xml:space="preserve"><value>Dalej</value></data>
+  <data name="Onboarding.Back" xml:space="preserve"><value>Wstecz</value></data>
+  <data name="Onboarding.Finish" xml:space="preserve"><value>Otwórz bibliotekę</value></data>
+  <data name="Onboarding.BrowseTitle" xml:space="preserve"><value>Wybierz folder instalacji</value></data>
+  <data name="Onboarding.FolderEmpty" xml:space="preserve"><value>Wybierz folder instalacji, żeby kontynuować.</value></data>
+  <data name="Onboarding.FolderInvalid" xml:space="preserve"><value>Nie można użyć tego folderu: {0}</value></data>
+  <data name="Onboarding.FolderOk" xml:space="preserve"><value>Folder jest zapisywalny. Wolne miejsce: {0}</value></data>
+  <data name="Onboarding.SyncFailed" xml:space="preserve"><value>Konfiguracja zapisana, ale pierwsza synchronizacja nie powiodła się: {0}</value></data>
+  <data name="Onboarding.FinishFailed" xml:space="preserve"><value>Nie udało się dokończyć konfiguracji: {0}</value></data>
   <data name="Updates.DownloadingTitle" xml:space="preserve"><value>Pobieranie aktualizacji</value></data>
   <data name="Updates.DownloadingMessage" xml:space="preserve"><value>Nowa wersja jest pobierana w tle...</value></data>
   <data name="Updates.ReadyTitle" xml:space="preserve"><value>Aktualizacja gotowa</value></data>

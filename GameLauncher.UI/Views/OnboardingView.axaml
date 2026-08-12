@@ -1,0 +1,127 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GameLauncher.UI.ViewModels"
+             x:Class="GameLauncher.UI.Views.OnboardingView"
+             x:DataType="vm:OnboardingViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.Section">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="22"/>
+        </Style>
+        <Style Selector="TextBlock.FieldLabel">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.StepDot">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Background" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="Margin" Value="4,0"/>
+        </Style>
+        <Style Selector="Border.StepDot.active">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel Background="{DynamicResource WindowBgBrush}">
+        <Border MaxWidth="640" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Margin="24" Classes="Section">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                            HorizontalAlignment="Right" Margin="0,22,0,0">
+                    <Button Classes="ghost" Content="{Binding L[Onboarding.Back]}"
+                            Command="{Binding BackCommand}"
+                            IsVisible="{Binding CanGoBack}"
+                            IsEnabled="{Binding !IsBusy}"
+                            Padding="16,8"/>
+                    <Button Classes="primary" Content="{Binding PrimaryButtonText}"
+                            Command="{Binding PrimaryCommand}"
+                            IsEnabled="{Binding !IsBusy}"
+                            Padding="18,8"/>
+                </StackPanel>
+
+                <StackPanel Spacing="18">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="KermoLauncher" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                        <TextBlock Text="{Binding L[Onboarding.Title]}" FontSize="24" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding L[Onboarding.Subtitle]}" FontSize="13"
+                                   Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Border Classes="StepDot" Classes.active="{Binding IsWelcomeStep}"/>
+                        <Border Classes="StepDot" Classes.active="{Binding IsFolderStep}"/>
+                        <Border Classes="StepDot" Classes.active="{Binding IsSourceStep}"/>
+                    </StackPanel>
+
+                    <!-- Welcome -->
+                    <StackPanel Spacing="14" IsVisible="{Binding IsWelcomeStep}">
+                        <TextBlock Text="{Binding L[Onboarding.Welcome.Body]}" FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.General.Theme]}"
+                                       Classes="FieldLabel" Margin="0,8"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Classes="field" Margin="0,8"
+                                      ItemsSource="{Binding ThemeOptions}"
+                                      SelectedIndex="{Binding SelectedThemeIndex}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Settings.General.Language]}"
+                                       Classes="FieldLabel" Margin="0,8"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Classes="field" Margin="0,8"
+                                      ItemsSource="{Binding LanguageOptions}"
+                                      SelectedIndex="{Binding SelectedLanguageIndex}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Install folder -->
+                    <StackPanel Spacing="14" IsVisible="{Binding IsFolderStep}">
+                        <TextBlock Text="{Binding L[Onboarding.Folder.Body]}" FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Classes="field" Text="{Binding InstallFolder}"
+                                     Watermark="{Binding L[Settings.Folders.InstallPlaceholder]}"/>
+                            <Button Grid.Column="1" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                    Content="{Binding L[Settings.Browse]}"
+                                    Command="{Binding BrowseFolderCommand}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding FolderStatus}" FontSize="12" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+
+                    <!-- Nextcloud -->
+                    <StackPanel Spacing="14" IsVisible="{Binding IsSourceStep}">
+                        <TextBlock Text="{Binding L[Onboarding.Source.Body]}" FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                            <TextBox Grid.Row="0" Grid.Column="0" Classes="field"
+                                     Text="{Binding ShareUrl}"
+                                     Watermark="{Binding L[Settings.Nextcloud.ShareUrlPlaceholder]}"/>
+                            <Button Grid.Row="0" Grid.Column="1" Classes="ghost" Margin="10,0,0,0"
+                                    Padding="14,7"
+                                    Content="{Binding L[Settings.Nextcloud.TestConnection]}"
+                                    Command="{Binding TestConnectionCommand}"
+                                    IsEnabled="{Binding !IsBusy}"/>
+                            <TextBox Grid.Row="1" Grid.Column="0" Classes="field" Margin="0,10,0,0"
+                                     Text="{Binding ShareToken}"
+                                     Watermark="{Binding L[Settings.Nextcloud.ShareTokenPlaceholder]}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding ConnectionStatus}" FontSize="12" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   IsVisible="{Binding HasConnectionStatus}"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding Error}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DangerBrush}"
+                               IsVisible="{Binding HasError}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Panel>
+</UserControl>

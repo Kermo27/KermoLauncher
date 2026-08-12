@@ -144,6 +144,20 @@
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Wine prefix:</value></data>
   <data name="Settings.Wine.PrefixPlaceholder" xml:space="preserve"><value>Default: ~/.local/share/KermoLauncher/wineprefix</value></data>
   <data name="Settings.Wine.BrowsePrefix" xml:space="preserve"><value>Select Wine prefix</value></data>
+  <data name="Onboarding.Title" xml:space="preserve"><value>Welcome</value></data>
+  <data name="Onboarding.Subtitle" xml:space="preserve"><value>A short setup before your library opens.</value></data>
+  <data name="Onboarding.Welcome.Body" xml:space="preserve"><value>Pick a theme and language. You can change both later in Settings.</value></data>
+  <data name="Onboarding.Folder.Body" xml:space="preserve"><value>Choose where games will be installed. The folder must be writable.</value></data>
+  <data name="Onboarding.Source.Body" xml:space="preserve"><value>Paste your private Nextcloud share link. It stays only on this computer, never in the app package.</value></data>
+  <data name="Onboarding.Next" xml:space="preserve"><value>Continue</value></data>
+  <data name="Onboarding.Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Onboarding.Finish" xml:space="preserve"><value>Open library</value></data>
+  <data name="Onboarding.BrowseTitle" xml:space="preserve"><value>Select install folder</value></data>
+  <data name="Onboarding.FolderEmpty" xml:space="preserve"><value>Choose an install folder to continue.</value></data>
+  <data name="Onboarding.FolderInvalid" xml:space="preserve"><value>Cannot use this folder: {0}</value></data>
+  <data name="Onboarding.FolderOk" xml:space="preserve"><value>Folder is writable. Free space: {0}</value></data>
+  <data name="Onboarding.SyncFailed" xml:space="preserve"><value>Setup saved, but the first sync failed: {0}</value></data>
+  <data name="Onboarding.FinishFailed" xml:space="preserve"><value>Could not finish setup: {0}</value></data>
   <data name="Updates.DownloadingTitle" xml:space="preserve"><value>Downloading update</value></data>
   <data name="Updates.DownloadingMessage" xml:space="preserve"><value>The new version is being downloaded in the background...</value></data>
   <data name="Updates.ReadyTitle" xml:space="preserve"><value>Update ready</value></data>

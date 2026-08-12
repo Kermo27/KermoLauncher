@@ -83,11 +83,13 @@ public static class ServiceRegistration
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<OnboardingViewModel>();
 
         // Views
         services.AddSingleton<MainWindow>();
         services.AddTransient<LibraryView>();
         services.AddTransient<SettingsView>();
+        services.AddTransient<OnboardingView>();
 
         return services;
     }
