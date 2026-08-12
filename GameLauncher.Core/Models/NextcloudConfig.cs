@@ -82,6 +82,15 @@ public class AppSettings
     /// <summary>True until the user finishes (or is migrated past) the first-run wizard.</summary>
     public bool NeedsOnboarding => !OnboardingCompleted;
 
+    /// <summary>On Linux, run .exe/.bat games through Wine (or Proton pointed at by WineCommand).</summary>
+    public bool LaunchWindowsGamesWithWine { get; set; } = true;
+
+    /// <summary>Wine/Proton binary. Empty means "wine" on PATH.</summary>
+    public string WineCommand { get; set; } = "wine";
+
+    /// <summary>WINEPREFIX. Empty means &lt;app data&gt;/wineprefix.</summary>
+    public string WinePrefix { get; set; } = "";
+
     /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
     public AppSettings Clone() => new()
     {
@@ -91,6 +100,9 @@ public class AppSettings
         AutoUpdate = AutoUpdate,
         Theme = Theme,
         Language = Language,
-        OnboardingCompleted = OnboardingCompleted
+        OnboardingCompleted = OnboardingCompleted,
+        LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+        WineCommand = WineCommand,
+        WinePrefix = WinePrefix
     };
 }

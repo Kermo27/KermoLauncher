@@ -146,10 +146,10 @@ public class GameService : IGameService
                     if (toDownload.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
                     if (staleFiles.Any(f => ManifestDiff.IsSameFile(f, file))) continue;
 
-                    var source = Path.Combine(finalDir, file.Path);
+                    var source = GamePaths.Combine(finalDir, file.Path);
                     if (!File.Exists(source)) continue;
 
-                    var target = Path.Combine(stagingDir, file.Path);
+                    var target = GamePaths.Combine(stagingDir, file.Path);
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                     File.Copy(source, target);
                 }
@@ -175,7 +175,7 @@ public class GameService : IGameService
                 new ParallelOptions { MaxDegreeOfParallelism = maxParallel, CancellationToken = token },
                 async (file, fileToken) =>
                 {
-                    var localPath = Path.Combine(stagingDir, file.Path);
+                    var localPath = GamePaths.Combine(stagingDir, file.Path);
                     Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                     if (File.Exists(localPath)) File.Delete(localPath);
 
@@ -202,7 +202,7 @@ public class GameService : IGameService
             foreach (var file in toDownload)
             {
                 token.ThrowIfCancellationRequested();
-                var localPath = Path.Combine(stagingDir, file.Path);
+                var localPath = GamePaths.Combine(stagingDir, file.Path);
                 var sha256 = await ComputeSha256Async(localPath, token);
                 if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
                 {
@@ -234,6 +234,12 @@ public class GameService : IGameService
             else
             {
                 Directory.Move(stagingDir, finalDir);
+            }
+
+            // WebDAV does not preserve Unix mode bits; native Linux game binaries need +x.
+            if (game.LaunchConfig != null)
+            {
+                GamePaths.TryMakeExecutable(GamePaths.Combine(finalDir, game.LaunchConfig.ExecutablePath));
             }
 
             // Stage 6: Complete
@@ -373,29 +379,22 @@ public class GameService : IGameService
             return new LaunchResult(false, Error: "No launch configuration");
         }
 
-        var exePath = Path.Combine(localState.InstalledPath, config.ExecutablePath);
+        var exePath = GamePaths.Combine(localState.InstalledPath, config.ExecutablePath);
         if (!File.Exists(exePath))
         {
             return new LaunchResult(false, Error: $"Executable not found: {exePath}");
         }
 
-        var workDir = config.WorkingDirectory != null 
-            ? Path.Combine(localState.InstalledPath, config.WorkingDirectory) 
-            : localState.InstalledPath;
+        GamePaths.TryMakeExecutable(exePath);
 
-        var args = config.LaunchArgs != null && config.LaunchArgs.Length > 0 
-            ? string.Join(" ", config.LaunchArgs) 
-            : "";
+        var workDir = config.WorkingDirectory != null
+            ? GamePaths.Combine(localState.InstalledPath, config.WorkingDirectory)
+            : localState.InstalledPath;
 
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = exePath,
-                WorkingDirectory = workDir,
-                Arguments = args,
-                UseShellExecute = false
-            };
+            var settings = await _db.GetSettingsAsync();
+            var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings);
             var process = Process.Start(startInfo);
 
             if (process == null)
@@ -489,7 +488,7 @@ public class GameService : IGameService
 
         foreach (var file in localState.InstalledManifest.Files)
         {
-            var path = Path.Combine(localState.InstalledPath, file.Path);
+            var path = GamePaths.Combine(localState.InstalledPath, file.Path);
             if (!File.Exists(path))
             {
                 await MarkCorruptAsync(localState, $"Missing file: {file.Path}");

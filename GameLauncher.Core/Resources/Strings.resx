@@ -136,6 +136,14 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Connection works, but the folder is empty (metadata.json in the root).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Connection error</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Failed to fetch metadata.json: {0}</value></data>
+  <data name="Settings.Wine.Title" xml:space="preserve"><value>Windows games (Wine)</value></data>
+  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Most games in the library are Windows builds. On Linux they launch through Wine (or Proton, if you point Command at a Proton binary).</value></data>
+  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Launch .exe with Wine:</value></data>
+  <data name="Settings.Wine.Command" xml:space="preserve"><value>Wine command:</value></data>
+  <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
+  <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Wine prefix:</value></data>
+  <data name="Settings.Wine.PrefixPlaceholder" xml:space="preserve"><value>Default: ~/.local/share/KermoLauncher/wineprefix</value></data>
+  <data name="Settings.Wine.BrowsePrefix" xml:space="preserve"><value>Select Wine prefix</value></data>
   <data name="Onboarding.Title" xml:space="preserve"><value>Welcome</value></data>
   <data name="Onboarding.Subtitle" xml:space="preserve"><value>A short setup before your library opens.</value></data>
   <data name="Onboarding.Welcome.Body" xml:space="preserve"><value>Pick a theme and language. You can change both later in Settings.</value></data>

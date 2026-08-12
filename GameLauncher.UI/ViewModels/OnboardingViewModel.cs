@@ -270,7 +270,10 @@ public partial class OnboardingViewModel : ViewModelBase
                 Theme = ThemeValues[Math.Clamp(SelectedThemeIndex, 0, ThemeValues.Length - 1)],
                 Language = LanguageValues[Math.Clamp(SelectedLanguageIndex, 0, LanguageValues.Length - 1)],
                 Nextcloud = config,
-                OnboardingCompleted = true
+                OnboardingCompleted = true,
+                LaunchWindowsGamesWithWine = existing.LaunchWindowsGamesWithWine,
+                WineCommand = existing.WineCommand,
+                WinePrefix = existing.WinePrefix
             };
 
             await _db.SaveSettingsAsync(settings);

@@ -61,6 +61,20 @@ jobs:
           mv "publish/launcher/KermoLauncher${{ matrix.ext }}" \
              "assets/KermoLauncher-$VERSION-${{ matrix.rid }}${{ matrix.ext }}"
 
+      # First-install package for Linux: binary + .desktop + install script. The plain
+      # binary stays the auto-update asset; the archive is never swapped in place.
+      - name: Package Linux tarball
+        if: matrix.rid == 'linux-x64'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          mkdir -p package
+          cp "assets/KermoLauncher-$VERSION-linux-x64" package/KermoLauncher
+          chmod +x package/KermoLauncher
+          cp packaging/linux/kermolauncher.desktop packaging/linux/install.sh package/
+          chmod +x package/install.sh
+          tar -C package -czf "assets/KermoLauncher-$VERSION-linux-x64.tar.gz" .
+
       # The Admin Tool stays Windows-only, like every release so far. A Linux archive would have
       # "linux" in its name and clients before 1.0.6 would mistake it for the launcher binary.
       - name: Publish Admin Tool
@@ -113,7 +127,7 @@ jobs:
           # Upload order matters: a client before 1.0.6 takes the first file that matches its
           # platform, so the launcher binaries have to go up before anything else.
           LAUNCHERS=$(ls assets/KermoLauncher-*-win-x64.exe assets/KermoLauncher-*-linux-x64 2>/dev/null)
-          REST=$(ls assets/SHA256SUMS assets/KermoLauncher.AdminTool-* 2>/dev/null)
+          REST=$(ls assets/SHA256SUMS assets/KermoLauncher.AdminTool-* assets/KermoLauncher-*-linux-x64.tar.gz 2>/dev/null)
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" $LAUNCHERS --clobber
