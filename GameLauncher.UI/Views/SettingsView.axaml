@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GameLauncher.UI.ViewModels"
-             xmlns:conv="using:GameLauncher.UI.Converters"
              x:Class="GameLauncher.UI.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
@@ -59,7 +58,7 @@
                     </Grid>
 
                     <TextBlock Text="{Binding L[Settings.Nextcloud.SharedFolder]}"
-                               IsVisible="{Binding Settings.Nextcloud, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                               IsVisible="{Binding HasShareUrl}"
                                FontSize="12" Foreground="{DynamicResource SuccessBrush}"/>
                 </StackPanel>
             </Border>
@@ -97,7 +96,7 @@
                     <Grid ColumnDefinitions="200,*">
                         <TextBlock Grid.Column="0" Text="{Binding L[Settings.General.MaxParallel]}" Classes="FieldLabel"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                            <NumericUpDown Value="{Binding Settings.MaxParallelDownloads}"
+                            <NumericUpDown Value="{Binding MaxParallelDownloads}"
                                            Minimum="1" Maximum="8" Width="110"/>
                             <TextBlock Text="{Binding L[Settings.General.MaxParallelHint]}" FontSize="11"
                                        VerticalAlignment="Center"
@@ -107,7 +106,7 @@
 
                     <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.General.AutoUpdate]}" Classes="FieldLabel"/>
-                        <ToggleSwitch Grid.Row="0" Grid.Column="1" IsChecked="{Binding Settings.AutoUpdate}"
+                        <ToggleSwitch Grid.Row="0" Grid.Column="1" IsChecked="{Binding AutoUpdate}"
                                       HorizontalAlignment="Left"/>
                         <Button Grid.Row="1" Grid.Column="1" Content="{Binding L[Settings.General.CheckUpdates]}"
                                 Command="{Binding CheckForUpdatesCommand}" Classes="ghost"

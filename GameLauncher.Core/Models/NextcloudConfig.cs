@@ -72,4 +72,15 @@ public class AppSettings
     public bool AutoUpdate { get; set; } = true;
     public string Theme { get; set; } = "System";
     public string Language { get; set; } = "System";
+
+    /// <summary>Kopia płytka wystarcza — NextcloudConfig jest rekordem niemutowalnym.</summary>
+    public AppSettings Clone() => new()
+    {
+        Nextcloud = Nextcloud,
+        InstallFolder = InstallFolder,
+        MaxParallelDownloads = MaxParallelDownloads,
+        AutoUpdate = AutoUpdate,
+        Theme = Theme,
+        Language = Language
+    };
 }

@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using Avalonia.Media.Imaging;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -8,15 +6,24 @@ namespace GameLauncher.UI.Services;
 
 public interface IScreenshotService
 {
-    Task<Bitmap?> LoadCoverAsync(Game game, CancellationToken ct = default);
+    /// <summary>
+    /// Zwraca surowe bajty okładki, a nie gotową bitmapę — bitmapa jest zasobem
+    /// niezarządzanym i musi należeć do konkretnej karty, żeby dała się zwolnić.
+    /// </summary>
+    Task<byte[]?> LoadCoverAsync(Game game, CancellationToken ct = default);
 }
 
 public class ScreenshotService : IScreenshotService
 {
+    private const int MaxCachedCovers = 64;
+
     private readonly ILocalDbService _db;
     private readonly HttpClient _http;
     private readonly ILogger<ScreenshotService> _logger;
-    private readonly ConcurrentDictionary<string, Task<Bitmap?>> _cache = new();
+
+    private readonly Dictionary<string, byte[]> _cache = new();
+    private readonly LinkedList<string> _lru = new();
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     public ScreenshotService(ILocalDbService db, HttpClient http, ILogger<ScreenshotService> logger)
     {
@@ -25,20 +32,73 @@ public class ScreenshotService : IScreenshotService
         _logger = logger;
     }
 
-    public async Task<Bitmap?> LoadCoverAsync(Game game, CancellationToken ct = default)
+    public async Task<byte[]?> LoadCoverAsync(Game game, CancellationToken ct = default)
     {
+        if (game.ScreenshotUrls.Length == 0) return null;
+
         var settings = await _db.GetSettingsAsync();
-        if (settings.Nextcloud == null || game.ScreenshotUrls.Length == 0)
+        if (settings.Nextcloud == null)
         {
-            _logger.LogWarning("No Nextcloud config or no screenshots for game {GameId}", game.Id);
+            _logger.LogDebug("No Nextcloud config, skipping cover for {GameId}", game.Id);
             return null;
         }
 
         var url = settings.Nextcloud.GetFileUrl(game.ScreenshotUrls[0]);
-        return await _cache.GetOrAdd(url, u => LoadAsync(u, ct));
+
+        var cached = await TryGetCachedAsync(url, ct);
+        if (cached != null) return cached;
+
+        var bytes = await DownloadAsync(url, ct);
+
+        // Nieudane pobrania nie trafiają do cache'u, więc odświeżenie biblioteki próbuje ponownie.
+        if (bytes != null) await StoreAsync(url, bytes, ct);
+        return bytes;
     }
 
-    private async Task<Bitmap?> LoadAsync(string url, CancellationToken ct)
+    private async Task<byte[]?> TryGetCachedAsync(string url, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (!_cache.TryGetValue(url, out var bytes)) return null;
+            Touch(url);
+            return bytes;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private async Task StoreAsync(string url, byte[] bytes, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            _cache[url] = bytes;
+            Touch(url);
+
+            while (_lru.Count > MaxCachedCovers)
+            {
+                var oldest = _lru.Last!.Value;
+                _lru.RemoveLast();
+                _cache.Remove(oldest);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private void Touch(string url)
+    {
+        var node = _lru.Find(url);
+        if (node != null) _lru.Remove(node);
+        _lru.AddFirst(url);
+    }
+
+    private async Task<byte[]?> DownloadAsync(string url, CancellationToken ct)
     {
         try
         {
@@ -48,9 +108,11 @@ public class ScreenshotService : IScreenshotService
                 _logger.LogWarning("Cover download failed for {Url}: HTTP {Status}", url, (int)response.StatusCode);
                 return null;
             }
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-            using var ms = new MemoryStream(bytes);
-            return new Bitmap(ms);
+            return await response.Content.ReadAsByteArrayAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

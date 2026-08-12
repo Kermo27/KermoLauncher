@@ -1,7 +1,4 @@
-using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
-using GameLauncher.UI.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace GameLauncher.UI.Services;
@@ -18,6 +15,7 @@ public class UpdateFlowService : IUpdateFlowService
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
     private readonly ILocalizationService _l;
+    private readonly IAppShutdown _shutdown;
     private readonly ILogger<UpdateFlowService> _logger;
 
     public event Action<double>? DownloadProgress;
@@ -26,13 +24,16 @@ public class UpdateFlowService : IUpdateFlowService
         IAutoUpdateService autoUpdateService,
         IDialogService dialogService,
         INotificationService notificationService,
+        ILocalizationService localization,
+        IAppShutdown shutdown,
         ILogger<UpdateFlowService> logger)
     {
         _autoUpdateService = autoUpdateService;
         _dialogService = dialogService;
         _notificationService = notificationService;
+        _l = localization;
+        _shutdown = shutdown;
         _logger = logger;
-        _l = App.Services!.GetRequiredService<ILocalizationService>();
     }
 
     public async Task RunAsync(UpdateInfo update)
@@ -51,6 +52,7 @@ public class UpdateFlowService : IUpdateFlowService
             {
                 _notificationService.Show(_l["Updates.InstallingTitle"], _l["Updates.InstallingMessage"]);
                 await _autoUpdateService.ApplyUpdateAsync(path);
+                _shutdown.RequestShutdown();
             }
             else
             {

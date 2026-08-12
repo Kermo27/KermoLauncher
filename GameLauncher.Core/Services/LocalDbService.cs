@@ -11,14 +11,33 @@ public class LocalDbService : ILocalDbService
 {
     private readonly string _dbPath;
     private readonly SemaphoreSlim _initLock = new(1, 1);
-    private bool _initialized;
+    private volatile bool _initialized;
+    private AppSettings? _settingsCache;
 
     public LocalDbService(string? dbPath = null)
     {
         _dbPath = dbPath ?? Path.Combine(Utils.AppPaths.DataDirectory, "launcher.db");
     }
 
-    private SqliteConnection CreateConnection() => new($"Data Source={_dbPath}");
+    /// <summary>
+    /// Otwiera połączenie i włącza klucze obce. PRAGMA foreign_keys obowiązuje wyłącznie
+    /// w obrębie połączenia, więc musi być ustawiana za każdym razem, inaczej ON DELETE CASCADE nie działa.
+    /// </summary>
+    private async Task<SqliteConnection> OpenConnectionAsync()
+    {
+        var conn = new SqliteConnection($"Data Source={_dbPath}");
+        try
+        {
+            await conn.OpenAsync();
+            await conn.ExecuteAsync("PRAGMA foreign_keys=ON;");
+            return conn;
+        }
+        catch
+        {
+            await conn.DisposeAsync();
+            throw;
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -29,11 +48,9 @@ public class LocalDbService : ILocalDbService
         {
             if (_initialized) return;
             
-            using var conn = CreateConnection();
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync();
 
             await conn.ExecuteAsync("PRAGMA journal_mode=WAL;");
-            await conn.ExecuteAsync("PRAGMA foreign_keys=ON;");
 
             await conn.ExecuteAsync("""
                 CREATE TABLE IF NOT EXISTS games (
@@ -125,8 +142,7 @@ public class LocalDbService : ILocalDbService
     public async Task UpsertGamesAsync(Game[] games)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         
         using var tx = conn.BeginTransaction();
         try
@@ -173,8 +189,7 @@ public class LocalDbService : ILocalDbService
         if (keepIds.Count == 0) return;
 
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         using var tx = conn.BeginTransaction();
         try
@@ -201,8 +216,7 @@ public class LocalDbService : ILocalDbService
     public async Task<Game?> GetGameAsync(string gameId)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         
         var row = await conn.QueryFirstOrDefaultAsync("""
             SELECT id, name, version, description, tags, dependencies, screenshot_urls, manifest_url, size_bytes, launch_config
@@ -215,8 +229,7 @@ public class LocalDbService : ILocalDbService
     public async Task<Game[]> GetAllGamesAsync()
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         
         var rows = await conn.QueryAsync("SELECT * FROM games");
         return rows.Select(MapGame).ToArray();
@@ -225,8 +238,7 @@ public class LocalDbService : ILocalDbService
     public async Task<Game[]> GetGamesByStatusAsync(InstallStatus status)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         
         var rows = await conn.QueryAsync("""
             SELECT g.* FROM games g
@@ -259,8 +271,7 @@ public class LocalDbService : ILocalDbService
     public async Task UpsertLocalStateAsync(GameLocalState state)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         long? lastPlayed = state.LastPlayed.HasValue 
             ? new DateTimeOffset(state.LastPlayed.Value).ToUnixTimeSeconds() 
@@ -289,8 +300,7 @@ public class LocalDbService : ILocalDbService
     public async Task<GameLocalState?> GetLocalStateAsync(string gameId)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var row = await conn.QueryFirstOrDefaultAsync("""
             SELECT game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest
@@ -303,8 +313,7 @@ public class LocalDbService : ILocalDbService
     public async Task<IReadOnlyList<GameLocalState>> GetAllLocalStatesAsync()
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var rows = await conn.QueryAsync("SELECT * FROM game_local_state");
         return rows.Select(MapLocalState).ToArray();
@@ -336,8 +345,7 @@ public class LocalDbService : ILocalDbService
     public async Task UpsertDownloadTaskAsync(DownloadTask task)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         long? startedAt = task.StartedAt.HasValue ? new DateTimeOffset(task.StartedAt.Value).ToUnixTimeSeconds() : (long?)null;
         long? completedAt = task.CompletedAt.HasValue ? new DateTimeOffset(task.CompletedAt.Value).ToUnixTimeSeconds() : (long?)null;
@@ -365,8 +373,7 @@ public class LocalDbService : ILocalDbService
     public async Task<DownloadTask?> GetDownloadTaskAsync(string taskId)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var row = await conn.QueryFirstOrDefaultAsync("SELECT * FROM downloads WHERE id = @Id", new { Id = taskId });
         return row != null ? MapDownloadTask(row) : null;
@@ -375,8 +382,7 @@ public class LocalDbService : ILocalDbService
     public async Task<IReadOnlyList<DownloadTask>> GetAllDownloadTasksAsync()
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var rows = await conn.QueryAsync("SELECT * FROM downloads ORDER BY started_at DESC");
         return rows.Select(MapDownloadTask).ToArray();
@@ -385,8 +391,7 @@ public class LocalDbService : ILocalDbService
     public async Task DeleteDownloadTaskAsync(string taskId)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await conn.ExecuteAsync("DELETE FROM downloads WHERE id = @Id", new { Id = taskId });
     }
 
@@ -418,31 +423,39 @@ public class LocalDbService : ILocalDbService
         return value == null || value is DBNull ? 0 : Convert.ToInt64(value);
     }
 
+    /// <summary>
+    /// Ustawienia są czytane na każdą instalację i każdą okładkę, więc trzymamy je w pamięci.
+    /// Zwracana jest kopia, bo wołający mutują AppSettings (np. podmieniają wykryty RootFolder).
+    /// </summary>
     public async Task<AppSettings> GetSettingsAsync()
     {
+        var cached = _settingsCache;
+        if (cached != null) return cached.Clone();
+
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var row = await conn.QueryFirstOrDefaultAsync("SELECT value FROM settings WHERE key = 'app_settings'");
         var value = row?.value as string;
-        if (value != null)
-        {
-            return JsonSerializer.Deserialize<AppSettings>(value) ?? new AppSettings();
-        }
-        return new AppSettings();
+        var settings = value != null
+            ? JsonSerializer.Deserialize<AppSettings>(value) ?? new AppSettings()
+            : new AppSettings();
+
+        _settingsCache = settings;
+        return settings.Clone();
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
     {
         await InitializeAsync();
-        using var conn = CreateConnection();
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var json = JsonSerializer.Serialize(settings);
         await conn.ExecuteAsync("""
             INSERT INTO settings (key, value) VALUES ('app_settings', @Value)
             ON CONFLICT(key) DO UPDATE SET value=@Value
         """, new { Value = json });
+
+        _settingsCache = settings.Clone();
     }
 }

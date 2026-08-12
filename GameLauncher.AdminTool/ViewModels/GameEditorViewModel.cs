@@ -92,7 +92,9 @@ public partial class GameEditorViewModel : ViewModelBase
 
     public GameEditorViewModel(
         MetadataGenerator metadataGenerator,
+        ILocalizationService localization,
         ILogger<GameEditorViewModel> logger)
+        : base(localization)
     {
         _metadataGenerator = metadataGenerator;
         _logger = logger;

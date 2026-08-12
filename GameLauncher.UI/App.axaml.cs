@@ -2,9 +2,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
-using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
-using GameLauncher.Core.Utils;
+using GameLauncher.UI.Composition;
 using GameLauncher.UI.Services;
 using GameLauncher.UI.ViewModels;
 using GameLauncher.UI.Views;
@@ -15,6 +14,14 @@ namespace GameLauncher.UI;
 
 public partial class App : Application
 {
+    public static readonly string UserAgentString =
+        $"KermoLauncher/{typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}";
+
+    private ServiceProvider? _provider;
+
+    /// <summary>Wypełniany przez Program.Main przed startem Avalonii.</summary>
+    public static StartupContext? Startup { get; set; }
+
     public static IServiceProvider? Services { get; private set; }
 
     public override void Initialize()
@@ -24,21 +31,69 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        Services = services.BuildServiceProvider();
+        var startup = Startup ?? throw new InvalidOperationException(
+            "StartupContext must be loaded before the Avalonia lifetime starts");
 
-        ApplyStoredSettings();
+        var services = new ServiceCollection();
+        services.AddLauncherServices(startup, UserAgentString);
+        _provider = services.BuildServiceProvider();
+        Services = _provider;
+
+        // Bez tego wyjątek z porzuconego zadania kończy się cicho w finalizatorze.
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
+        // Motyw i język są znane od pierwszej klatki, bez blokowania wątku UI na dysku.
+        ApplyTheme(startup.Settings.Theme);
+        _provider.GetRequiredService<ILocalizationService>().SetLanguage(startup.Settings.Language);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var mainWindow = Services.GetRequiredService<MainWindow>();
-            var mainVm = Services.GetRequiredService<MainWindowViewModel>();
+            var mainWindow = _provider.GetRequiredService<MainWindow>();
+            var mainVm = _provider.GetRequiredService<MainWindowViewModel>();
             mainWindow.DataContext = mainVm;
             desktop.MainWindow = mainWindow;
+            desktop.ShutdownRequested += OnShutdownRequested;
+
+            // Sieć i dysk startują po pokazaniu okna. Hak frameworka jest synchroniczny,
+            // więc zadanie leci bez oczekiwania, ale z pełną obsługą wyjątków.
+            _ = RunStartupAsync(mainVm);
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task RunStartupAsync(MainWindowViewModel mainVm)
+    {
+        try
+        {
+            await mainVm.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            _provider?.GetService<ILogger<App>>()?.LogError(ex, "Startup initialization failed");
+        }
+    }
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        _provider?.GetService<ILogger<App>>()?.LogError(e.Exception, "Unobserved task exception");
+        e.SetObserved();
+    }
+
+    private void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.ShutdownRequested -= OnShutdownRequested;
+        }
+
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+
+        // Kontener zwalnia singletony: przerywa pobrania, zdejmuje subskrypcje ViewModeli
+        // i domyka plik logu. Wcześniej przy wyjściu nic z tego się nie działo.
+        _provider?.Dispose();
+        _provider = null;
+        Services = null;
     }
 
     public static void ApplyTheme(string theme)
@@ -50,82 +105,5 @@ public partial class App : Application
             "Dark" => ThemeVariant.Dark,
             _ => ThemeVariant.Default
         };
-    }
-
-    private void ApplyStoredSettings()
-    {
-        try
-        {
-            var db = Services!.GetRequiredService<ILocalDbService>();
-            var settings = db.GetSettingsAsync().GetAwaiter().GetResult();
-            ApplyTheme(settings.Theme);
-            Services!.GetRequiredService<ILocalizationService>().SetLanguage(settings.Language);
-        }
-        catch
-        {
-            // Fall back to system theme/language
-        }
-    }
-
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        // Logging
-        services.AddLogging(builder =>
-        {
-            builder.AddDebug().SetMinimumLevel(LogLevel.Information);
-            builder.AddProvider(new FileLoggerProvider(Path.Combine(AppPaths.DataDirectory, "launcher.log")));
-        });
-
-        // Core services
-        services.AddSingleton<ILocalizationService, LocalizationService>();
-        services.AddSingleton<ILocalDbService, LocalDbService>();
-        services.AddSingleton<IWebDavService, WebDavService>();
-        services.AddSingleton<IDownloadService>(sp =>
-        {
-            var db = sp.GetRequiredService<ILocalDbService>();
-            var maxParallel = 2;
-            try
-            {
-                var settings = db.GetSettingsAsync().GetAwaiter().GetResult();
-                if (settings.MaxParallelDownloads > 0) maxParallel = settings.MaxParallelDownloads;
-            }
-            catch
-            {
-                // Keep default
-            }
-            return new DownloadService(
-                sp.GetRequiredService<IWebDavService>(),
-                db,
-                sp.GetRequiredService<ILogger<DownloadService>>(),
-                maxParallel);
-        });
-        services.AddSingleton<IGameService, GameService>();
-        services.AddSingleton<IAutoUpdateService>(sp => new AutoUpdateService(
-            new HttpClient { Timeout = TimeSpan.FromSeconds(15) },
-            sp.GetRequiredService<ILogger<AutoUpdateService>>(),
-            typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0",
-            "Kermo27",
-            "KermoLauncher"
-        ));
-
-        // HTTP Client for WebDAV
-        services.AddHttpClient<IWebDavService, WebDavService>();
-
-        // UI Services
-        services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<INotificationService, NotificationService>();
-        services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
-        services.AddSingleton<IScreenshotService>(sp => new ScreenshotService(
-            sp.GetRequiredService<ILocalDbService>(),
-            new HttpClient { Timeout = TimeSpan.FromSeconds(30) },
-            sp.GetRequiredService<ILogger<ScreenshotService>>()));
-
-        // ViewModels
-        services.AddSingleton<MainWindowViewModel>();
-        services.AddTransient<LibraryViewModel>();
-        services.AddTransient<SettingsViewModel>();
-
-        // Views
-        services.AddSingleton<MainWindow>();
     }
 }

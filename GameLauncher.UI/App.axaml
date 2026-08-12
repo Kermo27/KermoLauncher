@@ -27,6 +27,15 @@
                     <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
                     <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
                     <SolidColorBrush x:Key="TagBgBrush" Color="#EAEDF3"/>
+                    <SolidColorBrush x:Key="ToastBgBrush" Color="#F7FFFFFF"/>
+                    <SolidColorBrush x:Key="PillNeutralBgBrush" Color="#1C8B94A4"/>
+                    <SolidColorBrush x:Key="PillNeutralFgBrush" Color="#8B94A4"/>
+                    <SolidColorBrush x:Key="PillInstalledBgBrush" Color="#301E9E57"/>
+                    <SolidColorBrush x:Key="PillInstalledFgBrush" Color="#1E9E57"/>
+                    <SolidColorBrush x:Key="PillBusyBgBrush" Color="#364A6CF7"/>
+                    <SolidColorBrush x:Key="PillBusyFgBrush" Color="#4A6CF7"/>
+                    <SolidColorBrush x:Key="PillFailedBgBrush" Color="#36DC2626"/>
+                    <SolidColorBrush x:Key="PillFailedFgBrush" Color="#DC2626"/>
                 </ResourceDictionary>
 
                 <!-- ============ DARK THEME ============ -->
@@ -47,6 +56,15 @@
                     <SolidColorBrush x:Key="WarningBrush" Color="#F0A43A"/>
                     <SolidColorBrush x:Key="DangerBrush" Color="#F0645C"/>
                     <SolidColorBrush x:Key="TagBgBrush" Color="#2C323E"/>
+                    <SolidColorBrush x:Key="ToastBgBrush" Color="#F220252E"/>
+                    <SolidColorBrush x:Key="PillNeutralBgBrush" Color="#246F7787"/>
+                    <SolidColorBrush x:Key="PillNeutralFgBrush" Color="#A7AEBE"/>
+                    <SolidColorBrush x:Key="PillInstalledBgBrush" Color="#3834C97B"/>
+                    <SolidColorBrush x:Key="PillInstalledFgBrush" Color="#34C97B"/>
+                    <SolidColorBrush x:Key="PillBusyBgBrush" Color="#3E6C8CFB"/>
+                    <SolidColorBrush x:Key="PillBusyFgBrush" Color="#6C8CFB"/>
+                    <SolidColorBrush x:Key="PillFailedBgBrush" Color="#3EF0645C"/>
+                    <SolidColorBrush x:Key="PillFailedFgBrush" Color="#F0645C"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>

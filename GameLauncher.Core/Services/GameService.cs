@@ -1,7 +1,9 @@
 namespace GameLauncher.Core.Services;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using Models;
 using Interfaces;
 using Utils;
@@ -40,11 +42,21 @@ public class GameService : IGameService
 
     public Task CancelInstallAsync(string gameId)
     {
+        CancellationTokenSource? cts;
         lock (_installLock)
         {
-            if (_activeInstalls.TryGetValue(gameId, out var cts))
+            _activeInstalls.TryGetValue(gameId, out cts);
+        }
+
+        if (cts != null)
+        {
+            try
             {
                 cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Instalacja zakończyła się w międzyczasie.
             }
         }
         return Task.CompletedTask;
@@ -145,69 +157,44 @@ public class GameService : IGameService
 
             // Stage 3: Download changed files (parallel)
             var maxParallel = settings.MaxParallelDownloads > 0 ? settings.MaxParallelDownloads : 2;
-            var semaphore = new SemaphoreSlim(maxParallel, maxParallel);
-            var downloadedBytes = 0L;
-            var startTime = DateTime.UtcNow;
-            var currentTask = updatedTask with { InstallStage = InstallStage.Downloading };
-            var lastPersistTime = DateTime.MinValue;
-            var persistLock = new object();
+            var completedBytes = 0L;
 
-            async Task PersistProgressAsync(long bytes, double speed, TimeSpan? remaining)
-            {
-                var shouldPersist = false;
-                lock (persistLock)
-                {
-                    if (DateTime.UtcNow - lastPersistTime >= TimeSpan.FromMilliseconds(500))
-                    {
-                        lastPersistTime = DateTime.UtcNow;
-                        shouldPersist = true;
-                    }
-                }
-                if (shouldPersist)
-                {
-                    var persisted = currentTask with { DownloadedBytes = bytes };
-                    await _db.UpsertDownloadTaskAsync(persisted);
-                    OnTaskUpdated?.Invoke(persisted);
-                }
-                OnProgress?.Invoke(new DownloadProgress(currentTask.Id, bytes, currentTask.TotalBytes, speed, remaining));
-            }
+            // Bajty plików w trakcie pobierania trzymamy osobno, żeby suma była poprawna
+            // niezależnie od kolejności, w jakiej równoległe pobrania raportują postęp.
+            var inFlight = new ConcurrentDictionary<string, long>();
+            long CurrentBytes() => Volatile.Read(ref completedBytes) + inFlight.Values.Sum();
 
-            await Task.WhenAll(toDownload.Select(async file =>
-            {
-                await semaphore.WaitAsync(token);
-                try
+            await using var pump = new ProgressPump(
+                _db,
+                updatedTask with { InstallStage = InstallStage.Downloading },
+                OnTaskUpdated,
+                OnProgress);
+
+            await Parallel.ForEachAsync(
+                toDownload,
+                new ParallelOptions { MaxDegreeOfParallelism = maxParallel, CancellationToken = token },
+                async (file, fileToken) =>
                 {
                     var localPath = Path.Combine(stagingDir, file.Path);
                     Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                     if (File.Exists(localPath)) File.Delete(localPath);
 
-                    var baseBytes = Volatile.Read(ref downloadedBytes);
                     var progress = new DelegatedProgress(p =>
-                        _ = PersistProgressAsync(baseBytes + p.BytesReceived, p.SpeedBytesPerSecond, p.EstimatedTimeRemaining));
+                    {
+                        inFlight[file.Path] = p.BytesReceived;
+                        pump.Report(CurrentBytes());
+                    });
 
-                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, token);
+                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, fileToken);
 
-                    var done = Interlocked.Add(ref downloadedBytes, file.SizeBytes);
-                    var elapsed = DateTime.UtcNow - startTime;
-                    var speed = elapsed.TotalSeconds > 0 ? done / elapsed.TotalSeconds : 0;
-                    currentTask = currentTask with { DownloadedBytes = done };
-                    await _db.UpsertDownloadTaskAsync(currentTask);
-                    OnTaskUpdated?.Invoke(currentTask);
-                    OnProgress?.Invoke(new DownloadProgress(currentTask.Id, done, currentTask.TotalBytes, speed, null));
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            }));
+                    // Kolejność ma znaczenie: najpierw zdejmujemy z „w trakcie”, potem dodajemy do sumy,
+                    // żeby chwilowo zaniżyć, a nigdy nie przekroczyć całości.
+                    inFlight.TryRemove(file.Path, out _);
+                    Interlocked.Add(ref completedBytes, file.SizeBytes);
+                    pump.Report(CurrentBytes());
+                });
 
-            var finalBytes = Volatile.Read(ref downloadedBytes);
-            if (finalBytes != currentTask.DownloadedBytes)
-            {
-                currentTask = currentTask with { DownloadedBytes = finalBytes };
-                await _db.UpsertDownloadTaskAsync(currentTask);
-                OnTaskUpdated?.Invoke(currentTask);
-            }
+            await pump.FlushAsync(totalBytes);
 
             // Stage 4: Verify checksums of downloaded files
             progress?.Report(new InstallProgress(game.Id, InstallStage.Verifying, 0));
@@ -431,31 +418,41 @@ public class GameService : IGameService
     private async Task TrackPlaytimeAsync(string gameId, Process process, long initialPlaytime)
     {
         var startTime = DateTime.UtcNow;
+        long ElapsedSeconds() => initialPlaytime + (long)(DateTime.UtcNow - startTime).TotalSeconds;
 
         try
         {
-            while (!process.HasExited)
+            using (process)
+            using (var timer = new PeriodicTimer(TimeSpan.FromSeconds(60)))
+            using (var exitCts = new CancellationTokenSource())
             {
-                await Task.WhenAny(
-                    process.WaitForExitAsync(),
-                    Task.Delay(TimeSpan.FromSeconds(60)));
+                var exited = process.WaitForExitAsync(exitCts.Token);
 
-                if (!process.HasExited)
+                // Jeden timer na całą sesję zamiast nowego Task.Delay w każdej iteracji.
+                while (!process.HasExited)
                 {
-                    await PersistPlaytimeAsync(gameId,
-                        initialPlaytime + (long)(DateTime.UtcNow - startTime).TotalSeconds,
-                        updateLastPlayed: false);
+                    if (!await timer.WaitForNextTickAsync(CancellationToken.None)) break;
+                    if (process.HasExited) break;
+                    await PersistPlaytimeAsync(gameId, ElapsedSeconds(), updateLastPlayed: false);
+                }
+
+                await exitCts.CancelAsync();
+                try
+                {
+                    await exited;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Proces zakończył się w trakcie oczekiwania.
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Process may have already exited
+            _logger.LogWarning(ex, "Playtime tracking stopped early for {GameId}", gameId);
         }
 
-        await PersistPlaytimeAsync(gameId,
-            initialPlaytime + (long)(DateTime.UtcNow - startTime).TotalSeconds,
-            updateLastPlayed: true);
+        await PersistPlaytimeAsync(gameId, ElapsedSeconds(), updateLastPlayed: true);
     }
 
     private async Task PersistPlaytimeAsync(string gameId, long totalTime, bool updateLastPlayed)
@@ -572,6 +569,89 @@ public class GameService : IGameService
         public void Report(DownloadProgress value)
         {
             _handler(value);
+        }
+    }
+
+    /// <summary>
+    /// Zbiera raporty postępu z równoległych pobrań i obsługuje je w jednym konsumencie.
+    /// Dzięki temu zdarzenia lecą z jednego wątku, a zapisy do bazy są ograniczone
+    /// do jednego na 500 ms i faktycznie oczekiwane, zamiast odpalane jako fire-and-forget.
+    /// </summary>
+    private sealed class ProgressPump : IAsyncDisposable
+    {
+        private static readonly TimeSpan PersistInterval = TimeSpan.FromMilliseconds(500);
+
+        private readonly ILocalDbService _db;
+        private readonly DownloadTask _template;
+        private readonly Action<DownloadTask>? _onTaskUpdated;
+        private readonly Action<DownloadProgress>? _onProgress;
+        private readonly Channel<long> _channel =
+            Channel.CreateUnbounded<long>(new UnboundedChannelOptions { SingleReader = true });
+        private readonly DateTime _startedAt = DateTime.UtcNow;
+        private readonly Task _consumer;
+        private DateTime _lastPersistedAt = DateTime.MinValue;
+
+        public ProgressPump(
+            ILocalDbService db,
+            DownloadTask template,
+            Action<DownloadTask>? onTaskUpdated,
+            Action<DownloadProgress>? onProgress)
+        {
+            _db = db;
+            _template = template;
+            _onTaskUpdated = onTaskUpdated;
+            _onProgress = onProgress;
+            _consumer = Task.Run(ConsumeAsync);
+        }
+
+        public void Report(long bytes) => _channel.Writer.TryWrite(bytes);
+
+        private async Task ConsumeAsync()
+        {
+            await foreach (var bytes in _channel.Reader.ReadAllAsync())
+            {
+                var elapsed = DateTime.UtcNow - _startedAt;
+                var speed = elapsed.TotalSeconds > 0 ? bytes / elapsed.TotalSeconds : 0;
+                TimeSpan? remaining = speed > 0 && _template.TotalBytes > bytes
+                    ? TimeSpan.FromSeconds((_template.TotalBytes - bytes) / speed)
+                    : null;
+
+                _onProgress?.Invoke(new DownloadProgress(_template.Id, bytes, _template.TotalBytes, speed, remaining));
+
+                if (DateTime.UtcNow - _lastPersistedAt >= PersistInterval)
+                {
+                    _lastPersistedAt = DateTime.UtcNow;
+                    await PersistAsync(bytes);
+                }
+            }
+        }
+
+        private async Task PersistAsync(long bytes)
+        {
+            var snapshot = _template with { DownloadedBytes = bytes };
+            await _db.UpsertDownloadTaskAsync(snapshot);
+            _onTaskUpdated?.Invoke(snapshot);
+        }
+
+        /// <summary>Domyka kanał i gwarantuje jedno zdarzenie z końcową liczbą bajtów.</summary>
+        public async Task FlushAsync(long finalBytes)
+        {
+            _channel.Writer.TryComplete();
+            await _consumer;
+            await PersistAsync(finalBytes);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            _channel.Writer.TryComplete();
+            try
+            {
+                await _consumer;
+            }
+            catch (Exception)
+            {
+                // Ścieżka błędu: właściwy wyjątek instalacji propaguje się z FlushAsync.
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ using Avalonia.Styling;
 using GameLauncher.AdminTool.Services;
 using GameLauncher.AdminTool.ViewModels;
 using GameLauncher.AdminTool.Views;
+using GameLauncher.Core.Models;
 using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,14 @@ namespace GameLauncher.AdminTool;
 
 public partial class App : Application
 {
+    private static readonly string UserAgent =
+        $"KermoLauncherAdmin/{typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}";
+
+    private ServiceProvider? _provider;
+
+    /// <summary>Wypełniane przez Program.Main przed startem Avalonii.</summary>
+    public static (LocalDbService Db, AppSettings Settings)? Startup { get; set; }
+
     public static IServiceProvider? Services { get; private set; }
 
     public override void Initialize()
@@ -25,19 +34,33 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
-        Services = services.BuildServiceProvider();
+        _provider = services.BuildServiceProvider();
+        Services = _provider;
 
         ApplyStoredSettings();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var mainWindow = Services.GetRequiredService<MainWindow>();
-            var mainVm = Services.GetRequiredService<MainViewModel>();
+            var mainWindow = _provider.GetRequiredService<MainWindow>();
+            var mainVm = _provider.GetRequiredService<MainViewModel>();
             mainWindow.DataContext = mainVm;
             desktop.MainWindow = mainWindow;
+            desktop.ShutdownRequested += OnShutdownRequested;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.ShutdownRequested -= OnShutdownRequested;
+        }
+
+        _provider?.Dispose();
+        _provider = null;
+        Services = null;
     }
 
     public static void ApplyTheme(string theme)
@@ -53,17 +76,9 @@ public partial class App : Application
 
     private void ApplyStoredSettings()
     {
-        try
-        {
-            var db = Services!.GetRequiredService<ILocalDbService>();
-            var settings = db.GetSettingsAsync().GetAwaiter().GetResult();
-            ApplyTheme(settings.Theme);
-            Services!.GetRequiredService<ILocalizationService>().SetLanguage(settings.Language);
-        }
-        catch
-        {
-            // Fall back to system theme/language
-        }
+        var settings = Startup?.Settings ?? new AppSettings();
+        ApplyTheme(settings.Theme);
+        _provider!.GetRequiredService<ILocalizationService>().SetLanguage(settings.Language);
     }
 
     private static void ConfigureServices(IServiceCollection services)
@@ -72,9 +87,22 @@ public partial class App : Application
 
         // Core services (need write access to Nextcloud)
         services.AddSingleton<ILocalizationService, LocalizationService>();
-        services.AddSingleton<ILocalDbService, LocalDbService>();
-        services.AddSingleton<IWebDavService, WebDavService>();
-        services.AddHttpClient<IWebDavService, WebDavService>();
+        if (Startup is { } startup)
+        {
+            services.AddSingleton<ILocalDbService>(startup.Db);
+        }
+        else
+        {
+            services.AddSingleton<ILocalDbService, LocalDbService>();
+        }
+
+        // Jedna rejestracja: wcześniejszy singleton był nadpisywany przez typed client,
+        // więc realnie działała tylko druga rejestracja.
+        services.AddHttpClient<IWebDavService, WebDavService>(c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(120);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+        });
 
         // Admin services
         services.AddSingleton<MetadataGenerator>();

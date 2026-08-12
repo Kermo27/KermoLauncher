@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GameLauncher.UI.ViewModels"
-        xmlns:conv="using:GameLauncher.UI.Converters"
         x:Class="GameLauncher.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding WindowTitle}"
@@ -44,6 +43,20 @@
         <Style Selector="Button.ToastClose:pointerover">
             <Setter Property="Background" Value="#22000000"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
+        <!-- Obramowanie toasta zależy od typu; kolory z motywu, nie z konwertera -->
+        <Style Selector="Border.toast">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Border.toast.success">
+            <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+        </Style>
+        <Style Selector="Border.toast.warning">
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.toast.error">
+            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
         </Style>
     </Window.Styles>
 
@@ -122,8 +135,11 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ToastItemViewModel">
                     <Border MaxWidth="360" CornerRadius="10" Padding="14,10"
-                            Background="#F220252E"
-                            BorderBrush="{Binding Type, Converter={x:Static conv:ObjectConverters.ToastBrush}}"
+                            Classes="toast"
+                            Classes.success="{Binding IsSuccess}"
+                            Classes.warning="{Binding IsWarning}"
+                            Classes.error="{Binding IsError}"
+                            Background="{DynamicResource ToastBgBrush}"
                             BorderThickness="1"
                             BoxShadow="0 4 14 0 #33000000"
                             PointerPressed="OnToastPointerPressed">
@@ -136,7 +152,7 @@
                                          IsVisible="{Binding IsProgressVisible}"/>
                             <Grid ColumnDefinitions="Auto,*" Margin="0,0,8,0">
                                 <TextBlock Grid.Column="0" FontSize="15" Margin="0,0,10,0"
-                                           Text="{Binding Type, Converter={x:Static conv:ObjectConverters.ToastIcon}}"
+                                           Text="{Binding Icon}"
                                            VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Spacing="2">
                                     <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold"

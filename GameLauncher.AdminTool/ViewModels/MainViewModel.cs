@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GameLauncher.Core.Services.Interfaces;
 
 namespace GameLauncher.AdminTool.ViewModels;
 
@@ -29,7 +30,9 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(
         GameEditorViewModel gameEditorVm,
-        UploadViewModel uploadVm)
+        UploadViewModel uploadVm,
+        ILocalizationService localization)
+        : base(localization)
     {
         GameEditorVm = gameEditorVm;
         UploadVm = uploadVm;
@@ -50,4 +53,10 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private void ShowUpload() => CurrentView = UploadVm;
+
+    protected override void DisposeCore()
+    {
+        GameEditorVm.Dispose();
+        UploadVm.Dispose();
+    }
 }

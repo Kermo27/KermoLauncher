@@ -11,7 +11,9 @@ public class DownloadService : IDownloadService, IDisposable
     private readonly ILogger<DownloadService> _logger;
     private readonly SemaphoreSlim _downloadSemaphore;
     private readonly Dictionary<string, CancellationTokenSource> _activeDownloads = new();
+    private readonly object _activeLock = new();
     private readonly int _maxParallelDownloads;
+    private bool _disposed;
 
     public event Action<DownloadTask>? OnTaskUpdated;
     public event Action<DownloadProgress>? OnProgress;
@@ -32,10 +34,14 @@ public class DownloadService : IDownloadService, IDisposable
     private async Task ProcessDownloadAsync(DownloadTask task)
     {
         await _downloadSemaphore.WaitAsync();
+        var cts = new CancellationTokenSource();
+        var cancelledByUser = false;
         try
         {
-            var cts = new CancellationTokenSource();
-            _activeDownloads[task.Id] = cts;
+            lock (_activeLock)
+            {
+                _activeDownloads[task.Id] = cts;
+            }
 
             var updatedTask = task with 
             { 
@@ -62,8 +68,9 @@ public class DownloadService : IDownloadService, IDisposable
             await _db.UpsertDownloadTaskAsync(completedTask);
             OnTaskUpdated?.Invoke(completedTask);
         }
-        catch (OperationCanceledException) when (_activeDownloads.TryGetValue(task.Id, out var cts) && cts.IsCancellationRequested)
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
+            cancelledByUser = true;
             var cancelledTask = task with { Status = DownloadStatus.Cancelled };
             await _db.UpsertDownloadTaskAsync(cancelledTask);
             OnTaskUpdated?.Invoke(cancelledTask);
@@ -77,16 +84,44 @@ public class DownloadService : IDownloadService, IDisposable
         }
         finally
         {
-            _activeDownloads.Remove(task.Id);
+            lock (_activeLock)
+            {
+                _activeDownloads.Remove(task.Id);
+            }
+            cts.Dispose();
             _downloadSemaphore.Release();
+            if (cancelledByUser)
+            {
+                _logger.LogInformation("Download {TaskId} cancelled", task.Id);
+            }
         }
     }
 
-    public async Task PauseAsync(string taskId)
+    private CancellationTokenSource? FindActive(string taskId)
     {
-        if (_activeDownloads.TryGetValue(taskId, out var cts))
+        lock (_activeLock)
+        {
+            return _activeDownloads.GetValueOrDefault(taskId);
+        }
+    }
+
+    public Task PauseAsync(string taskId)
+    {
+        TryCancel(FindActive(taskId));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Anulowanie może wyścigować się ze zwalnianiem tokenu w bloku finally.</summary>
+    private static void TryCancel(CancellationTokenSource? cts)
+    {
+        if (cts == null) return;
+        try
         {
             cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Pobieranie już się zakończyło.
         }
     }
 
@@ -106,11 +141,8 @@ public class DownloadService : IDownloadService, IDisposable
 
     public async Task CancelAsync(string taskId)
     {
-        if (_activeDownloads.TryGetValue(taskId, out var cts))
-        {
-            cts.Cancel();
-        }
-        
+        TryCancel(FindActive(taskId));
+
         var task = await _db.GetDownloadTaskAsync(taskId);
         if (task != null && task.Status != DownloadStatus.Completed)
         {
@@ -149,9 +181,18 @@ public class DownloadService : IDownloadService, IDisposable
 
     public void Dispose()
     {
-        foreach (var cts in _activeDownloads.Values)
+        if (_disposed) return;
+        _disposed = true;
+
+        CancellationTokenSource[] active;
+        lock (_activeLock)
         {
-            cts.Cancel();
+            active = _activeDownloads.Values.ToArray();
+            _activeDownloads.Clear();
+        }
+        foreach (var cts in active)
+        {
+            TryCancel(cts);
         }
         _downloadSemaphore.Dispose();
     }

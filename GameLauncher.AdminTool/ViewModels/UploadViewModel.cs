@@ -43,7 +43,12 @@ public partial class UploadViewModel : ViewModelBase
 
     partial void OnIsUploadingChanged(bool value) => OnPropertyChanged(nameof(IsNotUploading));
 
-    public UploadViewModel(IWebDavService webDav, GameEditorViewModel gameEditor, ILogger<UploadViewModel> logger)
+    public UploadViewModel(
+        IWebDavService webDav,
+        GameEditorViewModel gameEditor,
+        ILocalizationService localization,
+        ILogger<UploadViewModel> logger)
+        : base(localization)
     {
         _webDav = webDav;
         _gameEditor = gameEditor;

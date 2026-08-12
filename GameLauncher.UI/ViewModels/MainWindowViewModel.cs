@@ -1,31 +1,50 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
 
 namespace GameLauncher.UI.ViewModels;
 
-public partial class ToastItemViewModel : ObservableObject
+public partial class ToastItemViewModel : ObservableObject, IDisposable
 {
     private readonly MainWindowViewModel _owner;
+    private readonly IUiDispatcher _dispatcher;
     private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     public string Title { get; }
     public string Message { get; }
     public NotificationType Type { get; }
 
     [ObservableProperty]
-    private double? _progress;
+    private double _progress;
 
-    public bool IsProgressVisible => Progress != null;
+    [ObservableProperty]
+    private bool _isProgressVisible;
 
-    public ToastItemViewModel(Notification notification, MainWindowViewModel owner, bool autoDismiss = true)
+    public bool IsInfo => Type == NotificationType.Info;
+    public bool IsSuccess => Type == NotificationType.Success;
+    public bool IsWarning => Type == NotificationType.Warning;
+    public bool IsError => Type == NotificationType.Error;
+
+    public string Icon => Type switch
+    {
+        NotificationType.Success => "\u2705",
+        NotificationType.Warning => "\u26A0\uFE0F",
+        NotificationType.Error => "\u274C",
+        _ => "\u2139\uFE0F"
+    };
+
+    public ToastItemViewModel(
+        Notification notification,
+        MainWindowViewModel owner,
+        IUiDispatcher dispatcher,
+        bool autoDismiss = true)
     {
         _owner = owner;
+        _dispatcher = dispatcher;
         Title = notification.Title;
         Message = notification.Message;
         Type = notification.Type;
@@ -43,23 +62,33 @@ public partial class ToastItemViewModel : ObservableObject
 
     private async Task DismissAfterDelayAsync()
     {
-        await Task.Delay(GetDurationMs(Type));
-        if (!_cts.IsCancellationRequested)
+        try
         {
-            await Dispatcher.UIThread.InvokeAsync(() => _owner.RemoveToast(this));
+            // Token przekazany do Delay — wcześniej opóźnienie dobiegało końca nawet po zamknięciu toasta.
+            await Task.Delay(GetDurationMs(Type), _cts.Token);
+            await _dispatcher.InvokeAsync(() => _owner.RemoveToast(this));
+        }
+        catch (OperationCanceledException)
+        {
+            // Toast zamknięty ręcznie albo wypchnięty przez nowsze powiadomienia.
         }
     }
 
-    public void ReportProgress(double pct) => Progress = pct;
+    public void ReportProgress(double pct)
+    {
+        Progress = pct;
+        IsProgressVisible = true;
+    }
 
     [RelayCommand]
     private void Close() => _owner.RemoveToast(this);
 
-    public void Detach() => _cts.Cancel();
-
-    partial void OnProgressChanged(double? value)
+    public void Dispose()
     {
-        OnPropertyChanged(nameof(IsProgressVisible));
+        if (_disposed) return;
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
     }
 }
 
@@ -69,6 +98,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAutoUpdateService _autoUpdateService;
     private readonly IUpdateFlowService _updateFlow;
     private readonly ILocalDbService _db;
+    private readonly IUiDispatcher _dispatcher;
     private ToastItemViewModel? _updateToast;
 
     [ObservableProperty]
@@ -96,12 +126,16 @@ public partial class MainWindowViewModel : ViewModelBase
         INotificationService notificationService,
         IAutoUpdateService autoUpdateService,
         IUpdateFlowService updateFlow,
-        ILocalDbService db)
+        ILocalDbService db,
+        ILocalizationService localization,
+        IUiDispatcher dispatcher)
+        : base(localization)
     {
         _notificationService = notificationService;
         _autoUpdateService = autoUpdateService;
         _updateFlow = updateFlow;
         _db = db;
+        _dispatcher = dispatcher;
 
         LibraryVm = libraryVm;
         SettingsVm = settingsVm;
@@ -111,16 +145,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _notificationService.NotificationRaised += OnNotificationRaised;
         _updateFlow.DownloadProgress += OnUpdateDownloadProgress;
+    }
 
-        _ = LibraryVm.InitializeAsync();
-
-        _ = CleanupPendingUpdateAsync();
-        _ = CheckForUpdatesAsync();
+    /// <summary>
+    /// Wszystko, co dotyka sieci i dysku, dzieje się tutaj, a nie w konstruktorze —
+    /// wyjątki mają gdzie wypłynąć, a start okna nie czeka na I/O.
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken ct = default)
+    {
+        await SettingsVm.InitializeAsync();
+        await LibraryVm.InitializeAsync();
+        await CleanupPendingUpdateAsync();
+        await CheckForUpdatesAsync(ct);
     }
 
     private void OnUpdateDownloadProgress(double pct)
     {
-        Dispatcher.UIThread.Post(() =>
+        _dispatcher.Post(() =>
         {
             if (pct >= 100)
             {
@@ -137,6 +178,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _updateToast = new ToastItemViewModel(
                     new Notification(L["Updates.DownloadingTitle"], L["Updates.DownloadingMessage"], NotificationType.Info),
                     this,
+                    _dispatcher,
                     autoDismiss: false);
                 Toasts.Add(_updateToast);
             }
@@ -146,20 +188,20 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnNotificationRaised(Notification notification)
     {
-        Dispatcher.UIThread.Post(() =>
+        _dispatcher.Post(() =>
         {
             while (Toasts.Count >= 4)
             {
-                Toasts[0].Detach();
+                Toasts[0].Dispose();
                 Toasts.RemoveAt(0);
             }
-            Toasts.Add(new ToastItemViewModel(notification, this));
+            Toasts.Add(new ToastItemViewModel(notification, this, _dispatcher));
         });
     }
 
     public void RemoveToast(ToastItemViewModel toast)
     {
-        toast.Detach();
+        toast.Dispose();
         Toasts.Remove(toast);
     }
 
@@ -190,22 +232,37 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async Task CheckForUpdatesAsync()
+    private async Task CheckForUpdatesAsync(CancellationToken ct)
     {
         try
         {
             var settings = await _db.GetSettingsAsync();
             if (!settings.AutoUpdate) return;
 
-            var update = await _autoUpdateService.CheckForUpdatesAsync();
+            var update = await _autoUpdateService.CheckForUpdatesAsync(ct);
             if (update != null)
             {
                 await _updateFlow.RunAsync(update);
             }
         }
-        catch
+        catch (Exception)
         {
-            // Ignore update check errors
+            // Brak sieci nie może przewrócić startu aplikacji.
         }
+    }
+
+    protected override void DisposeCore()
+    {
+        _notificationService.NotificationRaised -= OnNotificationRaised;
+        _updateFlow.DownloadProgress -= OnUpdateDownloadProgress;
+
+        foreach (var toast in Toasts)
+        {
+            toast.Dispose();
+        }
+        Toasts.Clear();
+
+        LibraryVm.Dispose();
+        SettingsVm.Dispose();
     }
 }

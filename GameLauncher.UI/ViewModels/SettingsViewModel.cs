@@ -15,17 +15,31 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
 
-    [ObservableProperty]
-    private AppSettings _settings = new();
-
+    // Ustawienia są rozłożone na własne właściwości obserwowalne. Wcześniej XAML bindował
+    // wprost do AppSettings, które nie zgłasza zmian, więc część pól nie odświeżała widoku.
     [ObservableProperty]
     private string _installFolder = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasShareUrl))]
     private string _shareUrl = "";
 
     [ObservableProperty]
     private string _shareToken = "";
+
+    [ObservableProperty]
+    private int _maxParallelDownloads = 2;
+
+    [ObservableProperty]
+    private bool _autoUpdate = true;
+
+    [ObservableProperty]
+    private int _selectedThemeIndex;
+
+    [ObservableProperty]
+    private int _selectedLanguageIndex;
+
+    public bool HasShareUrl => !string.IsNullOrWhiteSpace(ShareUrl);
 
     public string[] ThemeValues { get; } = ["Light", "Dark", "System"];
     public string[] LanguageValues { get; } = ["System", "en", "pl"];
@@ -36,27 +50,39 @@ public partial class SettingsViewModel : ViewModelBase
     public string[] LanguageOptions =>
         [L["Settings.Language.System"], L["Settings.Language.English"], L["Settings.Language.Polish"]];
 
-    public int SelectedThemeIndex
+    public SettingsViewModel(
+        ILocalDbService db,
+        IWebDavService webDav,
+        IAutoUpdateService autoUpdateService,
+        IUpdateFlowService updateFlow,
+        IDialogService dialogService,
+        INotificationService notificationService,
+        ILocalizationService localization)
+        : base(localization)
     {
-        get => Array.IndexOf(ThemeValues, Settings.Theme);
-        set
-        {
-            if (value >= 0 && value < ThemeValues.Length)
-            {
-                Settings.Theme = ThemeValues[value];
-            }
-        }
+        _db = db;
+        _webDav = webDav;
+        _autoUpdateService = autoUpdateService;
+        _updateFlow = updateFlow;
+        _dialogService = dialogService;
+        _notificationService = notificationService;
     }
 
-    public int SelectedLanguageIndex
+    /// <summary>Odczyt z bazy wyjęty z konstruktora, żeby błędy nie ginęły w niepodpiętym zadaniu.</summary>
+    public async Task InitializeAsync()
     {
-        get => Array.IndexOf(LanguageValues, Settings.Language);
-        set
+        var settings = await _db.GetSettingsAsync();
+
+        InstallFolder = settings.InstallFolder;
+        MaxParallelDownloads = settings.MaxParallelDownloads;
+        AutoUpdate = settings.AutoUpdate;
+        SelectedThemeIndex = Math.Max(0, Array.IndexOf(ThemeValues, settings.Theme));
+        SelectedLanguageIndex = Math.Max(0, Array.IndexOf(LanguageValues, settings.Language));
+
+        if (settings.Nextcloud != null)
         {
-            if (value >= 0 && value < LanguageValues.Length)
-            {
-                Settings.Language = LanguageValues[value];
-            }
+            ShareUrl = settings.Nextcloud.ShareUrl;
+            ShareToken = settings.Nextcloud.ShareToken;
         }
     }
 
@@ -67,55 +93,28 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(LanguageOptions));
     }
 
-    partial void OnSettingsChanged(AppSettings value)
-    {
-        OnPropertyChanged(nameof(SelectedThemeIndex));
-        OnPropertyChanged(nameof(SelectedLanguageIndex));
-        InstallFolder = value.InstallFolder;
-    }
-
-    partial void OnInstallFolderChanged(string value)
-    {
-        Settings.InstallFolder = value;
-    }
-
-    public SettingsViewModel(ILocalDbService db, IWebDavService webDav, IAutoUpdateService autoUpdateService, IUpdateFlowService updateFlow, IDialogService dialogService, INotificationService notificationService)
-    {
-        _db = db;
-        _webDav = webDav;
-        _autoUpdateService = autoUpdateService;
-        _updateFlow = updateFlow;
-        _dialogService = dialogService;
-        _notificationService = notificationService;
-        _ = LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        Settings = await _db.GetSettingsAsync();
-        if (Settings.Nextcloud != null)
-        {
-            ShareUrl = Settings.Nextcloud.ShareUrl;
-            ShareToken = Settings.Nextcloud.ShareToken;
-        }
-    }
+    private string SelectedTheme => ThemeValues[Math.Clamp(SelectedThemeIndex, 0, ThemeValues.Length - 1)];
+    private string SelectedLanguage => LanguageValues[Math.Clamp(SelectedLanguageIndex, 0, LanguageValues.Length - 1)];
 
     [RelayCommand]
     private async Task SaveAsync()
     {
         var shareUrl = ShareUrl?.Trim() ?? "";
-        if (!string.IsNullOrWhiteSpace(shareUrl))
+        var settings = new AppSettings
         {
-            Settings.Nextcloud = new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? "");
-        }
-        else
-        {
-            Settings.Nextcloud = null;
-        }
+            InstallFolder = InstallFolder,
+            MaxParallelDownloads = MaxParallelDownloads,
+            AutoUpdate = AutoUpdate,
+            Theme = SelectedTheme,
+            Language = SelectedLanguage,
+            Nextcloud = string.IsNullOrWhiteSpace(shareUrl)
+                ? null
+                : new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? "")
+        };
 
-        await _db.SaveSettingsAsync(Settings);
-        App.ApplyTheme(Settings.Theme);
-        L.SetLanguage(Settings.Language);
+        await _db.SaveSettingsAsync(settings);
+        App.ApplyTheme(settings.Theme);
+        L.SetLanguage(settings.Language);
         _notificationService.Show(L["Settings.SavedTitle"], L["Settings.SavedMessage"]);
     }
 

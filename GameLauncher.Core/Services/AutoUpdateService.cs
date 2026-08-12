@@ -3,6 +3,7 @@ namespace GameLauncher.Core.Services;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.Core.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net.Http.Json;
@@ -19,6 +20,15 @@ public class AutoUpdateService : IAutoUpdateService
     public event Action<UpdateInfo>? OnUpdateAvailable;
     public event Action<double>? OnUpdateDownloadProgress;
 
+    [ActivatorUtilitiesConstructor]
+    public AutoUpdateService(
+        HttpClient httpClient,
+        ILogger<AutoUpdateService> logger,
+        AutoUpdateOptions options)
+        : this(httpClient, logger, options.CurrentVersion, options.RepoOwner, options.RepoName)
+    {
+    }
+
     public AutoUpdateService(
         HttpClient httpClient,
         ILogger<AutoUpdateService> logger,
@@ -27,8 +37,11 @@ public class AutoUpdateService : IAutoUpdateService
         string repoName)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            $"KermoLauncher/{typeof(AutoUpdateService).Assembly.GetName().Version?.ToString(3) ?? "1.0"}");
+        if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                $"KermoLauncher/{typeof(AutoUpdateService).Assembly.GetName().Version?.ToString(3) ?? "1.0"}");
+        }
         _logger = logger;
         _currentVersion = currentVersion;
         _repoOwner = repoOwner;
@@ -155,7 +168,11 @@ public class AutoUpdateService : IAutoUpdateService
         return downloadPath;
     }
 
-    public async Task ApplyUpdateAsync(string downloadPath, CancellationToken ct = default)
+    /// <summary>
+    /// Podmienia plik wykonywalny i startuje nową instancję. Zamknięcie tej instancji
+    /// jest zadaniem wołającego — Environment.Exit ucinał trwające zapisy do bazy i pobrania.
+    /// </summary>
+    public Task ApplyUpdateAsync(string downloadPath, CancellationToken ct = default)
     {
         var currentExe = Environment.ProcessPath;
         if (string.IsNullOrEmpty(currentExe))
@@ -168,17 +185,15 @@ public class AutoUpdateService : IAutoUpdateService
         File.Move(currentExe, backupPath);
         File.Move(downloadPath, currentExe);
 
-        _logger.LogInformation("Update applied, restarting...");
-        
+        _logger.LogInformation("Update applied, starting new instance");
+
         var psi = new ProcessStartInfo(currentExe)
         {
             UseShellExecute = true,
             WorkingDirectory = Path.GetDirectoryName(currentExe)
         };
         Process.Start(psi);
-        
-        Environment.Exit(0);
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     public Task<bool> IsUpdatePendingAsync()

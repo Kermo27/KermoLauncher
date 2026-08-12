@@ -6,12 +6,15 @@
     <AssemblyName>KermoLauncher</AssemblyName>
     <Product>KermoLauncher</Product>
     <OutputType>WinExe</OutputType>
+    <!-- Bindingi kompilowane: błędy w ścieżkach wychodzą na etapie budowania, bez refleksji w czasie działania -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Controls.ItemsRepeater" Version="11.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.4" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.4" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
