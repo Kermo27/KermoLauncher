@@ -136,6 +136,14 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Połączenie działa, ale katalog jest pusty (metadata.json w katalogu głównym).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Błąd połączenia</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Nie udało się pobrać metadata.json: {0}</value></data>
+  <data name="Settings.Wine.Title" xml:space="preserve"><value>Gry Windows (Wine)</value></data>
+  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Większość gier w bibliotece to buildy Windows. Na Linuksie uruchamiają się przez Wine (albo Proton, jeśli wskażesz binarkę Proton w polu Polecenie).</value></data>
+  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Uruchamiaj .exe przez Wine:</value></data>
+  <data name="Settings.Wine.Command" xml:space="preserve"><value>Polecenie Wine:</value></data>
+  <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
+  <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Prefiks Wine:</value></data>
+  <data name="Settings.Wine.PrefixPlaceholder" xml:space="preserve"><value>Domyślnie: ~/.local/share/KermoLauncher/wineprefix</value></data>
+  <data name="Settings.Wine.BrowsePrefix" xml:space="preserve"><value>Wybierz prefiks Wine</value></data>
   <data name="Updates.DownloadingTitle" xml:space="preserve"><value>Pobieranie aktualizacji</value></data>
   <data name="Updates.DownloadingMessage" xml:space="preserve"><value>Nowa wersja jest pobierana w tle...</value></data>
   <data name="Updates.ReadyTitle" xml:space="preserve"><value>Aktualizacja gotowa</value></data>

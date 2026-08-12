@@ -73,6 +73,15 @@ public class AppSettings
     public string Theme { get; set; } = "System";
     public string Language { get; set; } = "System";
 
+    /// <summary>On Linux, run .exe/.bat games through Wine (or Proton pointed at by WineCommand).</summary>
+    public bool LaunchWindowsGamesWithWine { get; set; } = true;
+
+    /// <summary>Wine/Proton binary. Empty means "wine" on PATH.</summary>
+    public string WineCommand { get; set; } = "wine";
+
+    /// <summary>WINEPREFIX. Empty means &lt;app data&gt;/wineprefix.</summary>
+    public string WinePrefix { get; set; } = "";
+
     /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
     public AppSettings Clone() => new()
     {
@@ -81,6 +90,9 @@ public class AppSettings
         MaxParallelDownloads = MaxParallelDownloads,
         AutoUpdate = AutoUpdate,
         Theme = Theme,
-        Language = Language
+        Language = Language,
+        LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+        WineCommand = WineCommand,
+        WinePrefix = WinePrefix
     };
 }

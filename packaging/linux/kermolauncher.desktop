@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=KermoLauncher
+Comment=Personal game library from Nextcloud
+Exec=kermolauncher
+Icon=applications-games
+Terminal=false
+Categories=Game;
+Keywords=games;launcher;nextcloud;
+StartupWMClass=KermoLauncher

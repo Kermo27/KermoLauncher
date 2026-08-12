@@ -129,6 +129,39 @@
                 </StackPanel>
             </Border>
 
+            <!-- ============ WINE (Linux) ============ -->
+            <Border Classes="Section" IsVisible="{Binding ShowWineSettings}">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="&#127918;" Classes="SectionTitle"/>
+                        <TextBlock Text="{Binding L[Settings.Wine.Title]}" Classes="SectionTitle"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding L[Settings.Wine.Hint]}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextMutedBrush}"/>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Enable]}" Classes="FieldLabel"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding LaunchWindowsGamesWithWine}"
+                                      HorizontalAlignment="Left"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Command]}" Classes="FieldLabel"/>
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WineCommand}"
+                                 Watermark="{Binding L[Settings.Wine.CommandPlaceholder]}"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="200,*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Prefix]}" Classes="FieldLabel"/>
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WinePrefix}"
+                                 Watermark="{Binding L[Settings.Wine.PrefixPlaceholder]}"/>
+                        <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                Content="{Binding L[Settings.Browse]}"
+                                Command="{Binding BrowseWinePrefixCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- ============ SAVE ============ -->
             <Button Content="{Binding L[Settings.Save]}" Classes="primary"
                     Command="{Binding SaveCommand}"

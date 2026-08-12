@@ -61,6 +61,21 @@ release. Two constraints keep older installs able to update: the Windows asset m
 `.exe`, and no other `.exe` may be added to a release, because clients before 1.0.6 pick the first
 matching file they find.
 
+### Linux install
+
+Download `KermoLauncher-<version>-linux-x64.tar.gz`, extract it, then:
+
+```bash
+./install.sh ./KermoLauncher
+```
+
+That places the binary in `~/.local/bin/kermolauncher` (user-writable, so self-update works) and a
+desktop entry under `~/.local/share/applications/`. You can also run the plain
+`KermoLauncher-<version>-linux-x64` binary directly.
+
+Windows games launch through **Wine** by default (Settings → Windows games). Point **Wine command**
+at a Proton binary if you prefer Proton over system Wine.
+
 ## Nextcloud library layout
 
 ```

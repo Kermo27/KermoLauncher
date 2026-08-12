@@ -39,7 +39,19 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private int _selectedLanguageIndex;
 
+    [ObservableProperty]
+    private bool _launchWindowsGamesWithWine = true;
+
+    [ObservableProperty]
+    private string _wineCommand = "wine";
+
+    [ObservableProperty]
+    private string _winePrefix = "";
+
     public bool HasShareUrl => !string.IsNullOrWhiteSpace(ShareUrl);
+
+    /// <summary>Wine settings only matter when launching Windows binaries on a non-Windows host.</summary>
+    public bool ShowWineSettings => !OperatingSystem.IsWindows();
 
     public string[] ThemeValues { get; } = ["Light", "Dark", "System"];
     public string[] LanguageValues { get; } = ["System", "en", "pl"];
@@ -78,6 +90,9 @@ public partial class SettingsViewModel : ViewModelBase
         AutoUpdate = settings.AutoUpdate;
         SelectedThemeIndex = Math.Max(0, Array.IndexOf(ThemeValues, settings.Theme));
         SelectedLanguageIndex = Math.Max(0, Array.IndexOf(LanguageValues, settings.Language));
+        LaunchWindowsGamesWithWine = settings.LaunchWindowsGamesWithWine;
+        WineCommand = string.IsNullOrWhiteSpace(settings.WineCommand) ? "wine" : settings.WineCommand;
+        WinePrefix = settings.WinePrefix;
 
         if (settings.Nextcloud != null)
         {
@@ -107,6 +122,9 @@ public partial class SettingsViewModel : ViewModelBase
             AutoUpdate = AutoUpdate,
             Theme = SelectedTheme,
             Language = SelectedLanguage,
+            LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+            WineCommand = string.IsNullOrWhiteSpace(WineCommand) ? "wine" : WineCommand.Trim(),
+            WinePrefix = WinePrefix?.Trim() ?? "",
             Nextcloud = string.IsNullOrWhiteSpace(shareUrl)
                 ? null
                 : new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? "")
@@ -116,6 +134,16 @@ public partial class SettingsViewModel : ViewModelBase
         App.ApplyTheme(settings.Theme);
         L.SetLanguage(settings.Language);
         _notificationService.Show(L["Settings.SavedTitle"], L["Settings.SavedMessage"]);
+    }
+
+    [RelayCommand]
+    private async Task BrowseWinePrefixAsync()
+    {
+        var folder = await _dialogService.ShowFolderPickerAsync(L["Settings.Wine.BrowsePrefix"], WinePrefix);
+        if (!string.IsNullOrEmpty(folder))
+        {
+            WinePrefix = folder;
+        }
     }
 
     [RelayCommand]
