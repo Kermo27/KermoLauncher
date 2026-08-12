@@ -100,6 +100,7 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task SaveAsync()
     {
         var shareUrl = ShareUrl?.Trim() ?? "";
+        var existing = await _db.GetSettingsAsync();
         var settings = new AppSettings
         {
             InstallFolder = InstallFolder,
@@ -107,6 +108,7 @@ public partial class SettingsViewModel : ViewModelBase
             AutoUpdate = AutoUpdate,
             Theme = SelectedTheme,
             Language = SelectedLanguage,
+            OnboardingCompleted = existing.OnboardingCompleted,
             Nextcloud = string.IsNullOrWhiteSpace(shareUrl)
                 ? null
                 : new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? "")

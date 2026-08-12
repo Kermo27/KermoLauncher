@@ -441,6 +441,13 @@ public class LocalDbService : ILocalDbService
             ? JsonSerializer.Deserialize<AppSettings>(value) ?? new AppSettings()
             : new AppSettings();
 
+        // Installs from before the wizard never had the flag. A configured share means they
+        // already finished setup; without this they would be forced through it again.
+        if (!settings.OnboardingCompleted && settings.Nextcloud != null)
+        {
+            settings.OnboardingCompleted = true;
+        }
+
         _settingsCache = settings;
         return settings.Clone();
     }

@@ -45,6 +45,7 @@ public class CompositionRootTests : IDisposable
     [InlineData(typeof(IGameItemViewModelFactory))]
     [InlineData(typeof(LibraryViewModel))]
     [InlineData(typeof(SettingsViewModel))]
+    [InlineData(typeof(OnboardingViewModel))]
     [InlineData(typeof(MainWindowViewModel))]
     public void EveryService_Resolves(Type serviceType)
     {
