@@ -1,5 +1,6 @@
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.Core.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace GameLauncher.UI.Services;
@@ -105,7 +106,7 @@ public class ScreenshotService : IScreenshotService
             using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Cover download failed for {Url}: HTTP {Status}", url, (int)response.StatusCode);
+                _logger.LogWarning("Cover download failed for {Url}: HTTP {Status}", UrlSanitizer.Mask(url), (int)response.StatusCode);
                 return null;
             }
             return await response.Content.ReadAsByteArrayAsync(ct);
@@ -116,7 +117,7 @@ public class ScreenshotService : IScreenshotService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Cover download failed for {Url}", url);
+            _logger.LogWarning(ex, "Cover download failed for {Url}", UrlSanitizer.Mask(url));
             return null;
         }
     }

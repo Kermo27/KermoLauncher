@@ -113,16 +113,21 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSettingsActive;
 
+    [ObservableProperty]
+    private bool _isOnboardingActive;
+
     public ObservableCollection<ToastItemViewModel> Toasts { get; } = [];
 
     public string WindowVersion => "v" + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
 
     public LibraryViewModel LibraryVm { get; }
     public SettingsViewModel SettingsVm { get; }
+    public OnboardingViewModel OnboardingVm { get; }
 
     public MainWindowViewModel(
         LibraryViewModel libraryVm,
         SettingsViewModel settingsVm,
+        OnboardingViewModel onboardingVm,
         INotificationService notificationService,
         IAutoUpdateService autoUpdateService,
         IUpdateFlowService updateFlow,
@@ -139,6 +144,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LibraryVm = libraryVm;
         SettingsVm = settingsVm;
+        OnboardingVm = onboardingVm;
+        OnboardingVm.Completed = CompleteOnboardingAsync;
 
         CurrentView = LibraryVm;
         IsLibraryActive = true;
@@ -154,6 +161,29 @@ public partial class MainWindowViewModel : ViewModelBase
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         await SettingsVm.InitializeAsync();
+
+        var settings = await _db.GetSettingsAsync();
+        if (settings.NeedsOnboarding)
+        {
+            OnboardingVm.Initialize();
+            IsOnboardingActive = true;
+            CurrentView = OnboardingVm;
+            return;
+        }
+
+        await ContinueAfterOnboardingAsync(ct);
+    }
+
+    public async Task CompleteOnboardingAsync()
+    {
+        await SettingsVm.InitializeAsync();
+        IsOnboardingActive = false;
+        CurrentView = LibraryVm;
+        await ContinueAfterOnboardingAsync();
+    }
+
+    private async Task ContinueAfterOnboardingAsync(CancellationToken ct = default)
+    {
         await LibraryVm.InitializeAsync();
         await CleanupPendingUpdateAsync();
         await CheckForUpdatesAsync(ct);
@@ -207,15 +237,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase value)
     {
-        IsLibraryActive = value == LibraryVm;
-        IsSettingsActive = value == SettingsVm;
+        IsLibraryActive = !IsOnboardingActive && value == LibraryVm;
+        IsSettingsActive = !IsOnboardingActive && value == SettingsVm;
     }
 
     [RelayCommand]
-    private void ShowLibrary() => CurrentView = LibraryVm;
+    private void ShowLibrary()
+    {
+        if (IsOnboardingActive) return;
+        CurrentView = LibraryVm;
+    }
 
     [RelayCommand]
-    private void ShowSettings() => CurrentView = SettingsVm;
+    private void ShowSettings()
+    {
+        if (IsOnboardingActive) return;
+        CurrentView = SettingsVm;
+    }
 
     private async Task CleanupPendingUpdateAsync()
     {
@@ -264,5 +302,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LibraryVm.Dispose();
         SettingsVm.Dispose();
+        OnboardingVm.Dispose();
     }
 }

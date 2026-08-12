@@ -73,6 +73,15 @@ public class AppSettings
     public string Theme { get; set; } = "System";
     public string Language { get; set; } = "System";
 
+    /// <summary>
+    /// Explicit first-run flag. Clearing the Nextcloud link in Settings must not reopen the wizard,
+    /// so this is not derived from Nextcloud == null.
+    /// </summary>
+    public bool OnboardingCompleted { get; set; }
+
+    /// <summary>True until the user finishes (or is migrated past) the first-run wizard.</summary>
+    public bool NeedsOnboarding => !OnboardingCompleted;
+
     /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
     public AppSettings Clone() => new()
     {
@@ -81,6 +90,7 @@ public class AppSettings
         MaxParallelDownloads = MaxParallelDownloads,
         AutoUpdate = AutoUpdate,
         Theme = Theme,
-        Language = Language
+        Language = Language,
+        OnboardingCompleted = OnboardingCompleted
     };
 }

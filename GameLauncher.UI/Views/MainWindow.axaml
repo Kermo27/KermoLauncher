@@ -61,7 +61,7 @@
     </Window.Styles>
 
     <Panel>
-        <DockPanel>
+        <DockPanel IsVisible="{Binding !IsOnboardingActive}">
             <!-- ============ SIDEBAR ============ -->
             <Border DockPanel.Dock="Left" Width="230" Background="{DynamicResource SidebarBgBrush}">
             <DockPanel>
@@ -122,6 +122,10 @@
             <ContentControl Content="{Binding CurrentView}"/>
         </Border>
         </DockPanel>
+
+        <!-- First-run wizard covers the whole window so the empty library is never shown behind it. -->
+        <ContentControl Content="{Binding OnboardingVm}"
+                        IsVisible="{Binding IsOnboardingActive}"/>
 
         <!-- ============ TOASTS ============ -->
         <ItemsControl ItemsSource="{Binding Toasts}"

@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.Core.Utils;
 using Microsoft.Extensions.Logging;
 
 public class WebDavService : IWebDavService
@@ -24,7 +25,7 @@ public class WebDavService : IWebDavService
     public async Task<Game[]> DownloadMetadataAsync(NextcloudConfig config, CancellationToken ct = default)
     {
         var url = config.MetadataUrl;
-        _logger.LogInformation("Downloading metadata from {Url}", url);
+        _logger.LogInformation("Downloading metadata from {Url}", UrlSanitizer.Mask(url));
 
         var response = await _httpClient.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
@@ -41,7 +42,7 @@ public class WebDavService : IWebDavService
 
     public async Task<GameManifest> DownloadManifestAsync(string manifestUrl, CancellationToken ct = default, string? username = null, string? password = null)
     {
-        _logger.LogInformation("Downloading manifest from {Url}", manifestUrl);
+        _logger.LogInformation("Downloading manifest from {Url}", UrlSanitizer.Mask(manifestUrl));
 
         using var request = new HttpRequestMessage(HttpMethod.Get, manifestUrl);
         if (!string.IsNullOrWhiteSpace(username))
@@ -99,7 +100,7 @@ public class WebDavService : IWebDavService
 
     public async Task DownloadFileAsync(string remoteUrl, string localPath, string taskId, IProgress<DownloadProgress>? progress = null, CancellationToken ct = default)
     {
-        _logger.LogInformation("Downloading {Url} to {Path}", remoteUrl, localPath);
+        _logger.LogInformation("Downloading {Url} to {Path}", UrlSanitizer.Mask(remoteUrl), localPath);
 
         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
 
