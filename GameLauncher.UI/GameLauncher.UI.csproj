@@ -28,8 +28,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameLauncher.Core\GameLauncher.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\GameLauncher.UI.Shared\GameLauncher.UI.Shared.csproj" />
   </ItemGroup>
 </Project>

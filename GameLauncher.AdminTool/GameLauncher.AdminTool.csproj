@@ -24,5 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameLauncher.Core\GameLauncher.Core.csproj" />
+    <ProjectReference Include="..\GameLauncher.UI.Shared\GameLauncher.UI.Shared.csproj" />
   </ItemGroup>
 </Project>

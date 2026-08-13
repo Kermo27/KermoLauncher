@@ -5,6 +5,7 @@ using GameLauncher.Core.Models;
 using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
+using GameLauncher.UI.Shared.ViewModels;
 
 namespace GameLauncher.UI.ViewModels;
 
@@ -17,6 +18,12 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
 
+    /// <summary>
+    /// Public share links carry the token, so the field was dropped from the form. A token configured
+    /// by an earlier build is still honoured, which is why it is carried through saves and tests.
+    /// </summary>
+    private string _storedShareToken = "";
+
     // Settings are spread over observable properties. XAML used to bind straight to AppSettings,
     // which raises no change notifications, so some fields never refreshed the view.
     [ObservableProperty]
@@ -25,9 +32,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasShareUrl))]
     private string _shareUrl = "";
-
-    [ObservableProperty]
-    private string _shareToken = "";
 
     [ObservableProperty]
     private int _maxParallelDownloads = 2;
@@ -51,18 +55,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _selectedProtonVersionIndex;
-
-    [ObservableProperty]
-    private string _protonPrefix = "";
-
-    [ObservableProperty]
-    private bool _preferUmuRun = true;
-
-    [ObservableProperty]
-    private bool _useSteamRuntime = true;
-
-    [ObservableProperty]
-    private string _wineDllOverrides = "";
 
     [ObservableProperty]
     private string _wineCommand = "wine";
@@ -132,17 +124,13 @@ public partial class SettingsViewModel : ViewModelBase
             ? 1
             : 0;
         RefreshProtonVersions(settings.ProtonVersion);
-        ProtonPrefix = settings.ProtonPrefix;
-        PreferUmuRun = settings.PreferUmuRun;
-        UseSteamRuntime = settings.UseSteamRuntime;
-        WineDllOverrides = settings.WineDllOverrides;
         WineCommand = string.IsNullOrWhiteSpace(settings.WineCommand) ? "wine" : settings.WineCommand;
         WinePrefix = settings.WinePrefix;
 
         if (settings.Nextcloud != null)
         {
             ShareUrl = settings.Nextcloud.ShareUrl;
-            ShareToken = settings.Nextcloud.ShareToken;
+            _storedShareToken = settings.Nextcloud.ShareToken;
         }
     }
 
@@ -212,15 +200,11 @@ public partial class SettingsViewModel : ViewModelBase
             LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
             LinuxCompatBackend = SelectedCompatBackend,
             ProtonVersion = SelectedProtonVersion,
-            ProtonPrefix = ProtonPrefix?.Trim() ?? "",
-            PreferUmuRun = PreferUmuRun,
-            UseSteamRuntime = UseSteamRuntime,
-            WineDllOverrides = WineDllOverrides?.Trim() ?? "",
             WineCommand = string.IsNullOrWhiteSpace(WineCommand) ? "wine" : WineCommand.Trim(),
             WinePrefix = WinePrefix?.Trim() ?? "",
             Nextcloud = string.IsNullOrWhiteSpace(shareUrl)
                 ? null
-                : new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? "")
+                : new NextcloudConfig(shareUrl, _storedShareToken)
         };
 
         await _db.SaveSettingsAsync(settings);
@@ -236,16 +220,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(folder))
         {
             WinePrefix = folder;
-        }
-    }
-
-    [RelayCommand]
-    private async Task BrowseProtonPrefixAsync()
-    {
-        var folder = await _dialogService.ShowFolderPickerAsync(L["Settings.Wine.BrowseProtonPrefix"], ProtonPrefix);
-        if (!string.IsNullOrEmpty(folder))
-        {
-            ProtonPrefix = folder;
         }
     }
 
@@ -274,7 +248,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task BrowseInstallFolderAsync()
     {
-        var folder = await _dialogService.ShowFolderPickerAsync("Select Install Folder", InstallFolder);
+        var folder = await _dialogService.ShowFolderPickerAsync(L["Settings.Folders.BrowseTitle"], InstallFolder);
         if (!string.IsNullOrEmpty(folder))
         {
             InstallFolder = folder;
@@ -293,7 +267,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         try
         {
-            var config = await _webDav.ResolveConfigAsync(new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? ""));
+            var config = await _webDav.ResolveConfigAsync(new NextcloudConfig(shareUrl, _storedShareToken));
             var games = await _webDav.DownloadMetadataAsync(config);
             var message = games.Length > 0
                 ? string.Format(L["Settings.ConnectionOkFound"], games.Length, config.RootFolder.Length > 0 ? config.RootFolder : "/")
