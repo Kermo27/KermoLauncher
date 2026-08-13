@@ -393,6 +393,15 @@ public class GameService : IGameService
 
         try
         {
+            if (OperatingSystem.IsLinux() &&
+                GameLaunchHelper.LooksLikeOnlineFix(workDir, exePath) &&
+                !GameLaunchHelper.IsSteamRunning())
+            {
+                return new LaunchResult(
+                    false,
+                    Error: "Steam must be running to launch Online-Fix games (Steam Overlay / AppID 480).");
+            }
+
             var settings = await _db.GetSettingsAsync();
             var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings);
             var process = Process.Start(startInfo);

@@ -272,6 +272,12 @@ public partial class OnboardingViewModel : ViewModelBase
                 Nextcloud = config,
                 OnboardingCompleted = true,
                 LaunchWindowsGamesWithWine = existing.LaunchWindowsGamesWithWine,
+                LinuxCompatBackend = existing.LinuxCompatBackend,
+                ProtonVersion = existing.ProtonVersion,
+                ProtonPrefix = existing.ProtonPrefix,
+                PreferUmuRun = existing.PreferUmuRun,
+                UseSteamRuntime = existing.UseSteamRuntime,
+                WineDllOverrides = existing.WineDllOverrides,
                 WineCommand = existing.WineCommand,
                 WinePrefix = existing.WinePrefix
             };

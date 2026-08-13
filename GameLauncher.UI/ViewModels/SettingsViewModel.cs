@@ -1,6 +1,8 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Models;
+using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
 
@@ -43,6 +45,26 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _launchWindowsGamesWithWine = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowProtonFields))]
+    [NotifyPropertyChangedFor(nameof(ShowWineFields))]
+    private int _selectedCompatBackendIndex;
+
+    [ObservableProperty]
+    private int _selectedProtonVersionIndex;
+
+    [ObservableProperty]
+    private string _protonPrefix = "";
+
+    [ObservableProperty]
+    private bool _preferUmuRun = true;
+
+    [ObservableProperty]
+    private bool _useSteamRuntime = true;
+
+    [ObservableProperty]
+    private string _wineDllOverrides = "";
+
+    [ObservableProperty]
     private string _wineCommand = "wine";
 
     [ObservableProperty]
@@ -50,17 +72,32 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool HasShareUrl => !string.IsNullOrWhiteSpace(ShareUrl);
 
-    /// <summary>Wine settings only matter when launching Windows binaries on a non-Windows host.</summary>
+    /// <summary>Compat settings only matter when launching Windows binaries on a non-Windows host.</summary>
     public bool ShowWineSettings => !OperatingSystem.IsWindows();
+
+    public bool ShowProtonFields =>
+        ShowWineSettings && SelectedCompatBackendIndex == 0;
+
+    public bool ShowWineFields =>
+        ShowWineSettings && SelectedCompatBackendIndex == 1;
 
     public string[] ThemeValues { get; } = ["Light", "Dark", "System"];
     public string[] LanguageValues { get; } = ["System", "en", "pl"];
+    public string[] CompatBackendValues { get; } = [GameLaunchHelper.BackendProton, GameLaunchHelper.BackendWine];
+
+    /// <summary>Index 0 = Auto (newest); remaining entries are Proton folder names.</summary>
+    public ObservableCollection<string> ProtonVersionOptions { get; } = [];
+
+    private string[] _protonVersionValues = [""];
 
     public string[] ThemeOptions =>
         [L["Settings.Theme.Light"], L["Settings.Theme.Dark"], L["Settings.Theme.System"]];
 
     public string[] LanguageOptions =>
         [L["Settings.Language.System"], L["Settings.Language.English"], L["Settings.Language.Polish"]];
+
+    public string[] CompatBackendOptions =>
+        [L["Settings.Wine.Backend.Proton"], L["Settings.Wine.Backend.Wine"]];
 
     public SettingsViewModel(
         ILocalDbService db,
@@ -91,6 +128,14 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedThemeIndex = Math.Max(0, Array.IndexOf(ThemeValues, settings.Theme));
         SelectedLanguageIndex = Math.Max(0, Array.IndexOf(LanguageValues, settings.Language));
         LaunchWindowsGamesWithWine = settings.LaunchWindowsGamesWithWine;
+        SelectedCompatBackendIndex = GameLaunchHelper.NormalizeBackend(settings.LinuxCompatBackend) == GameLaunchHelper.BackendWine
+            ? 1
+            : 0;
+        RefreshProtonVersions(settings.ProtonVersion);
+        ProtonPrefix = settings.ProtonPrefix;
+        PreferUmuRun = settings.PreferUmuRun;
+        UseSteamRuntime = settings.UseSteamRuntime;
+        WineDllOverrides = settings.WineDllOverrides;
         WineCommand = string.IsNullOrWhiteSpace(settings.WineCommand) ? "wine" : settings.WineCommand;
         WinePrefix = settings.WinePrefix;
 
@@ -106,10 +151,50 @@ public partial class SettingsViewModel : ViewModelBase
         base.OnLanguageChanged();
         OnPropertyChanged(nameof(ThemeOptions));
         OnPropertyChanged(nameof(LanguageOptions));
+        OnPropertyChanged(nameof(CompatBackendOptions));
+        RefreshProtonVersionLabels();
     }
 
     private string SelectedTheme => ThemeValues[Math.Clamp(SelectedThemeIndex, 0, ThemeValues.Length - 1)];
     private string SelectedLanguage => LanguageValues[Math.Clamp(SelectedLanguageIndex, 0, LanguageValues.Length - 1)];
+
+    private string SelectedCompatBackend =>
+        CompatBackendValues[Math.Clamp(SelectedCompatBackendIndex, 0, CompatBackendValues.Length - 1)];
+
+    private string SelectedProtonVersion =>
+        _protonVersionValues[Math.Clamp(SelectedProtonVersionIndex, 0, _protonVersionValues.Length - 1)];
+
+    private void RefreshProtonVersions(string? preferred)
+    {
+        var installed = OperatingSystem.IsWindows()
+            ? []
+            : ProtonLocator.FindInstalled();
+        _protonVersionValues = ["" , .. installed.Select(p => p.Name)];
+        RefreshProtonVersionLabels();
+
+        var idx = 0;
+        if (!string.IsNullOrWhiteSpace(preferred))
+        {
+            for (var i = 0; i < _protonVersionValues.Length; i++)
+            {
+                if (string.Equals(_protonVersionValues[i], preferred.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+
+        SelectedProtonVersionIndex = idx;
+    }
+
+    private void RefreshProtonVersionLabels()
+    {
+        ProtonVersionOptions.Clear();
+        ProtonVersionOptions.Add(L["Settings.Wine.Proton.Auto"]);
+        for (var i = 1; i < _protonVersionValues.Length; i++)
+            ProtonVersionOptions.Add(_protonVersionValues[i]);
+    }
 
     [RelayCommand]
     private async Task SaveAsync()
@@ -125,6 +210,12 @@ public partial class SettingsViewModel : ViewModelBase
             Language = SelectedLanguage,
             OnboardingCompleted = existing.OnboardingCompleted,
             LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+            LinuxCompatBackend = SelectedCompatBackend,
+            ProtonVersion = SelectedProtonVersion,
+            ProtonPrefix = ProtonPrefix?.Trim() ?? "",
+            PreferUmuRun = PreferUmuRun,
+            UseSteamRuntime = UseSteamRuntime,
+            WineDllOverrides = WineDllOverrides?.Trim() ?? "",
             WineCommand = string.IsNullOrWhiteSpace(WineCommand) ? "wine" : WineCommand.Trim(),
             WinePrefix = WinePrefix?.Trim() ?? "",
             Nextcloud = string.IsNullOrWhiteSpace(shareUrl)
@@ -145,6 +236,16 @@ public partial class SettingsViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(folder))
         {
             WinePrefix = folder;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseProtonPrefixAsync()
+    {
+        var folder = await _dialogService.ShowFolderPickerAsync(L["Settings.Wine.BrowseProtonPrefix"], ProtonPrefix);
+        if (!string.IsNullOrEmpty(folder))
+        {
+            ProtonPrefix = folder;
         }
     }
 

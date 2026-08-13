@@ -73,8 +73,12 @@ That places the binary in `~/.local/bin/kermolauncher` (user-writable, so self-u
 desktop entry under `~/.local/share/applications/`. You can also run the plain
 `KermoLauncher-<version>-linux-x64` binary directly.
 
-Windows games launch through **Wine** by default (Settings → Windows games). Point **Wine command**
-at a Proton binary if you prefer Proton over system Wine.
+Windows games launch through **Proton** by default on Linux (Settings → Windows games):
+`umu-run` when available, otherwise Steam Runtime + `proton run` (same idea as online-fix / SOFL).
+Install GE-Proton under Steam’s `compatibilitytools.d`. Wine remains a selectable fallback.
+When `OnlineFix.ini` / `OnlineFix*.dll` is present, the launcher sets the usual
+`WINEDLLOVERRIDES` and SpaceWar (`480`) game id automatically. Steam should be running for
+online-fix multiplayer. `protontricks` remains for prefix tooling (VC++, .NET), not launch.
 
 ## Nextcloud library layout
 

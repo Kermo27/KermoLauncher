@@ -129,7 +129,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============ WINE (Linux) ============ -->
+            <!-- ============ PROTON / WINE (Linux) ============ -->
             <Border Classes="Section" IsVisible="{Binding ShowWineSettings}">
                 <StackPanel Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -146,19 +146,70 @@
                     </Grid>
 
                     <Grid ColumnDefinitions="200,*">
-                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Command]}" Classes="FieldLabel"/>
-                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WineCommand}"
-                                 Watermark="{Binding L[Settings.Wine.CommandPlaceholder]}"/>
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Backend]}" Classes="FieldLabel"/>
+                        <ComboBox Grid.Column="1" Width="220" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding CompatBackendOptions}"
+                                  SelectedIndex="{Binding SelectedCompatBackendIndex}"/>
                     </Grid>
 
-                    <Grid ColumnDefinitions="200,*,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Prefix]}" Classes="FieldLabel"/>
-                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WinePrefix}"
-                                 Watermark="{Binding L[Settings.Wine.PrefixPlaceholder]}"/>
-                        <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
-                                Content="{Binding L[Settings.Browse]}"
-                                Command="{Binding BrowseWinePrefixCommand}"/>
-                    </Grid>
+                    <StackPanel Spacing="14" IsVisible="{Binding ShowProtonFields}">
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Proton.Version]}" Classes="FieldLabel"/>
+                            <ComboBox Grid.Column="1" MinWidth="260" HorizontalAlignment="Left"
+                                      ItemsSource="{Binding ProtonVersionOptions}"
+                                      SelectedIndex="{Binding SelectedProtonVersionIndex}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Proton.PreferUmu]}" Classes="FieldLabel"/>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding PreferUmuRun}"
+                                          HorizontalAlignment="Left"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Proton.SteamRuntime]}" Classes="FieldLabel"/>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseSteamRuntime}"
+                                          HorizontalAlignment="Left"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Proton.Prefix]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding ProtonPrefix}"
+                                     Watermark="{Binding L[Settings.Wine.Proton.PrefixPlaceholder]}"/>
+                            <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                    Content="{Binding L[Settings.Browse]}"
+                                    Command="{Binding BrowseProtonPrefixCommand}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.DllOverrides]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WineDllOverrides}"
+                                     Watermark="{Binding L[Settings.Wine.DllOverridesPlaceholder]}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="14" IsVisible="{Binding ShowWineFields}">
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Command]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WineCommand}"
+                                     Watermark="{Binding L[Settings.Wine.CommandPlaceholder]}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Prefix]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WinePrefix}"
+                                     Watermark="{Binding L[Settings.Wine.PrefixPlaceholder]}"/>
+                            <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                    Content="{Binding L[Settings.Browse]}"
+                                    Command="{Binding BrowseWinePrefixCommand}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.DllOverrides]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WineDllOverrides}"
+                                     Watermark="{Binding L[Settings.Wine.DllOverridesPlaceholder]}"/>
+                        </Grid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

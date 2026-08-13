@@ -17,6 +17,9 @@ public partial class LibraryViewModel : ViewModelBase
     private readonly IGameItemViewModelFactory _itemFactory;
     private readonly IUiDispatcher _dispatcher;
 
+    /// <summary>Maps download task id → game id for byte-progress events.</summary>
+    private readonly Dictionary<string, string> _taskGameIds = new(StringComparer.Ordinal);
+
     private readonly object[] _skeletons = new object[6];
     private CancellationTokenSource? _searchDebounce;
     private bool _hasRefreshed;
@@ -90,6 +93,7 @@ public partial class LibraryViewModel : ViewModelBase
 
         _gameService.OnGameStateChanged += OnGameStateChanged;
         _downloadService.OnTaskUpdated += OnDownloadTaskUpdated;
+        _gameService.OnProgress += OnDownloadProgress;
     }
 
     public Task InitializeAsync() => LoadAsync();
@@ -272,6 +276,8 @@ public partial class LibraryViewModel : ViewModelBase
     {
         _dispatcher.Post(() =>
         {
+            _taskGameIds[task.Id] = task.GameId;
+
             var item = Games.FirstOrDefault(i => i.Game.Id == task.GameId);
             if (item?.LocalState == null) return;
 
@@ -290,6 +296,29 @@ public partial class LibraryViewModel : ViewModelBase
             {
                 item.LocalState = item.LocalState with { Status = newStatus };
             }
+
+            if (newStatus is InstallStatus.Downloading or InstallStatus.Installing)
+                item.ApplyInstallStage(task.InstallStage);
+            else
+            {
+                item.ClearProgress();
+                _taskGameIds.Remove(task.Id);
+            }
+        });
+    }
+
+    private void OnDownloadProgress(DownloadProgress progress)
+    {
+        _dispatcher.Post(() =>
+        {
+            if (!_taskGameIds.TryGetValue(progress.TaskId, out var gameId))
+                return;
+
+            var item = Games.FirstOrDefault(i => i.Game.Id == gameId);
+            item?.ApplyByteProgress(
+                progress.BytesReceived,
+                progress.TotalBytes,
+                progress.SpeedBytesPerSecond);
         });
     }
 
@@ -359,6 +388,7 @@ public partial class LibraryViewModel : ViewModelBase
     {
         _gameService.OnGameStateChanged -= OnGameStateChanged;
         _downloadService.OnTaskUpdated -= OnDownloadTaskUpdated;
+        _gameService.OnProgress -= OnDownloadProgress;
 
         _searchDebounce?.Cancel();
         _searchDebounce?.Dispose();

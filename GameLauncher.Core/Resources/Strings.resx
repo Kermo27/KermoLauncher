@@ -28,6 +28,10 @@
   <data name="Library.Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Library.Status.NotInstalled" xml:space="preserve"><value>Not installed</value></data>
   <data name="Library.Status.Downloading" xml:space="preserve"><value>Downloading...</value></data>
+  <data name="Library.Status.DownloadingProgress" xml:space="preserve"><value>Downloading {0:0}% · {1}/s</value></data>
+  <data name="Library.Status.Preparing" xml:space="preserve"><value>Preparing...</value></data>
+  <data name="Library.Status.Verifying" xml:space="preserve"><value>Verifying...</value></data>
+  <data name="Library.Status.Extracting" xml:space="preserve"><value>Installing files...</value></data>
   <data name="Library.Status.Installing" xml:space="preserve"><value>Installing...</value></data>
   <data name="Library.Status.Installed" xml:space="preserve"><value>Installed</value></data>
   <data name="Library.Played" xml:space="preserve"><value>Played: {0}</value></data>
@@ -136,9 +140,21 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Connection works, but the folder is empty (metadata.json in the root).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Connection error</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Failed to fetch metadata.json: {0}</value></data>
-  <data name="Settings.Wine.Title" xml:space="preserve"><value>Windows games (Wine)</value></data>
-  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Most games in the library are Windows builds. On Linux they launch through Wine (or Proton, if you point Command at a Proton binary).</value></data>
-  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Launch .exe with Wine:</value></data>
+  <data name="Settings.Wine.Title" xml:space="preserve"><value>Windows games (Proton / Wine)</value></data>
+  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Most library games are Windows builds. On Linux they launch with Proton by default (umu-run when available, otherwise Steam Runtime + proton — same approach as online-fix / SOFL). Wine remains available as a fallback. protontricks is for installing runtimes into a prefix, not for everyday launch.</value></data>
+  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Launch .exe with Proton/Wine:</value></data>
+  <data name="Settings.Wine.Backend" xml:space="preserve"><value>Backend:</value></data>
+  <data name="Settings.Wine.Backend.Proton" xml:space="preserve"><value>Proton (recommended)</value></data>
+  <data name="Settings.Wine.Backend.Wine" xml:space="preserve"><value>Wine</value></data>
+  <data name="Settings.Wine.Proton.Version" xml:space="preserve"><value>Proton version:</value></data>
+  <data name="Settings.Wine.Proton.Auto" xml:space="preserve"><value>Auto (newest)</value></data>
+  <data name="Settings.Wine.Proton.PreferUmu" xml:space="preserve"><value>Prefer umu-run:</value></data>
+  <data name="Settings.Wine.Proton.SteamRuntime" xml:space="preserve"><value>Use Steam Runtime:</value></data>
+  <data name="Settings.Wine.Proton.Prefix" xml:space="preserve"><value>Proton prefix:</value></data>
+  <data name="Settings.Wine.Proton.PrefixPlaceholder" xml:space="preserve"><value>Empty = ~/.local/share/KermoLauncher/prefixes/&lt;game&gt;</value></data>
+  <data name="Settings.Wine.BrowseProtonPrefix" xml:space="preserve"><value>Select Proton prefix</value></data>
+  <data name="Settings.Wine.DllOverrides" xml:space="preserve"><value>WINEDLLOVERRIDES:</value></data>
+  <data name="Settings.Wine.DllOverridesPlaceholder" xml:space="preserve"><value>Auto when OnlineFix*.dll/ini found; or set manually</value></data>
   <data name="Settings.Wine.Command" xml:space="preserve"><value>Wine command:</value></data>
   <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Wine prefix:</value></data>

@@ -82,13 +82,31 @@ public class AppSettings
     /// <summary>True until the user finishes (or is migrated past) the first-run wizard.</summary>
     public bool NeedsOnboarding => !OnboardingCompleted;
 
-    /// <summary>On Linux, run .exe/.bat games through Wine (or Proton pointed at by WineCommand).</summary>
+    /// <summary>On Linux, run .exe/.bat games through Proton or Wine.</summary>
     public bool LaunchWindowsGamesWithWine { get; set; } = true;
 
-    /// <summary>Wine/Proton binary. Empty means "wine" on PATH.</summary>
+    /// <summary>"Proton" (default) or "Wine". Ignored on Windows.</summary>
+    public string LinuxCompatBackend { get; set; } = "Proton";
+
+    /// <summary>Proton folder name (e.g. GE-Proton11-5). Empty = newest discovered.</summary>
+    public string ProtonVersion { get; set; } = "";
+
+    /// <summary>STEAM_COMPAT_DATA_PATH / WINEPREFIX for Proton. Empty = &lt;app data&gt;/protonprefix.</summary>
+    public string ProtonPrefix { get; set; } = "";
+
+    /// <summary>Prefer umu-run when available (recommended; falls back to Steam Runtime + proton).</summary>
+    public bool PreferUmuRun { get; set; } = true;
+
+    /// <summary>When not using umu-run, wrap Proton with Steam Linux Runtime if found.</summary>
+    public bool UseSteamRuntime { get; set; } = true;
+
+    /// <summary>Optional WINEDLLOVERRIDES (e.g. OnlineFix64=n;steam_api64=n;…).</summary>
+    public string WineDllOverrides { get; set; } = "";
+
+    /// <summary>Wine binary when backend is Wine. Empty means "wine" on PATH.</summary>
     public string WineCommand { get; set; } = "wine";
 
-    /// <summary>WINEPREFIX. Empty means &lt;app data&gt;/wineprefix.</summary>
+    /// <summary>WINEPREFIX for Wine backend. Empty means &lt;app data&gt;/wineprefix.</summary>
     public string WinePrefix { get; set; } = "";
 
     /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
@@ -102,6 +120,12 @@ public class AppSettings
         Language = Language,
         OnboardingCompleted = OnboardingCompleted,
         LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+        LinuxCompatBackend = LinuxCompatBackend,
+        ProtonVersion = ProtonVersion,
+        ProtonPrefix = ProtonPrefix,
+        PreferUmuRun = PreferUmuRun,
+        UseSteamRuntime = UseSteamRuntime,
+        WineDllOverrides = WineDllOverrides,
         WineCommand = WineCommand,
         WinePrefix = WinePrefix
     };

@@ -158,7 +158,17 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStatusInstalled));
         OnPropertyChanged(nameof(IsStatusBusy));
         OnPropertyChanged(nameof(IsStatusFailed));
+
+        if (value?.Status is not (InstallStatus.Downloading or InstallStatus.Installing))
+            ClearProgress();
     }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText))]
+    private string _progressDetail = "";
+
+    [ObservableProperty]
+    private InstallStage? _activeInstallStage;
 
     public InstallStatus Status => LocalState?.Status ?? InstallStatus.NotInstalled;
 
@@ -181,17 +191,100 @@ public partial class GameItemViewModel : ViewModelBase
     public bool IsStatusBusy => Status is InstallStatus.Downloading or InstallStatus.Installing;
     public bool IsStatusFailed => Status == InstallStatus.Failed;
 
-    public string StatusText => Status switch
+    public string StatusText
     {
-        InstallStatus.NotInstalled => L["Library.Status.NotInstalled"],
-        InstallStatus.Downloading => L["Library.Status.Downloading"],
-        InstallStatus.Installing => L["Library.Status.Installing"],
-        // A separate badge announces an available update, so the status pill sticks to the
-        // install state; otherwise the same message shows up twice on one card.
-        InstallStatus.Installed => L["Library.Status.Installed"],
-        InstallStatus.Failed => L["Library.Status.Failed"],
-        _ => L["Library.Status.Unknown"]
-    };
+        get
+        {
+            if (Status is InstallStatus.Downloading or InstallStatus.Installing
+                && !string.IsNullOrWhiteSpace(ProgressDetail))
+            {
+                return ProgressDetail;
+            }
+
+            return Status switch
+            {
+                InstallStatus.NotInstalled => L["Library.Status.NotInstalled"],
+                InstallStatus.Downloading => L["Library.Status.Downloading"],
+                InstallStatus.Installing => L["Library.Status.Installing"],
+                InstallStatus.Installed => L["Library.Status.Installed"],
+                InstallStatus.Failed => L["Library.Status.Failed"],
+                _ => L["Library.Status.Unknown"]
+            };
+        }
+    }
+
+    /// <summary>Stage label from DownloadTask (Preparing / Verifying / Extracting…).</summary>
+    public void ApplyInstallStage(InstallStage stage)
+    {
+        ActiveInstallStage = stage;
+        if (stage is InstallStage.Preparing or InstallStage.Verifying or InstallStage.Extracting)
+        {
+            ProgressDetail = stage switch
+            {
+                InstallStage.Preparing => L["Library.Status.Preparing"],
+                InstallStage.Verifying => L["Library.Status.Verifying"],
+                InstallStage.Extracting => L["Library.Status.Extracting"],
+                _ => ProgressDetail
+            };
+        }
+        else if (stage == InstallStage.Downloading)
+        {
+            // Fall back to "Downloading" until the first byte progress event.
+            ProgressDetail = "";
+        }
+        else if (stage is InstallStage.Completed or InstallStage.Failed)
+        {
+            ClearProgress();
+        }
+
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    /// <summary>Byte progress while files are downloading.</summary>
+    public void ApplyByteProgress(long bytesReceived, long totalBytes, double speedBytesPerSecond)
+    {
+        if (Status is not (InstallStatus.Downloading or InstallStatus.Installing))
+            return;
+
+        // Prefer stage labels for non-download phases.
+        if (ActiveInstallStage is InstallStage.Preparing or InstallStage.Verifying or InstallStage.Extracting)
+            return;
+
+        var pct = totalBytes > 0
+            ? Math.Clamp(100.0 * bytesReceived / totalBytes, 0, 100)
+            : 0;
+        var speed = FormatSpeed(speedBytesPerSecond);
+        ProgressDetail = string.Format(L["Library.Status.DownloadingProgress"], pct, speed);
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    public void ClearProgress()
+    {
+        ProgressDetail = "";
+        ActiveInstallStage = null;
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    private static string FormatSpeed(double bytesPerSecond)
+    {
+        if (bytesPerSecond <= 0 || double.IsNaN(bytesPerSecond) || double.IsInfinity(bytesPerSecond))
+            return "—";
+
+        string[] units = ["B", "KB", "MB", "GB"];
+        var value = bytesPerSecond;
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return value >= 100
+            ? $"{value:0} {units[unit]}"
+            : value >= 10
+                ? $"{value:0.0} {units[unit]}"
+                : $"{value:0.00} {units[unit]}";
+    }
 
     protected override void OnLanguageChanged()
     {
