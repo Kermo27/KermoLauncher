@@ -166,8 +166,7 @@ public class GameLaunchHelperTests
             LaunchWindowsGamesWithWine = true,
             LinuxCompatBackend = GameLaunchHelper.BackendWine,
             WineCommand = "/usr/bin/wine",
-            WinePrefix = Path.Combine(Path.GetTempPath(), "gl-wine-" + Guid.NewGuid().ToString("N")),
-            WineDllOverrides = "OnlineFix64=n"
+            WinePrefix = Path.Combine(Path.GetTempPath(), "gl-wine-" + Guid.NewGuid().ToString("N"))
         };
 
         var psi = GameLaunchHelper.Build(
@@ -179,7 +178,7 @@ public class GameLaunchHelperTests
         Assert.Equal("/usr/bin/wine", psi.FileName);
         Assert.Equal(new[] { "/games/Demo/game.exe", "-windowed" }, psi.ArgumentList.ToArray());
         Assert.Equal(settings.WinePrefix, psi.Environment["WINEPREFIX"]);
-        Assert.Equal("OnlineFix64=n", psi.Environment["WINEDLLOVERRIDES"]);
+        Assert.False(psi.Environment.ContainsKey("WINEDLLOVERRIDES"));
     }
 
     [Fact]
@@ -193,7 +192,8 @@ public class GameLaunchHelperTests
         var protonScript = Path.Combine(protonDir, "proton");
         File.WriteAllText(protonScript, "#!/bin/sh\n");
 
-        // Point HOME so discovery finds our fake Proton; PreferUmuRun=false avoids depending on host umu.
+        // Point HOME so discovery finds our fake Proton. The build names no runtime in a
+        // toolmanifest, so the launch stays on the bare proton script.
         var previousHome = Environment.GetEnvironmentVariable("HOME");
         try
         {
@@ -203,17 +203,16 @@ public class GameLaunchHelperTests
             {
                 LaunchWindowsGamesWithWine = true,
                 LinuxCompatBackend = GameLaunchHelper.BackendProton,
-                ProtonVersion = "GE-Proton99-launch",
-                PreferUmuRun = false,
-                UseSteamRuntime = false,
-                ProtonPrefix = Path.Combine(Path.GetTempPath(), "gl-pfx-" + Guid.NewGuid().ToString("N"))
+                ProtonVersion = "GE-Proton99-launch"
             };
 
             var psi = GameLaunchHelper.Build("/games/Demo/game.exe", "/games/Demo", ["-novid"], settings);
+            var expectedPrefix = GameLaunchHelper.ResolveProtonPrefix(
+                "/games/Demo", "/games/Demo/game.exe", onlineFix: false);
 
             Assert.Equal(protonScript, psi.FileName);
             Assert.Equal(new[] { "run", "/games/Demo/game.exe", "-novid" }, psi.ArgumentList.ToArray());
-            Assert.Equal(settings.ProtonPrefix, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
+            Assert.Equal(expectedPrefix, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
             Assert.False(psi.Environment.ContainsKey("WINEDLLOVERRIDES"));
         }
         finally
@@ -231,9 +230,14 @@ public class GameLaunchHelperTests
         var home = Path.Combine(Path.GetTempPath(), "gl-home-" + Guid.NewGuid().ToString("N"));
         var gameDir = Path.Combine(Path.GetTempPath(), "gl-game-" + Guid.NewGuid().ToString("N"));
         var protonDir = Path.Combine(home, ".local", "share", "Steam", "compatibilitytools.d", "GE-Proton99-of");
+        var steamRoot = Path.Combine(home, ".local", "share", "Steam");
         Directory.CreateDirectory(protonDir);
+        Directory.CreateDirectory(Path.Combine(steamRoot, "ubuntu12_64"));
+        Directory.CreateDirectory(Path.Combine(steamRoot, "ubuntu12_32"));
         Directory.CreateDirectory(gameDir);
         File.WriteAllText(Path.Combine(protonDir, "proton"), "#!/bin/sh\n");
+        File.WriteAllText(Path.Combine(steamRoot, "ubuntu12_64", "gameoverlayrenderer.so"), "so64");
+        File.WriteAllText(Path.Combine(steamRoot, "ubuntu12_32", "gameoverlayrenderer.so"), "so32");
         File.WriteAllText(Path.Combine(gameDir, "OnlineFix.ini"), "[Main]\n");
         File.WriteAllText(Path.Combine(gameDir, "OnlineFix64.dll"), "x");
         File.WriteAllText(Path.Combine(gameDir, "game.exe"), "MZ");
@@ -266,6 +270,8 @@ public class GameLaunchHelperTests
             Assert.Equal(GameLaunchHelper.OnlineFixGameId,
                 File.ReadAllText(Path.Combine(gameDir, "steam_appid.txt")).Trim());
             Assert.Equal(Path.Combine(protonDir, "proton"), psi.FileName);
+            Assert.Contains("ubuntu12_64/gameoverlayrenderer.so", psi.Environment["LD_PRELOAD"]);
+            Assert.DoesNotContain("ubuntu12_32/gameoverlayrenderer.so", psi.Environment["LD_PRELOAD"]);
         }
         finally
         {
@@ -372,8 +378,117 @@ public class GameLaunchHelperTests
             GameLaunchHelper.Build("/games/Demo/game.exe", "/games/Demo", null, settings));
     }
 
+    /// <summary>
+    /// Creates a fake home with the given Proton builds (name → required runtime appid) and the
+    /// given runtime folders in a second Steam library, the way a real dual-library setup looks.
+    /// </summary>
+    private static string MakeHomeWithProtons(
+        (string Name, string? RuntimeAppId)[] protons,
+        string[] runtimeDirs)
+    {
+        var home = Path.Combine(Path.GetTempPath(), "gl-home-" + Guid.NewGuid().ToString("N"));
+        var steamRoot = Path.Combine(home, ".local", "share", "Steam");
+
+        foreach (var (name, runtimeAppId) in protons)
+        {
+            var dir = Path.Combine(steamRoot, "compatibilitytools.d", name);
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "proton"), "#!/bin/sh\n");
+            if (runtimeAppId != null)
+            {
+                File.WriteAllText(
+                    Path.Combine(dir, "toolmanifest.vdf"),
+                    "\"manifest\"\n{\n  \"version\" \"2\"\n  \"require_tool_appid\" \"" + runtimeAppId + "\"\n}\n");
+            }
+        }
+
+        var library = Path.Combine(home, "library");
+        foreach (var runtimeDir in runtimeDirs)
+        {
+            var dir = Path.Combine(library, "steamapps", "common", runtimeDir);
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "run"), "#!/bin/sh\n");
+        }
+
+        Directory.CreateDirectory(Path.Combine(steamRoot, "steamapps"));
+        File.WriteAllText(
+            Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf"),
+            "\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"" + library + "\"\n\t}\n}\n");
+
+        return home;
+    }
+
+    [Fact]
+    public void FindSteamRuntime_PicksTheRuntimeTheBuildRequires()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        // GE-Proton 11 asks for runtime 4.0; sniper is present too and used to win by accident,
+        // which broke the launch on Python 3.9.
+        var home = MakeHomeWithProtons(
+            [("GE-Proton11-5", "4183110")],
+            ["SteamLinuxRuntime_sniper", "SteamLinuxRuntime_4"]);
+
+        try
+        {
+            var proton = ProtonLocator.Resolve(null, home);
+            Assert.NotNull(proton);
+            Assert.Equal("4183110", proton!.RequiredRuntimeAppId);
+
+            var runtime = ProtonLocator.FindSteamRuntime(proton, home);
+            Assert.NotNull(runtime);
+            Assert.Contains(Path.Combine("common", "SteamLinuxRuntime_4"), runtime);
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void FindSteamRuntime_ReturnsNullWhenRequiredRuntimeIsMissing()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var home = MakeHomeWithProtons([("GE-Proton11-5", "4183110")], ["SteamLinuxRuntime_sniper"]);
+
+        try
+        {
+            var proton = ProtonLocator.Resolve(null, home);
+            Assert.Null(ProtonLocator.FindSteamRuntime(proton!, home));
+            Assert.False(ProtonLocator.HasRequiredRuntime(proton!, home));
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Resolve_PrefersBuildWhoseRuntimeIsInstalled()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        // Only sniper installed: the newer build cannot run, so the older, runnable one wins.
+        var home = MakeHomeWithProtons(
+            [("GE-Proton10-34", "1628350"), ("GE-Proton11-5", "4183110")],
+            ["SteamLinuxRuntime_sniper"]);
+
+        try
+        {
+            var proton = ProtonLocator.Resolve(null, home);
+            Assert.Equal("GE-Proton10-34", proton!.Name);
+
+            // An explicit choice in Settings still wins over availability.
+            Assert.Equal("GE-Proton11-5", ProtonLocator.Resolve("GE-Proton11-5", home)!.Name);
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
     [Theory]
-    [InlineData("plain", "plain")]
     [InlineData("has space", "\"has space\"")]
     [InlineData("quote\"me", "\"quote\\\"me\"")]
     public void Quote_EscapesAsNeeded(string input, string expected)

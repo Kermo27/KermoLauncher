@@ -120,7 +120,7 @@ public static class GameLaunchHelper
         psi.ArgumentList.Add(exePath);
         AppendArgs(psi, launchArgs);
         psi.Environment["WINEPREFIX"] = prefix;
-        ApplyOnlineFixEnvironment(psi, settings, workDir, exePath, onlineFix: LooksLikeOnlineFix(workDir, exePath));
+        ApplyOnlineFixEnvironment(psi, workDir, exePath, onlineFix: LooksLikeOnlineFix(workDir, exePath));
         return psi;
     }
 
@@ -137,7 +137,7 @@ public static class GameLaunchHelper
 
         var onlineFix = LooksLikeOnlineFix(workDir, exePath);
         var steamRoot = ProtonLocator.FindSteamClientRoot();
-        var prefix = ResolveProtonPrefix(workDir, exePath, settings, onlineFix);
+        var prefix = ResolveProtonPrefix(workDir, exePath, onlineFix);
         Directory.CreateDirectory(prefix);
         // Proton/OFLL layout: STEAM_COMPAT_DATA_PATH/<pfx>/drive_c/...
         var winePrefix = Path.Combine(prefix, "pfx");
@@ -150,8 +150,7 @@ public static class GameLaunchHelper
         }
 
         // Online-Fix: match OFLL — Steam Runtime + proton run. umu remains for other Windows games.
-        var useUmu = settings.PreferUmuRun && !onlineFix;
-        var umu = useUmu ? ProtonLocator.FindUmuRun() : null;
+        var umu = onlineFix ? null : ProtonLocator.FindUmuRun();
 
         ProcessStartInfo psi;
         if (umu != null)
@@ -172,7 +171,17 @@ public static class GameLaunchHelper
         else
         {
             // OFLL / SOFL: [steam-runtime] proton run <exe> ...
-            var runtime = settings.UseSteamRuntime ? ProtonLocator.FindSteamRuntime() : null;
+            // A build that names a runtime in toolmanifest.vdf cannot run outside it, so this is not
+            // something the user gets to switch off — it only ever produced import errors.
+            var runtime = ProtonLocator.FindSteamRuntime(proton);
+            if (runtime == null && proton.RequiredRuntimeAppId is { Length: > 0 } runtimeAppId)
+            {
+                throw new InvalidOperationException(
+                    $"{proton.Name} runs only inside {ProtonLocator.DescribeRuntime(runtimeAppId)}, " +
+                    "which is not installed. Install that runtime in Steam, or pick a Proton build " +
+                    "matching your runtimes in Settings.");
+            }
+
             psi = new ProcessStartInfo
             {
                 FileName = runtime ?? proton.ProtonScript,
@@ -180,7 +189,17 @@ public static class GameLaunchHelper
                 UseShellExecute = false
             };
             if (runtime != null)
+            {
+                // The bare entry point wants the verb up front; the "run" wrapper takes the
+                // command as-is.
+                if (Path.GetFileName(runtime) == ProtonLocator.EntryPointScript)
+                {
+                    psi.ArgumentList.Add("--verb=run");
+                    psi.ArgumentList.Add("--");
+                }
+
                 psi.ArgumentList.Add(proton.ProtonScript);
+            }
             psi.ArgumentList.Add("run");
             psi.ArgumentList.Add(exePath);
             AppendArgs(psi, launchArgs);
@@ -209,23 +228,19 @@ public static class GameLaunchHelper
             psi.Environment["SteamAppID"] = OnlineFixGameId;
         }
 
-        ApplyOnlineFixEnvironment(psi, settings, workDir, exePath, steamRoot, onlineFix);
+        ApplyOnlineFixEnvironment(psi, workDir, exePath, steamRoot, onlineFix);
         return psi;
     }
 
     /// <summary>
     /// Online-Fix: per-game prefix under ~/.local/share/KermoLauncher/prefixes/&lt;key&gt;
-    /// (same layout as OFLL, but owned by this launcher). Settings.ProtonPrefix wins.
+    /// (same layout as OFLL, but owned by this launcher).
     /// </summary>
     public static string ResolveProtonPrefix(
         string workDir,
         string exePath,
-        AppSettings settings,
         bool onlineFix)
     {
-        if (!string.IsNullOrWhiteSpace(settings.ProtonPrefix))
-            return settings.ProtonPrefix.Trim();
-
         if (onlineFix)
         {
             if (!string.IsNullOrWhiteSpace(workDir))
@@ -350,21 +365,15 @@ public static class GameLaunchHelper
 
     private static void ApplyOnlineFixEnvironment(
         ProcessStartInfo psi,
-        AppSettings settings,
         string workDir,
         string exePath,
         string? steamRoot = null,
         bool? onlineFix = null)
     {
         onlineFix ??= LooksLikeOnlineFix(workDir, exePath);
-
-        // User override wins; otherwise auto-apply the OFLL set when Online-Fix markers exist.
-        if (!string.IsNullOrWhiteSpace(settings.WineDllOverrides))
-            psi.Environment["WINEDLLOVERRIDES"] = settings.WineDllOverrides.Trim();
-        else if (onlineFix == true)
-            psi.Environment["WINEDLLOVERRIDES"] = OnlineFixDllOverrides;
-
         if (onlineFix != true) return;
+
+        psi.Environment["WINEDLLOVERRIDES"] = OnlineFixDllOverrides;
 
         steamRoot ??= ProtonLocator.FindSteamClientRoot();
         if (steamRoot == null) return;
@@ -372,18 +381,14 @@ public static class GameLaunchHelper
         // OFLL enables the real Steam overlay so OnlineFix's SteamOverlay64.dll can resolve.
         psi.Environment["ENABLE_VK_LAYER_VALVE_steam_overlay_1"] = "1";
 
-        var overlayBits = new[]
-        {
-            Path.Combine(steamRoot, "ubuntu12_64", "gameoverlayrenderer.so"),
-            Path.Combine(steamRoot, "ubuntu12_32", "gameoverlayrenderer.so")
-        }.Where(File.Exists).ToArray();
-
-        if (overlayBits.Length == 0) return;
+        // 64-bit Windows games only need the 64-bit overlay (32-bit .so causes ELFCLASS32 noise).
+        var overlay64 = Path.Combine(steamRoot, "ubuntu12_64", "gameoverlayrenderer.so");
+        if (!File.Exists(overlay64)) return;
 
         var existing = psi.Environment.TryGetValue("LD_PRELOAD", out var preload)
             ? preload
             : Environment.GetEnvironmentVariable("LD_PRELOAD");
-        var parts = overlayBits.AsEnumerable();
+        var parts = new[] { overlay64 }.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(existing))
             parts = parts.Concat(existing.Split(':', StringSplitOptions.RemoveEmptyEntries));
         psi.Environment["LD_PRELOAD"] = string.Join(':', parts.Distinct());

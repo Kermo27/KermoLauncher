@@ -5,7 +5,47 @@ namespace GameLauncher.Core.Services;
 /// </summary>
 public static class ProtonLocator
 {
-    public sealed record ProtonInstall(string Name, string Directory, string ProtonScript);
+    public sealed record ProtonInstall(string Name, string Directory, string ProtonScript)
+    {
+        /// <summary>
+        /// Steam appid of the container runtime this build declares in toolmanifest.vdf
+        /// ("require_tool_appid"). Null when the build runs without one.
+        /// </summary>
+        public string? RequiredRuntimeAppId { get; init; }
+    }
+
+    /// <summary>
+    /// Runtime folder names by the appid Proton asks for. The pairing matters: GE-Proton 11 wants
+    /// runtime 4.0 (Python 3.13) and dies on an import when started under sniper (Python 3.9).
+    /// </summary>
+    private static readonly Dictionary<string, string> RuntimeDirByAppId = new(StringComparer.Ordinal)
+    {
+        ["1070560"] = "SteamLinuxRuntime",
+        ["1391110"] = "SteamLinuxRuntime_soldier",
+        ["1628350"] = "SteamLinuxRuntime_sniper",
+        ["4183110"] = "SteamLinuxRuntime_4"
+    };
+
+    /// <summary>umu keeps its own copies of the same runtimes; they work just as well.</summary>
+    private static readonly Dictionary<string, string> UmuRuntimeDirByAppId = new(StringComparer.Ordinal)
+    {
+        ["1628350"] = "steamrt3",
+        ["4183110"] = "steamrt4"
+    };
+
+    private static readonly Dictionary<string, string> RuntimeLabelByAppId = new(StringComparer.Ordinal)
+    {
+        ["1070560"] = "Steam Linux Runtime 1.0 (scout)",
+        ["1391110"] = "Steam Linux Runtime 2.0 (soldier)",
+        ["1628350"] = "Steam Linux Runtime 3.0 (sniper)",
+        ["4183110"] = "Steam Linux Runtime 4.0"
+    };
+
+    /// <summary>Human-readable runtime name for error messages.</summary>
+    public static string DescribeRuntime(string appId) =>
+        RuntimeLabelByAppId.TryGetValue(appId, out var label)
+            ? $"{label} (appid {appId})"
+            : $"Steam Linux Runtime with appid {appId}";
 
     /// <summary>Installed Proton builds, newest name first.</summary>
     public static IReadOnlyList<ProtonInstall> FindInstalled(string? home = null)
@@ -39,8 +79,17 @@ public static class ProtonLocator
             if (match != null) return match;
         }
 
-        return installed[0];
+        // Newest is not automatically usable: a build whose required runtime is missing cannot
+        // start at all, so one that has its runtime installed wins. The list is already ordered by
+        // rank, and OrderBy is stable, so that order decides among equally usable builds.
+        return installed
+            .OrderByDescending(p => HasRequiredRuntime(p, home) ? 1 : 0)
+            .First();
     }
+
+    /// <summary>True when the build needs no container runtime or the one it needs is installed.</summary>
+    public static bool HasRequiredRuntime(ProtonInstall install, string? home = null) =>
+        install.RequiredRuntimeAppId is not { Length: > 0 } || FindSteamRuntime(install, home) != null;
 
     public static int Rank(ProtonInstall install)
     {
@@ -96,25 +145,79 @@ public static class ProtonLocator
         return null;
     }
 
-    /// <summary>SteamLinuxRuntime_sniper/run when installed (Steam app 1628350).</summary>
     private static string DefaultHome() =>
         Environment.GetEnvironmentVariable("HOME")
         ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-    public static string? FindSteamRuntime(string? home = null)
+    /// <summary>
+    /// Entry point of the container runtime this Proton build asks for, or null when it declares
+    /// none or that runtime is not installed anywhere.
+    /// </summary>
+    public static string? FindSteamRuntime(ProtonInstall install, string? home = null) =>
+        install.RequiredRuntimeAppId is { Length: > 0 } appId
+            ? FindRuntimeForAppId(appId, home)
+            : null;
+
+    public static string? FindRuntimeForAppId(string appId, string? home = null)
     {
         home ??= DefaultHome();
-        var steamRoot = FindSteamClientRoot(home);
-        if (steamRoot == null) return null;
+        if (!RuntimeDirByAppId.TryGetValue(appId, out var dirName)) return null;
 
-        foreach (var libraryRoot in EnumerateSteamLibraryRoots(steamRoot, home))
+        var steamRoot = FindSteamClientRoot(home);
+        if (steamRoot != null)
         {
-            var runtime = Path.Combine(libraryRoot, "steamapps", "common", "SteamLinuxRuntime_sniper", "run");
-            if (File.Exists(runtime)) return runtime;
+            foreach (var libraryRoot in EnumerateSteamLibraryRoots(steamRoot, home))
+            {
+                var entry = RuntimeEntryPoint(Path.Combine(libraryRoot, "steamapps", "common", dirName));
+                if (entry != null) return entry;
+            }
         }
 
-        var legacy = Path.Combine(steamRoot, "ubuntu12_32", "steam-runtime", "run.sh");
-        return File.Exists(legacy) ? legacy : null;
+        if (UmuRuntimeDirByAppId.TryGetValue(appId, out var umuDir))
+            return RuntimeEntryPoint(Path.Combine(home, ".local", "share", "umu", umuDir));
+
+        return null;
+    }
+
+    /// <summary>
+    /// "run" is the documented wrapper for running a command in the container; _v2-entry-point is
+    /// what Steam itself calls and needs the verb spelled out.
+    /// </summary>
+    private static string? RuntimeEntryPoint(string runtimeDir)
+    {
+        foreach (var name in new[] { "run", EntryPointScript })
+        {
+            var candidate = Path.Combine(runtimeDir, name);
+            if (File.Exists(candidate)) return candidate;
+        }
+
+        return null;
+    }
+
+    public const string EntryPointScript = "_v2-entry-point";
+
+    private static string? ReadRequiredRuntimeAppId(string protonDir)
+    {
+        var manifest = Path.Combine(protonDir, "toolmanifest.vdf");
+        if (!File.Exists(manifest)) return null;
+
+        try
+        {
+            foreach (var line in File.ReadLines(manifest))
+            {
+                if (!line.Contains("require_tool_appid", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var parts = line.Split('"', StringSplitOptions.RemoveEmptyEntries);
+                var appId = parts.LastOrDefault(p => p.Length > 0 && p.All(char.IsDigit));
+                if (appId != null) return appId;
+            }
+        }
+        catch (IOException)
+        {
+            // Unreadable manifest: treat the build as needing no runtime.
+        }
+
+        return null;
     }
 
     private static IEnumerable<string> CompatToolRoots(string home)
@@ -176,7 +279,15 @@ public static class ProtonLocator
 
             var script = Path.Combine(dir, "proton");
             if (!File.Exists(script)) continue;
-            into[name] = new ProtonInstall(name, dir, script);
+
+            var install = new ProtonInstall(name, dir, script)
+            {
+                RequiredRuntimeAppId = ReadRequiredRuntimeAppId(dir)
+            };
+            if (into.TryGetValue(name, out var existing) && Rank(existing) >= Rank(install))
+                continue;
+
+            into[name] = install;
         }
     }
 }
