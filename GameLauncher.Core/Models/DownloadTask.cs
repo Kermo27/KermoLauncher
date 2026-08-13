@@ -31,3 +31,11 @@ public record DownloadProgress(
     double SpeedBytesPerSecond,
     TimeSpan? EstimatedTimeRemaining
 );
+
+/// <summary>One file to transfer. Key identifies it in progress bookkeeping.</summary>
+public record DownloadFileRequest(
+    string Key,
+    string RemoteUrl,
+    string LocalPath,
+    long SizeBytes
+);
