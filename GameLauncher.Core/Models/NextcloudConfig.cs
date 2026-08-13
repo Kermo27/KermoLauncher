@@ -91,18 +91,6 @@ public class AppSettings
     /// <summary>Proton folder name (e.g. GE-Proton11-5). Empty = newest discovered.</summary>
     public string ProtonVersion { get; set; } = "";
 
-    /// <summary>STEAM_COMPAT_DATA_PATH / WINEPREFIX for Proton. Empty = &lt;app data&gt;/protonprefix.</summary>
-    public string ProtonPrefix { get; set; } = "";
-
-    /// <summary>Prefer umu-run when available (recommended; falls back to Steam Runtime + proton).</summary>
-    public bool PreferUmuRun { get; set; } = true;
-
-    /// <summary>When not using umu-run, wrap Proton with Steam Linux Runtime if found.</summary>
-    public bool UseSteamRuntime { get; set; } = true;
-
-    /// <summary>Optional WINEDLLOVERRIDES (e.g. OnlineFix64=n;steam_api64=n;…).</summary>
-    public string WineDllOverrides { get; set; } = "";
-
     /// <summary>Wine binary when backend is Wine. Empty means "wine" on PATH.</summary>
     public string WineCommand { get; set; } = "wine";
 
@@ -122,10 +110,6 @@ public class AppSettings
         LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
         LinuxCompatBackend = LinuxCompatBackend,
         ProtonVersion = ProtonVersion,
-        ProtonPrefix = ProtonPrefix,
-        PreferUmuRun = PreferUmuRun,
-        UseSteamRuntime = UseSteamRuntime,
-        WineDllOverrides = WineDllOverrides,
         WineCommand = WineCommand,
         WinePrefix = WinePrefix
     };

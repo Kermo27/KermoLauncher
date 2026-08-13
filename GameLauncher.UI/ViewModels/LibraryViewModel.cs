@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
+using GameLauncher.UI.Shared.ViewModels;
 
 namespace GameLauncher.UI.ViewModels;
 
@@ -287,6 +288,7 @@ public partial class LibraryViewModel : ViewModelBase
                 DownloadStatus.Completed => task.InstallStage == InstallStage.Completed
                     ? InstallStatus.Installed
                     : InstallStatus.Installing,
+                DownloadStatus.Paused => InstallStatus.Paused,
                 DownloadStatus.Failed => InstallStatus.Failed,
                 DownloadStatus.Cancelled => InstallStatus.NotInstalled,
                 _ => item.LocalState.Status
@@ -298,9 +300,12 @@ public partial class LibraryViewModel : ViewModelBase
             }
 
             if (newStatus is InstallStatus.Downloading or InstallStatus.Installing)
-                item.ApplyInstallStage(task.InstallStage);
-            else
             {
+                item.ApplyInstallStage(task.InstallStage);
+            }
+            else if (newStatus is not InstallStatus.Paused)
+            {
+                // A paused card keeps its bar, so only a finished or dropped task clears it.
                 item.ClearProgress();
                 _taskGameIds.Remove(task.Id);
             }
