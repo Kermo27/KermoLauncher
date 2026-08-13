@@ -192,8 +192,8 @@ public class GameLaunchHelperTests
         var protonScript = Path.Combine(protonDir, "proton");
         File.WriteAllText(protonScript, "#!/bin/sh\n");
 
-        // Point HOME so discovery finds our fake Proton. The build names no runtime in a
-        // toolmanifest, so the launch stays on the bare proton script.
+        // Point HOME so discovery finds our fake Proton. Without a toolmanifest runtime the
+        // non-umu path is the bare proton script; with umu on the host that path wins instead.
         var previousHome = Environment.GetEnvironmentVariable("HOME");
         try
         {
@@ -209,9 +209,19 @@ public class GameLaunchHelperTests
             var psi = GameLaunchHelper.Build("/games/Demo/game.exe", "/games/Demo", ["-novid"], settings);
             var expectedPrefix = GameLaunchHelper.ResolveProtonPrefix(
                 "/games/Demo", "/games/Demo/game.exe", onlineFix: false);
+            var umu = ProtonLocator.FindUmuRun();
 
-            Assert.Equal(protonScript, psi.FileName);
-            Assert.Equal(new[] { "run", "/games/Demo/game.exe", "-novid" }, psi.ArgumentList.ToArray());
+            if (umu != null)
+            {
+                Assert.Equal(umu, psi.FileName);
+                Assert.Equal(new[] { "/games/Demo/game.exe", "-novid" }, psi.ArgumentList.ToArray());
+            }
+            else
+            {
+                Assert.Equal(protonScript, psi.FileName);
+                Assert.Equal(new[] { "run", "/games/Demo/game.exe", "-novid" }, psi.ArgumentList.ToArray());
+            }
+
             Assert.Equal(expectedPrefix, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
             Assert.False(psi.Environment.ContainsKey("WINEDLLOVERRIDES"));
         }
@@ -247,13 +257,12 @@ public class GameLaunchHelperTests
         {
             Environment.SetEnvironmentVariable("HOME", home);
 
+            // Online-Fix always takes the proton-run path (never umu), with auto DLL overrides.
             var settings = new AppSettings
             {
                 LaunchWindowsGamesWithWine = true,
                 LinuxCompatBackend = GameLaunchHelper.BackendProton,
-                ProtonVersion = "GE-Proton99-of",
-                PreferUmuRun = true, // Online-Fix must still use proton run (OFLL-style)
-                UseSteamRuntime = false
+                ProtonVersion = "GE-Proton99-of"
             };
 
             var exe = Path.Combine(gameDir, "game.exe");
@@ -328,7 +337,6 @@ public class GameLaunchHelperTests
         File.WriteAllText(Path.Combine(protonDir, "proton"), "#!/bin/sh\n");
 
         var previousHome = Environment.GetEnvironmentVariable("HOME");
-        var pfx = Path.Combine(Path.GetTempPath(), "gl-pfx-" + Guid.NewGuid().ToString("N"));
         try
         {
             Environment.SetEnvironmentVariable("HOME", home);
@@ -337,23 +345,22 @@ public class GameLaunchHelperTests
             {
                 LaunchWindowsGamesWithWine = true,
                 LinuxCompatBackend = GameLaunchHelper.BackendProton,
-                ProtonVersion = "GE-Proton99-umu",
-                PreferUmuRun = true,
-                ProtonPrefix = pfx
+                ProtonVersion = "GE-Proton99-umu"
             };
 
-            // Plain .exe without Online-Fix markers → umu path.
+            // Plain .exe without Online-Fix markers → umu path when umu-run is on PATH.
             var psi = GameLaunchHelper.Build("/games/Demo/game.exe", "/games/Demo", null, settings);
+            var expectedPrefix = GameLaunchHelper.ResolveProtonPrefix(
+                "/games/Demo", "/games/Demo/game.exe", onlineFix: false);
 
             Assert.Contains("umu-run", psi.FileName);
-            Assert.Equal(Path.Combine(pfx, "pfx"), psi.Environment["WINEPREFIX"]);
-            Assert.Equal(pfx, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
+            Assert.Equal(Path.Combine(expectedPrefix, "pfx"), psi.Environment["WINEPREFIX"]);
+            Assert.Equal(expectedPrefix, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
         }
         finally
         {
             Environment.SetEnvironmentVariable("HOME", previousHome);
             try { Directory.Delete(home, recursive: true); } catch { }
-            try { Directory.Delete(pfx, recursive: true); } catch { }
         }
     }
 
