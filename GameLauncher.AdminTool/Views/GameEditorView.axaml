@@ -53,6 +53,10 @@
                              Watermark="{Binding L[Admin.Editor.FolderPlaceholder]}"/>
 
                     <Button Classes="ghost" VerticalAlignment="Center"
+                            Command="{Binding BrowseScanFolderCommand}"
+                            Content="{Binding L[Admin.Editor.Browse]}"/>
+
+                    <Button Classes="ghost" VerticalAlignment="Center"
                             Command="{Binding ScanCommand}"
                             IsEnabled="{Binding IsScanning, Converter={x:Static conv:ObjectConverters.Not}}">
                         <StackPanel Orientation="Horizontal" Spacing="8">

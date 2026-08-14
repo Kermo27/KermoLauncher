@@ -12,7 +12,7 @@ The repo also includes **KermoLauncher Admin Tool** — a utility for publishing
 - Playtime tracking and last-launched date
 - Themes: light, dark, system
 - Launcher auto-updates via GitHub Releases
-- Admin Tool: scan game folders, generate per-game `manifest.json` + catalog `metadata.json`, upload files over WebDAV
+- Admin Tool: scan a test games folder, generate per-game `manifest.json` + catalog `metadata.json`, then copy only the changed files into the Nextcloud-synced `Games` folder
 
 ## Project structure
 
@@ -44,6 +44,13 @@ dotnet publish GameLauncher.UI -c Release -r linux-x64 --self-contained -p:Publi
 Single-file publishing bundles the native libraries (Skia, HarfBuzz, SQLite) inside the
 executable, so the result is one file with no loose `.so`/`.dll` next to it. The launcher's
 self-update relies on that: it replaces exactly one file.
+
+## Website
+
+A static download page lives in [`docs/`](docs/) and is meant for **GitHub Pages**
+(`Settings → Pages → Deploy from a branch → main / docs`) with the custom domain
+`kermo.dev` (`docs/CNAME`). Download buttons resolve the latest GitHub Release at
+load time, so a new tag does not require editing the page.
 
 ## Releases
 

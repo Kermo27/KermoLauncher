@@ -195,11 +195,13 @@
   <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Panel administratora</value></data>
   <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Panel administratora</value></data>
   <data name="Admin.Nav.Editor" xml:space="preserve"><value>Edytor gier</value></data>
-  <data name="Admin.Nav.Upload" xml:space="preserve"><value>Wysyłka na Nextcloud</value></data>
+  <data name="Admin.Nav.Upload" xml:space="preserve"><value>Publikacja do biblioteki</value></data>
   <data name="Admin.Ready" xml:space="preserve"><value>Gotowy</value></data>
   <data name="Admin.Editor.Title" xml:space="preserve"><value>Edytor gier</value></data>
-  <data name="Admin.Editor.Subtitle" xml:space="preserve"><value>Skanowanie folderu z grami, edycja danych i generowanie metadata.json</value></data>
-  <data name="Admin.Editor.FolderPlaceholder" xml:space="preserve"><value>Ścieżka do folderu z grami (np. ~/Nextcloud/Games)</value></data>
+  <data name="Admin.Editor.Subtitle" xml:space="preserve"><value>Skanuj folder, w którym testujesz gry, edytuj metadane, a potem skopiuj deltę do Nextcloud/Games</value></data>
+  <data name="Admin.Editor.FolderPlaceholder" xml:space="preserve"><value>Ścieżka do folderu testowego z grami</value></data>
+  <data name="Admin.Editor.Browse" xml:space="preserve"><value>Przeglądaj</value></data>
+  <data name="Admin.Editor.BrowseFolder" xml:space="preserve"><value>Wybierz folder z grami</value></data>
   <data name="Admin.Editor.Scan" xml:space="preserve"><value>Skanuj</value></data>
   <data name="Admin.Editor.AddGame" xml:space="preserve"><value>Dodaj grę</value></data>
   <data name="Admin.Editor.Generate" xml:space="preserve"><value>Generuj metadata.json</value></data>
@@ -230,7 +232,7 @@
   <data name="Admin.Editor.RemoveGame" xml:space="preserve"><value>Usuń grę z listy</value></data>
   <data name="Admin.Editor.SelectHint" xml:space="preserve"><value>Wybierz grę z listy, aby edytować jej dane</value></data>
   <data name="Admin.Editor.SelectHint2" xml:space="preserve"><value>Najpierw zeskanuj folder z grami (przycisk Skanuj).</value></data>
-  <data name="Admin.Editor.ErrFolderPath" xml:space="preserve"><value>Podaj ścieżkę do folderu z grami (np. /home/user/Nextcloud/Games).</value></data>
+  <data name="Admin.Editor.ErrFolderPath" xml:space="preserve"><value>Podaj ścieżkę do folderu testowego z grami.</value></data>
   <data name="Admin.Editor.ErrFolderMissing" xml:space="preserve"><value>Folder nie istnieje: {0}</value></data>
   <data name="Admin.Editor.ScanDone" xml:space="preserve"><value>Znaleziono {0} gier w folderze. Zachowano ręczne opisy dla {1} gier.</value></data>
   <data name="Admin.Editor.ErrNoFiles" xml:space="preserve"><value>Brak plików gry w podfolderach. Każda gra musi być w osobnym podfolderze z plikami gry.</value></data>
@@ -238,31 +240,34 @@
   <data name="Admin.Editor.ErrNoGames" xml:space="preserve"><value>Brak gier. Zeskanuj najpierw folder z grami.</value></data>
   <data name="Admin.Editor.GenerateDone" xml:space="preserve"><value>Wygenerowano {0} ({1} gier).</value></data>
   <data name="Admin.Editor.ErrGenerate" xml:space="preserve"><value>Błąd generowania metadata.json: {0}</value></data>
-  <data name="Admin.Upload.Title" xml:space="preserve"><value>Wysyłka na Nextcloud</value></data>
-  <data name="Admin.Upload.Subtitle" xml:space="preserve"><value>Wgranie metadata.json, archiwów .zip i zrzutów ekranu do udostępnionego katalogu Games</value></data>
-  <data name="Admin.Upload.HelpTitle" xml:space="preserve"><value>Jak zdobyć dane dostępu:</value></data>
-  <data name="Admin.Upload.Help1" xml:space="preserve"><value>1. Zaloguj się do Nextcloud w przeglądarce → Awatar → Ustawienia osobiste → Bezpieczeństwo.</value></data>
-  <data name="Admin.Upload.Help2" xml:space="preserve"><value>2. Utwórz nowe hasło aplikacji (Sekcja: Hasła aplikacji) - będzie ono potrzebne do wysyłki plików.</value></data>
-  <data name="Admin.Upload.Help3" xml:space="preserve"><value>3. Adres WebDAV znajdziesz w Ustawieniach osobistych → WebDAV (np. https://twoj-serwer/remote.php/dav/files/twoj-user).</value></data>
-  <data name="Admin.Upload.Help4" xml:space="preserve"><value>4. Konto musi mieć uprawnienia do zapisu w folderze Games. Po wysyłce udostępnij folder Games jako link publiczny - launcher pobierze go stamtąd.</value></data>
-  <data name="Admin.Upload.Credentials" xml:space="preserve"><value>Dane dostępu (zapis)</value></data>
-  <data name="Admin.Upload.WebDavUrl" xml:space="preserve"><value>Adres WebDAV:</value></data>
-  <data name="Admin.Upload.WebDavPlaceholder" xml:space="preserve"><value>https://twoj-serwer/remote.php/dav/files/twoj-user</value></data>
-  <data name="Admin.Upload.User" xml:space="preserve"><value>Użytkownik:</value></data>
-  <data name="Admin.Upload.Password" xml:space="preserve"><value>Hasło aplikacji:</value></data>
-  <data name="Admin.Upload.Files" xml:space="preserve"><value>Pliki do wysłania</value></data>
-  <data name="Admin.Upload.Metadata" xml:space="preserve"><value>metadata.json:</value></data>
-  <data name="Admin.Upload.FilesHint" xml:space="preserve"><value>Archiva .zip i zrzuty ekranu są pobierane z listy gier edytora (zakładka Edytor gier).</value></data>
-  <data name="Admin.Upload.ProgressTitle" xml:space="preserve"><value>Wysyłka</value></data>
-  <data name="Admin.Upload.Start" xml:space="preserve"><value>Rozpocznij wysyłkę</value></data>
-  <data name="Admin.Upload.ErrCredentials" xml:space="preserve"><value>Uzupełnij adres WebDAV, nazwę użytkownika i hasło aplikacji.</value></data>
+  <data name="Admin.Upload.Title" xml:space="preserve"><value>Publikacja do biblioteki</value></data>
+  <data name="Admin.Upload.Subtitle" xml:space="preserve"><value>Kopiuje tylko nowe, zmienione albo usunięte pliki do folderu Games w Nextcloud. Klient desktopowy sam je zsynchronizuje — bez logowania.</value></data>
+  <data name="Admin.Upload.HelpTitle" xml:space="preserve"><value>Jak to działa:</value></data>
+  <data name="Admin.Upload.Help1" xml:space="preserve"><value>1. W Edytorze gier zeskanuj folder, w którym testujesz gry (nie kopię z Nextcloud).</value></data>
+  <data name="Admin.Upload.Help2" xml:space="preserve"><value>2. Tutaj wskaż zsynchronizowany folder biblioteki — zwykle ~/Nextcloud/Games.</value></data>
+  <data name="Admin.Upload.Help3" xml:space="preserve"><value>3. Porównanie pokaże, które pliki ruszył patch albo mod (SHA-256, nie sam rozmiar).</value></data>
+  <data name="Admin.Upload.Help4" xml:space="preserve"><value>4. Publikacja kopiuje tę deltę. Klient Nextcloud wgrywa ją dalej. Publiczny share launchera zostaje bez zmian.</value></data>
+  <data name="Admin.Upload.DestTitle" xml:space="preserve"><value>Folder biblioteki (sync Nextcloud)</value></data>
+  <data name="Admin.Upload.DestFolder" xml:space="preserve"><value>Cel:</value></data>
+  <data name="Admin.Upload.DestPlaceholder" xml:space="preserve"><value>~/Nextcloud/Games</value></data>
+  <data name="Admin.Upload.DestHint" xml:space="preserve"><value>To folder, który synchronizuje klient Nextcloud. Pliki o tym samym hashu są pomijane.</value></data>
+  <data name="Admin.Upload.BrowseDest" xml:space="preserve"><value>Wybierz folder biblioteki</value></data>
+  <data name="Admin.Upload.DiffTitle" xml:space="preserve"><value>Co się zmieniło</value></data>
+  <data name="Admin.Upload.Compare" xml:space="preserve"><value>Porównaj</value></data>
+  <data name="Admin.Upload.Start" xml:space="preserve"><value>Kopiuj zmienione pliki</value></data>
+  <data name="Admin.Upload.ErrDest" xml:space="preserve"><value>Wskaż folder Nextcloud/Games (kopię synchronizowaną, nie folder testowy).</value></data>
   <data name="Admin.Upload.ErrMetadata" xml:space="preserve"><value>Brak pliku metadata.json. Wygeneruj go w zakładce Edytor gier.</value></data>
-  <data name="Admin.Upload.ErrGames" xml:space="preserve"><value>Brak gier do wysłania. Zeskanuj folder w zakładce Edytor gier.</value></data>
-  <data name="Admin.Upload.Preparing" xml:space="preserve"><value>Przygotowywanie listy plików...</value></data>
-  <data name="Admin.Upload.ErrNoFiles" xml:space="preserve"><value>Brak plików do wysłania - wszystkie pliki są już aktualne na serwerze.</value></data>
-  <data name="Admin.Upload.UploadingFile" xml:space="preserve"><value>Przesyłanie: {0} ({1} MB)</value></data>
-  <data name="Admin.Upload.UploadingMetadata" xml:space="preserve"><value>Przesyłanie: metadata.json</value></data>
-  <data name="Admin.Upload.Done" xml:space="preserve"><value>Gotowe! Wysłano {0} plików na Nextcloud.</value></data>
-  <data name="Admin.Upload.Error" xml:space="preserve"><value>Błąd wysyłki: {0}</value></data>
-  <data name="Admin.Upload.Failed" xml:space="preserve"><value>Wysyłka nie powiodła się.</value></data>
+  <data name="Admin.Upload.ErrGames" xml:space="preserve"><value>Brak gier do publikacji. Zeskanuj folder testowy w zakładce Edytor gier.</value></data>
+  <data name="Admin.Upload.ErrSameFolder" xml:space="preserve"><value>Źródło i cel to ten sam folder. Skanuj kopię testową, publikuj do Nextcloud/Games.</value></data>
+  <data name="Admin.Upload.Preparing" xml:space="preserve"><value>Porównywanie plików...</value></data>
+  <data name="Admin.Upload.AlreadyInSync" xml:space="preserve"><value>Wszystko już zgadza się z folderem biblioteki.</value></data>
+  <data name="Admin.Upload.Totals" xml:space="preserve"><value>{0} nowych, {1} zmienionych, {2} usuniętych · {3} do skopiowania</value></data>
+  <data name="Admin.Upload.GameInSync" xml:space="preserve"><value>Aktualne</value></data>
+  <data name="Admin.Upload.GameSummary" xml:space="preserve"><value>+{0}  ~{1}  −{2}  · {3}</value></data>
+  <data name="Admin.Upload.MoreFiles" xml:space="preserve"><value>…i jeszcze {0}</value></data>
+  <data name="Admin.Upload.CopyingFile" xml:space="preserve"><value>Kopiowanie {0}</value></data>
+  <data name="Admin.Upload.UploadingMetadata" xml:space="preserve"><value>Aktualizacja metadata.json</value></data>
+  <data name="Admin.Upload.Done" xml:space="preserve"><value>Gotowe. Skopiowano {0} zmian — Nextcloud je zsynchronizuje.</value></data>
+  <data name="Admin.Upload.Error" xml:space="preserve"><value>Błąd publikacji: {0}</value></data>
+  <data name="Admin.Upload.Failed" xml:space="preserve"><value>Publikacja nie powiodła się.</value></data>
 </root>

@@ -195,11 +195,13 @@
   <data name="Admin.WindowTitle" xml:space="preserve"><value>KermoLauncher - Admin Panel</value></data>
   <data name="Admin.Sidebar.Subtitle" xml:space="preserve"><value>Admin Panel</value></data>
   <data name="Admin.Nav.Editor" xml:space="preserve"><value>Game editor</value></data>
-  <data name="Admin.Nav.Upload" xml:space="preserve"><value>Upload to Nextcloud</value></data>
+  <data name="Admin.Nav.Upload" xml:space="preserve"><value>Publish to library</value></data>
   <data name="Admin.Ready" xml:space="preserve"><value>Ready</value></data>
   <data name="Admin.Editor.Title" xml:space="preserve"><value>Game editor</value></data>
-  <data name="Admin.Editor.Subtitle" xml:space="preserve"><value>Scan game folders, edit data and generate metadata.json</value></data>
-  <data name="Admin.Editor.FolderPlaceholder" xml:space="preserve"><value>Path to games folder (e.g. ~/Nextcloud/Games)</value></data>
+  <data name="Admin.Editor.Subtitle" xml:space="preserve"><value>Scan the folder where you test games, edit metadata, then publish a delta to Nextcloud/Games</value></data>
+  <data name="Admin.Editor.FolderPlaceholder" xml:space="preserve"><value>Path to the test games folder</value></data>
+  <data name="Admin.Editor.Browse" xml:space="preserve"><value>Browse</value></data>
+  <data name="Admin.Editor.BrowseFolder" xml:space="preserve"><value>Select games folder</value></data>
   <data name="Admin.Editor.Scan" xml:space="preserve"><value>Scan</value></data>
   <data name="Admin.Editor.AddGame" xml:space="preserve"><value>Add game</value></data>
   <data name="Admin.Editor.Generate" xml:space="preserve"><value>Generate metadata.json</value></data>
@@ -230,7 +232,7 @@
   <data name="Admin.Editor.RemoveGame" xml:space="preserve"><value>Remove game from list</value></data>
   <data name="Admin.Editor.SelectHint" xml:space="preserve"><value>Select a game from the list to edit its data</value></data>
   <data name="Admin.Editor.SelectHint2" xml:space="preserve"><value>First scan the games folder (Scan button).</value></data>
-  <data name="Admin.Editor.ErrFolderPath" xml:space="preserve"><value>Provide a path to the games folder (e.g. /home/user/Nextcloud/Games).</value></data>
+  <data name="Admin.Editor.ErrFolderPath" xml:space="preserve"><value>Provide a path to the test games folder.</value></data>
   <data name="Admin.Editor.ErrFolderMissing" xml:space="preserve"><value>Folder does not exist: {0}</value></data>
   <data name="Admin.Editor.ScanDone" xml:space="preserve"><value>Found {0} games in folder. Kept manual descriptions for {1} games.</value></data>
   <data name="Admin.Editor.ErrNoFiles" xml:space="preserve"><value>No game files in subfolders. Each game must be in a separate subfolder with game files.</value></data>
@@ -238,31 +240,34 @@
   <data name="Admin.Editor.ErrNoGames" xml:space="preserve"><value>No games. Scan the games folder first.</value></data>
   <data name="Admin.Editor.GenerateDone" xml:space="preserve"><value>Generated {0} ({1} games).</value></data>
   <data name="Admin.Editor.ErrGenerate" xml:space="preserve"><value>Failed to generate metadata.json: {0}</value></data>
-  <data name="Admin.Upload.Title" xml:space="preserve"><value>Upload to Nextcloud</value></data>
-  <data name="Admin.Upload.Subtitle" xml:space="preserve"><value>Upload metadata.json, .zip archives and screenshots to the shared Games folder</value></data>
-  <data name="Admin.Upload.HelpTitle" xml:space="preserve"><value>How to get access data:</value></data>
-  <data name="Admin.Upload.Help1" xml:space="preserve"><value>1. Log in to Nextcloud in a browser → Avatar → Personal settings → Security.</value></data>
-  <data name="Admin.Upload.Help2" xml:space="preserve"><value>2. Create a new app password (Section: App passwords) - it will be needed to upload files.</value></data>
-  <data name="Admin.Upload.Help3" xml:space="preserve"><value>3. The WebDAV address is in Personal settings → WebDAV (e.g. https://your-server/remote.php/dav/files/your-user).</value></data>
-  <data name="Admin.Upload.Help4" xml:space="preserve"><value>4. The account needs write permissions in the Games folder. After uploading, share the Games folder as a public link - the launcher will fetch it from there.</value></data>
-  <data name="Admin.Upload.Credentials" xml:space="preserve"><value>Access data (write)</value></data>
-  <data name="Admin.Upload.WebDavUrl" xml:space="preserve"><value>WebDAV address:</value></data>
-  <data name="Admin.Upload.WebDavPlaceholder" xml:space="preserve"><value>https://your-server/remote.php/dav/files/your-user</value></data>
-  <data name="Admin.Upload.User" xml:space="preserve"><value>User:</value></data>
-  <data name="Admin.Upload.Password" xml:space="preserve"><value>App password:</value></data>
-  <data name="Admin.Upload.Files" xml:space="preserve"><value>Files to upload</value></data>
-  <data name="Admin.Upload.Metadata" xml:space="preserve"><value>metadata.json:</value></data>
-  <data name="Admin.Upload.FilesHint" xml:space="preserve"><value>.zip archives and screenshots are taken from the game list in the editor (Game editor tab).</value></data>
-  <data name="Admin.Upload.ProgressTitle" xml:space="preserve"><value>Upload</value></data>
-  <data name="Admin.Upload.Start" xml:space="preserve"><value>Start upload</value></data>
-  <data name="Admin.Upload.ErrCredentials" xml:space="preserve"><value>Fill in the WebDAV address, username and app password.</value></data>
+  <data name="Admin.Upload.Title" xml:space="preserve"><value>Publish to library</value></data>
+  <data name="Admin.Upload.Subtitle" xml:space="preserve"><value>Copy only new, changed or removed files into the Nextcloud Games folder. The desktop client syncs them — no login.</value></data>
+  <data name="Admin.Upload.HelpTitle" xml:space="preserve"><value>How this works:</value></data>
+  <data name="Admin.Upload.Help1" xml:space="preserve"><value>1. In Game editor, scan the folder where you test games (not the Nextcloud copy).</value></data>
+  <data name="Admin.Upload.Help2" xml:space="preserve"><value>2. Here, pick the synced library folder — usually ~/Nextcloud/Games.</value></data>
+  <data name="Admin.Upload.Help3" xml:space="preserve"><value>3. Compare shows which files a patch or mod actually touched (SHA-256, not just size).</value></data>
+  <data name="Admin.Upload.Help4" xml:space="preserve"><value>4. Publish copies that delta. Nextcloud desktop then uploads it. The public share used by the launcher stays as it is.</value></data>
+  <data name="Admin.Upload.DestTitle" xml:space="preserve"><value>Library folder (Nextcloud sync)</value></data>
+  <data name="Admin.Upload.DestFolder" xml:space="preserve"><value>Destination:</value></data>
+  <data name="Admin.Upload.DestPlaceholder" xml:space="preserve"><value>~/Nextcloud/Games</value></data>
+  <data name="Admin.Upload.DestHint" xml:space="preserve"><value>This is the folder the Nextcloud client syncs. Files already identical (same hash) are skipped.</value></data>
+  <data name="Admin.Upload.BrowseDest" xml:space="preserve"><value>Select library folder</value></data>
+  <data name="Admin.Upload.DiffTitle" xml:space="preserve"><value>What changed</value></data>
+  <data name="Admin.Upload.Compare" xml:space="preserve"><value>Compare</value></data>
+  <data name="Admin.Upload.Start" xml:space="preserve"><value>Copy changed files</value></data>
+  <data name="Admin.Upload.ErrDest" xml:space="preserve"><value>Choose the Nextcloud Games folder (the synced copy, not the test folder).</value></data>
   <data name="Admin.Upload.ErrMetadata" xml:space="preserve"><value>No metadata.json file. Generate it in the Game editor tab.</value></data>
-  <data name="Admin.Upload.ErrGames" xml:space="preserve"><value>No games to upload. Scan the folder in the Game editor tab.</value></data>
-  <data name="Admin.Upload.Preparing" xml:space="preserve"><value>Preparing file list...</value></data>
-  <data name="Admin.Upload.ErrNoFiles" xml:space="preserve"><value>Nothing to upload - all files are already up to date on the server.</value></data>
-  <data name="Admin.Upload.UploadingFile" xml:space="preserve"><value>Uploading: {0} ({1} MB)</value></data>
-  <data name="Admin.Upload.UploadingMetadata" xml:space="preserve"><value>Uploading: metadata.json</value></data>
-  <data name="Admin.Upload.Done" xml:space="preserve"><value>Done! {0} files uploaded to Nextcloud.</value></data>
-  <data name="Admin.Upload.Error" xml:space="preserve"><value>Upload error: {0}</value></data>
-  <data name="Admin.Upload.Failed" xml:space="preserve"><value>Upload failed.</value></data>
+  <data name="Admin.Upload.ErrGames" xml:space="preserve"><value>No games to publish. Scan the test folder in the Game editor tab.</value></data>
+  <data name="Admin.Upload.ErrSameFolder" xml:space="preserve"><value>Source and destination are the same folder. Scan the test copy, publish into Nextcloud/Games.</value></data>
+  <data name="Admin.Upload.Preparing" xml:space="preserve"><value>Comparing files...</value></data>
+  <data name="Admin.Upload.AlreadyInSync" xml:space="preserve"><value>Everything already matches the library folder.</value></data>
+  <data name="Admin.Upload.Totals" xml:space="preserve"><value>{0} new, {1} changed, {2} removed · {3} to copy</value></data>
+  <data name="Admin.Upload.GameInSync" xml:space="preserve"><value>Up to date</value></data>
+  <data name="Admin.Upload.GameSummary" xml:space="preserve"><value>+{0}  ~{1}  −{2}  · {3}</value></data>
+  <data name="Admin.Upload.MoreFiles" xml:space="preserve"><value>…and {0} more</value></data>
+  <data name="Admin.Upload.CopyingFile" xml:space="preserve"><value>Copying {0}</value></data>
+  <data name="Admin.Upload.UploadingMetadata" xml:space="preserve"><value>Updating metadata.json</value></data>
+  <data name="Admin.Upload.Done" xml:space="preserve"><value>Done. {0} file changes copied — Nextcloud will sync them.</value></data>
+  <data name="Admin.Upload.Error" xml:space="preserve"><value>Publish error: {0}</value></data>
+  <data name="Admin.Upload.Failed" xml:space="preserve"><value>Publish failed.</value></data>
 </root>

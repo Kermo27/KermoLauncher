@@ -14,6 +14,7 @@ namespace GameLauncher.AdminTool.ViewModels;
 public partial class GameEditorViewModel : ViewModelBase
 {
     private readonly MetadataGenerator _metadataGenerator;
+    private readonly IFolderPicker _folders;
     private readonly ILogger<GameEditorViewModel> _logger;
 
     [ObservableProperty]
@@ -24,6 +25,9 @@ public partial class GameEditorViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _scanFolderPath = "";
+
+    [ObservableProperty]
+    private string _publishFolder = "";
 
     [ObservableProperty]
     private string? _statusText;
@@ -90,14 +94,17 @@ public partial class GameEditorViewModel : ViewModelBase
 
     private CancellationTokenSource? _saveCts;
     private GameMetadata? _selectedForSave;
+    private bool _loading;
 
     public GameEditorViewModel(
         MetadataGenerator metadataGenerator,
+        IFolderPicker folders,
         ILocalizationService localization,
         ILogger<GameEditorViewModel> logger)
         : base(localization)
     {
         _metadataGenerator = metadataGenerator;
+        _folders = folders;
         _logger = logger;
         LoadState();
     }
@@ -108,16 +115,27 @@ public partial class GameEditorViewModel : ViewModelBase
         {
             if (!File.Exists(StateFilePath)) return;
 
+            _loading = true;
             var state = JsonSerializer.Deserialize<AdminToolState>(File.ReadAllText(StateFilePath), JsonOptions);
             if (state?.Games is { Length: > 0 })
             {
                 Games = state.Games;
                 ScanFolderPath = state.ScanFolderPath ?? "";
+                PublishFolder = state.PublishFolder ?? "";
                 SelectedGame = Games.FirstOrDefault(g => g.Id == state.SelectedGameId);
-            }        }
+            }
+            else if (!string.IsNullOrWhiteSpace(state?.PublishFolder))
+            {
+                PublishFolder = state.PublishFolder;
+            }
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load AdminTool state");
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
@@ -129,6 +147,7 @@ public partial class GameEditorViewModel : ViewModelBase
             {
                 Games = Games,
                 ScanFolderPath = ScanFolderPath,
+                PublishFolder = PublishFolder,
                 SelectedGameId = SelectedGame?.Id
             };
             var json = JsonSerializer.Serialize(state, JsonOptions);
@@ -140,6 +159,16 @@ public partial class GameEditorViewModel : ViewModelBase
         {
             _logger.LogWarning(ex, "Failed to save AdminTool state");
         }
+    }
+
+    partial void OnScanFolderPathChanged(string value)
+    {
+        if (!_loading) SaveState();
+    }
+
+    partial void OnPublishFolderChanged(string value)
+    {
+        if (!_loading) SaveState();
     }
 
     partial void OnSelectedGameChanged(GameMetadata? value)
@@ -175,6 +204,14 @@ public partial class GameEditorViewModel : ViewModelBase
                 _logger.LogWarning(ex, "Failed to regenerate metadata");
             }
         }, TaskScheduler.Default);
+    }
+
+    [RelayCommand]
+    private async Task BrowseScanFolderAsync()
+    {
+        var folder = await _folders.PickAsync(L["Admin.Editor.BrowseFolder"], ScanFolderPath);
+        if (!string.IsNullOrEmpty(folder))
+            ScanFolderPath = folder;
     }
 
     [RelayCommand]
@@ -393,5 +430,6 @@ internal class AdminToolState
 {
     public GameMetadata[] Games { get; set; } = [];
     public string ScanFolderPath { get; set; } = "";
+    public string PublishFolder { get; set; } = "";
     public string? SelectedGameId { get; set; }
 }

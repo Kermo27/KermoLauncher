@@ -15,9 +15,6 @@ namespace GameLauncher.AdminTool;
 
 public partial class App : Application
 {
-    private static readonly string UserAgent =
-        $"KermoLauncherAdmin/{typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}";
-
     private ServiceProvider? _provider;
 
     /// <summary>Filled in by Program.Main before the Avalonia lifetime starts.</summary>
@@ -85,7 +82,6 @@ public partial class App : Application
     {
         services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
 
-        // Core services (need write access to Nextcloud)
         services.AddSingleton<ILocalizationService, LocalizationService>();
         if (Startup is { } startup)
         {
@@ -96,16 +92,9 @@ public partial class App : Application
             services.AddSingleton<ILocalDbService, LocalDbService>();
         }
 
-        // One registration only: the earlier singleton was overwritten by the typed client,
-        // so just the second one actually took effect.
-        services.AddHttpClient<IWebDavService, WebDavService>(c =>
-        {
-            c.Timeout = TimeSpan.FromSeconds(120);
-            c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-        });
-
-        // Admin services
+        services.AddSingleton<IFolderPicker, FolderPicker>();
         services.AddSingleton<MetadataGenerator>();
+        services.AddSingleton<LibraryPublisher>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>();

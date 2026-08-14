@@ -130,6 +130,49 @@ public class MetadataGeneratorTests : IDisposable
         Assert.Equal("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", sha);
     }
 
+    [Fact]
+    public async Task ScanFolderAsync_FormatsNameWithoutEmptyTokens()
+    {
+        var gameDir = Directory.CreateDirectory(Path.Combine(_root, "mod--pack")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(gameDir, "game.exe"), "x");
+
+        var games = await _generator.ScanFolderAsync(_root);
+
+        Assert.Equal("Mod Pack", Assert.Single(games).Name);
+    }
+
+    [Fact]
+    public async Task Publish_CopiesOnlyChangedFilesAndDeletesStale()
+    {
+        var src = Directory.CreateDirectory(Path.Combine(_root, "src", "Demo")).FullName;
+        var destRoot = Directory.CreateDirectory(Path.Combine(_root, "dest")).FullName;
+        var destGame = Directory.CreateDirectory(Path.Combine(destRoot, "Demo")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(src, "keep.exe"), "keep");
+        await File.WriteAllTextAsync(Path.Combine(src, "new.dll"), "new");
+        await File.WriteAllTextAsync(Path.Combine(src, "patched.dat"), "v2");
+        await File.WriteAllTextAsync(Path.Combine(destGame, "keep.exe"), "keep");
+        await File.WriteAllTextAsync(Path.Combine(destGame, "patched.dat"), "v1");
+        await File.WriteAllTextAsync(Path.Combine(destGame, "gone.pak"), "old");
+
+        var games = await _generator.ScanFolderAsync(Path.GetDirectoryName(src)!);
+        var game = Assert.Single(games);
+        var publisher = new LibraryPublisher(_generator);
+        var plan = await publisher.CompareAsync(game, destRoot);
+
+        Assert.Equal(1, plan.AddedCount);
+        Assert.Equal(1, plan.ChangedCount);
+        Assert.Equal(1, plan.RemovedCount);
+
+        await publisher.PublishAsync(destRoot, game, plan, progress: null);
+        await _generator.UpsertCatalogAsync(destRoot, [game]);
+
+        Assert.True(File.Exists(Path.Combine(destGame, "new.dll")));
+        Assert.Equal("v2", await File.ReadAllTextAsync(Path.Combine(destGame, "patched.dat")));
+        Assert.False(File.Exists(Path.Combine(destGame, "gone.pak")));
+        Assert.True(File.Exists(Path.Combine(destRoot, "metadata.json")));
+        Assert.True(File.Exists(Path.Combine(destGame, "manifest.json")));
+    }
+
     private sealed class CapturingLogger : ILogger<MetadataGenerator>
     {
         private readonly List<string> _errors;

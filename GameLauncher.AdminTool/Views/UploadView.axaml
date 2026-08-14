@@ -27,7 +27,6 @@
 
     <ScrollViewer Margin="20" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="18" MaxWidth="760" HorizontalAlignment="Stretch">
-            <!-- ============ HEADER ============ -->
             <StackPanel Margin="0,0,0,4">
                 <TextBlock Text="{Binding L[Admin.Upload.Title]}" FontSize="24" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}"/>
@@ -36,7 +35,6 @@
                            Foreground="{DynamicResource TextMutedBrush}"/>
             </StackPanel>
 
-            <!-- ============ HELP ============ -->
             <Border Classes="Section" Padding="14">
                 <StackPanel Spacing="6">
                     <TextBlock Text="{Binding L[Admin.Upload.HelpTitle]}" FontSize="12" FontWeight="Bold"
@@ -52,86 +50,85 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============ CREDENTIALS ============ -->
-            <Border Classes="Section">
-                <StackPanel Spacing="14">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="&#128273;" Classes="SectionTitle"/>
-                        <TextBlock Text="{Binding L[Admin.Upload.Credentials]}" Classes="SectionTitle"/>
-                    </StackPanel>
-
-                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Admin.Upload.WebDavUrl]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
-                                 Text="{Binding NextcloudUrl}"
-                                 Watermark="{Binding L[Admin.Upload.WebDavPlaceholder]}" Margin="0,8"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Admin.Upload.User]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
-                                 Text="{Binding NextcloudUser}" Margin="0,8"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding L[Admin.Upload.Password]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="2" Grid.Column="1" Classes="field"
-                                 Text="{Binding NextcloudPassword}" PasswordChar="&#8226;" Margin="0,8"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- ============ FILES ============ -->
             <Border Classes="Section">
                 <StackPanel Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="&#128193;" Classes="SectionTitle"/>
-                        <TextBlock Text="{Binding L[Admin.Upload.Files]}" Classes="SectionTitle"/>
+                        <TextBlock Text="{Binding L[Admin.Upload.DestTitle]}" Classes="SectionTitle"/>
                     </StackPanel>
 
-                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Admin.Upload.Metadata]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field" IsReadOnly="True"
-                                 Text="{Binding $parent[UserControl].DataContext.GameEditor.GeneratedMetadataPath}"
-                                 Margin="0,8"/>
+                    <Grid ColumnDefinitions="150,*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Admin.Upload.DestFolder]}" Classes="FieldLabel"/>
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding DestFolder}"
+                                 Watermark="{Binding L[Admin.Upload.DestPlaceholder]}"/>
+                        <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                Content="{Binding L[Admin.Editor.Browse]}"
+                                Command="{Binding BrowseDestCommand}"/>
                     </Grid>
-
-                    <TextBlock Text="{Binding L[Admin.Upload.FilesHint]}"
+                    <TextBlock Text="{Binding L[Admin.Upload.DestHint]}"
                                FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}"/>
                 </StackPanel>
             </Border>
 
-            <!-- ============ PROGRESS ============ -->
             <Border Classes="Section">
                 <StackPanel Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="&#11014;" Classes="SectionTitle"/>
-                        <TextBlock Text="{Binding L[Admin.Upload.ProgressTitle]}" Classes="SectionTitle"/>
+                        <TextBlock Text="&#128196;" Classes="SectionTitle"/>
+                        <TextBlock Text="{Binding L[Admin.Upload.DiffTitle]}" Classes="SectionTitle"/>
                     </StackPanel>
 
-                    <!-- Error banner -->
                     <Border CornerRadius="8" Padding="12,9"
                             Background="{DynamicResource DangerBrush}" Opacity="0.9"
                             IsVisible="{Binding ErrorText, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
                         <TextBlock Text="{Binding ErrorText}" Foreground="White" FontSize="12" TextWrapping="Wrap"/>
                     </Border>
 
+                    <TextBlock Text="{Binding TotalsText}" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               IsVisible="{Binding HasCompared}"/>
+
+                    <ItemsControl ItemsSource="{Binding Plans}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GameSyncRow">
+                                <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="8"
+                                        Background="{DynamicResource TagBgBrush}">
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding GameName}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Summary}" FontSize="12"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding Details}" FontSize="11" FontFamily="monospace"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   IsVisible="{Binding !IsUpToDate}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <ProgressBar Value="{Binding UploadProgress}" Minimum="0" Maximum="100" Height="10"
+                                 IsVisible="{Binding IsBusy}"
                                  Foreground="{DynamicResource AccentBrush}"
                                  Background="{DynamicResource TagBgBrush}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="{Binding UploadProgress, StringFormat='{}{0:F0}%'}"
-                                   FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                   Width="48"/>
-                        <TextBlock Text="{Binding CurrentFileText}" FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
+                    <TextBlock Text="{Binding CurrentFileText}" FontSize="12"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding StatusText}" FontSize="12"
                                Foreground="{DynamicResource SuccessBrush}"
                                IsVisible="{Binding StatusText, Converter={x:Static conv:ObjectConverters.IsNotNull}}"/>
 
-                    <Button Content="{Binding L[Admin.Upload.Start]}" Classes="primary"
-                            Command="{Binding UploadCommand}"
-                            IsEnabled="{Binding IsNotUploading}"
-                            HorizontalAlignment="Left" Padding="24,11"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="{Binding L[Admin.Upload.Compare]}" Classes="ghost"
+                                Command="{Binding CompareCommand}"
+                                IsEnabled="{Binding IsIdle}"
+                                Padding="20,10"/>
+                        <Button Content="{Binding L[Admin.Upload.Start]}" Classes="primary"
+                                Command="{Binding PublishCommand}"
+                                IsEnabled="{Binding IsIdle}"
+                                Padding="24,11"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>

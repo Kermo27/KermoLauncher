@@ -64,4 +64,36 @@ public class UploadDiffTests
 
         Assert.Empty(result);
     }
+
+    [Fact]
+    public void Plan_SplitsAddedChangedAndRemoved()
+    {
+        var local = new[] { File("keep.exe"), File("new.dll"), File("patched.dat", 100, "new") };
+        var remote = new GameManifest("1.0.0", 300, [
+            File("keep.exe"),
+            File("patched.dat", 100, "old"),
+            File("gone.pak")
+        ]);
+
+        var plan = LibrarySync.Plan("id", "Name", "Name", "/tmp/g", local, remote);
+
+        Assert.Equal(1, plan.AddedCount);
+        Assert.Equal(1, plan.ChangedCount);
+        Assert.Equal(1, plan.RemovedCount);
+        Assert.Contains(plan.Changes, c => c.Kind == SyncChangeKind.Added && c.RelativePath == "new.dll");
+        Assert.Contains(plan.Changes, c => c.Kind == SyncChangeKind.Changed && c.RelativePath == "patched.dat");
+        Assert.Contains(plan.Changes, c => c.Kind == SyncChangeKind.Removed && c.RelativePath == "gone.pak");
+    }
+
+    [Fact]
+    public void Plan_WhenDestMissing_EverythingIsAdded()
+    {
+        var local = new[] { File("a.exe"), File("b.dll") };
+
+        var plan = LibrarySync.Plan("id", "Name", "Name", "/tmp/g", local, null);
+
+        Assert.Equal(2, plan.AddedCount);
+        Assert.Equal(0, plan.ChangedCount);
+        Assert.Equal(0, plan.RemovedCount);
+    }
 }

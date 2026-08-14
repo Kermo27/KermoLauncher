@@ -71,7 +71,7 @@ jobs:
           mkdir -p package
           cp "assets/KermoLauncher-$VERSION-linux-x64" package/KermoLauncher
           chmod +x package/KermoLauncher
-          cp packaging/linux/kermolauncher.desktop packaging/linux/install.sh package/
+          cp packaging/linux/kermolauncher.desktop packaging/linux/install.sh packaging/linux/kermolauncher.png package/
           chmod +x package/install.sh
           tar -C package -czf "assets/KermoLauncher-$VERSION-linux-x64.tar.gz" .
 

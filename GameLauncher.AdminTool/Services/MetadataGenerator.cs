@@ -138,10 +138,79 @@ public class MetadataGenerator
         }
     }
 
-    private static string FormatGameName(string dirName)
+    /// <summary>
+    /// Reads dest/manifest.json when present; otherwise hashes the folder so a copy made
+    /// without AdminTool still diffs correctly.
+    /// </summary>
+    public async Task<GameManifest?> ReadFolderManifestAsync(string gameDir)
     {
-        // Convert "game-name" or "game_name" to "Game Name"
-        return string.Join(' ', dirName.Split('-', '_').Select(w => char.ToUpper(w[0]) + w[1..]));
+        var fromFile = TryLoadManifest(Path.Combine(gameDir, "manifest.json"));
+        if (fromFile != null) return fromFile;
+        if (!Directory.Exists(gameDir)) return null;
+
+        var scanned = await ScanGameDirectoryAsync(gameDir);
+        return scanned == null ? null : new GameManifest(scanned.Version, scanned.SizeBytes, scanned.Files);
+    }
+
+    /// <summary>
+    /// Writes dest/metadata.json, keeping catalog entries for games this run did not touch.
+    /// </summary>
+    public async Task UpsertCatalogAsync(string destRoot, GameMetadata[] published)
+    {
+        var path = Path.Combine(destRoot, "metadata.json");
+        var existing = TryLoadCatalog(path);
+        var byId = existing.ToDictionary(g => g.Id, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var game in published)
+        {
+            byId[game.Id] = ToCatalogEntry(game);
+        }
+
+        var json = JsonSerializer.Serialize(byId.Values.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase),
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+        await File.WriteAllTextAsync(path, json);
+        _logger.LogInformation("Updated catalog at {Path} with {Count} games", path, byId.Count);
+    }
+
+    private static Game[] TryLoadCatalog(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return [];
+            var games = JsonSerializer.Deserialize<Game[]>(File.ReadAllText(path), new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            return games ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static Game ToCatalogEntry(GameMetadata g) => new(
+        g.Id,
+        g.Name,
+        g.Version,
+        g.Description,
+        g.Tags,
+        g.Dependencies,
+        g.ScreenshotPaths.Select(p => $"{g.RemoteFolder}/screenshots/{Path.GetFileName(p)}").ToArray(),
+        g.ManifestUrl,
+        g.SizeBytes,
+        g.LaunchConfig);
+
+    internal static string FormatGameName(string dirName)
+    {
+        var parts = dirName.Split(['-', '_', ' '], StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return dirName;
+        return string.Join(' ', parts.Select(w =>
+            char.ToUpperInvariant(w[0]) + (w.Length > 1 ? w[1..] : "")));
     }
 
     public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct = default)

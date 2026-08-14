@@ -9,6 +9,7 @@
         MinWidth="940"
         MinHeight="620"
         WindowStartupLocation="CenterScreen"
+        Icon="/Assets/icon.ico"
         Background="{DynamicResource WindowBgBrush}">
 
     <Window.Styles>

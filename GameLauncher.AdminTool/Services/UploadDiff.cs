@@ -1,5 +1,4 @@
 using GameLauncher.Core.Models;
-using GameLauncher.Core.Services;
 
 namespace GameLauncher.AdminTool.Services;
 
@@ -7,10 +6,10 @@ public static class UploadDiff
 {
     public static GameFile[] FilesToUpload(GameFile[] localFiles, GameManifest? remoteManifest)
     {
-        if (remoteManifest == null) return localFiles;
-
-        return localFiles
-            .Where(f => !remoteManifest.Files.Any(r => ManifestDiff.IsSameFile(f, r)))
-            .ToArray();
+        var plan = LibrarySync.Plan("", "", "", "", localFiles, remoteManifest);
+        var copy = new HashSet<string>(
+            plan.ToCopy.Select(c => c.RelativePath),
+            StringComparer.OrdinalIgnoreCase);
+        return localFiles.Where(f => copy.Contains(f.Path)).ToArray();
     }
 }
