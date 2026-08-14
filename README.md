@@ -1,26 +1,35 @@
 # KermoLauncher
 
-Game launcher with a personal game library hosted on **Nextcloud**. The app pulls a game catalog from a public WebDAV share, supports installation, launching, and playtime tracking.
+<img src="docs/icon.png" width="72" alt="KermoLauncher">
 
-The repo also includes **KermoLauncher Admin Tool** — a utility for publishing games to Nextcloud (folder scanning, `metadata.json` generation, file upload over WebDAV).
+Personal game launcher. The catalog lives on a **public Nextcloud share**; the app installs, updates, and launches games, and tracks playtime.
+
+**Download:** [kermo.dev](https://kermo.dev) · [GitHub Releases](https://github.com/Kermo27/KermoLauncher/releases/latest)
+
+The repo also includes **KermoLauncher Admin Tool** (Windows) — scan a test games folder, generate `manifest.json` / `metadata.json`, then copy only the SHA-256 delta into the Nextcloud-synced `Games` folder. The desktop client uploads it; the launcher’s public share stays as it is.
 
 ## Features
 
-- Game library fetched from a public Nextcloud link (`metadata.json`)
+- Game library from a public Nextcloud link (`metadata.json`)
 - Game cards with cover art (first image from `screenshots/`), install status, tags and filtering
-- Install with SHA-256 verification, per-file delta updates, parallel downloads
+- Install with SHA-256 verification, per-file delta updates, parallel downloads, pause and resume
 - Playtime tracking and last-launched date
-- Themes: light, dark, system
-- Launcher auto-updates via GitHub Releases
-- Admin Tool: scan a test games folder, generate per-game `manifest.json` + catalog `metadata.json`, then copy only the changed files into the Nextcloud-synced `Games` folder
+- Windows games on Linux through Proton (Wine as a fallback), including Online-Fix
+- Themes: light, dark, system — UI in Polish or English
+- Launcher self-update from GitHub Releases
+- Admin Tool: compare the test folder to the synced library by hash, then copy added/changed files and delete removed ones
 
 ## Project structure
 
 ```
 KermoLauncher/
-├── GameLauncher.Core/        # logic: WebDAV, download, install, SQLite, updates
-├── GameLauncher.UI/          # launcher (Avalonia UI)
-├── GameLauncher.AdminTool/   # admin tool (Avalonia UI)
+├── GameLauncher.Core/        # WebDAV, download, install, SQLite, Proton, updates
+├── GameLauncher.UI/          # launcher (Avalonia)
+├── GameLauncher.UI.Shared/   # shared Avalonia bits used by the launcher and Admin Tool
+├── GameLauncher.AdminTool/   # publisher (Avalonia, Windows)
+├── GameLauncher.Tests/
+├── docs/                     # kermo.dev (GitHub Pages)
+├── packaging/linux/          # .desktop, icon, install.sh
 └── GameLauncher.sln
 ```
 
@@ -47,10 +56,10 @@ self-update relies on that: it replaces exactly one file.
 
 ## Website
 
-A static download page lives in [`docs/`](docs/) and is meant for **GitHub Pages**
-(`Settings → Pages → Deploy from a branch → main / docs`) with the custom domain
-`kermo.dev` (`docs/CNAME`). Download buttons resolve the latest GitHub Release at
-load time, so a new tag does not require editing the page.
+[kermo.dev](https://kermo.dev) is the static page in [`docs/`](docs/), served by **GitHub Pages**
+(`Settings → Pages → Deploy from a branch → main / docs`, custom domain in `docs/CNAME`).
+Download buttons resolve the latest GitHub Release at load time, so a new tag does not require
+editing the page. The page is Polish by default, with an EN toggle.
 
 ## Releases
 
@@ -58,8 +67,9 @@ Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/rele
 builds both platforms, derives the version from the tag, and publishes:
 
 - `KermoLauncher-<version>-win-x64.exe`
-- `KermoLauncher-<version>-linux-x64` (run `chmod +x` after downloading — GitHub release assets
-  carry no file permissions; in-app updates set the bit themselves)
+- `KermoLauncher-<version>-linux-x64.tar.gz` — binary + `.desktop` + icon + `install.sh`
+- `KermoLauncher-<version>-linux-x64` — plain binary for in-app updates (`chmod +x` after a
+  manual download; GitHub release assets carry no file permissions)
 - `KermoLauncher.AdminTool-<version>-win-x64.zip`
 - `SHA256SUMS` — verified by the launcher before it installs an update
 
@@ -76,16 +86,18 @@ Download `KermoLauncher-<version>-linux-x64.tar.gz`, extract it, then:
 ./install.sh ./KermoLauncher
 ```
 
-That places the binary in `~/.local/bin/kermolauncher` (user-writable, so self-update works) and a
-desktop entry under `~/.local/share/applications/`. You can also run the plain
+That places the binary in `~/.local/bin/kermolauncher` (user-writable, so self-update works), a
+desktop entry under `~/.local/share/applications/`, and the icon under
+`~/.local/share/icons/hicolor/256x256/apps/`. You can also run the plain
 `KermoLauncher-<version>-linux-x64` binary directly.
 
 Windows games launch through **Proton** by default on Linux (Settings → Windows games):
-`umu-run` when available, otherwise Steam Runtime + `proton run` (same idea as online-fix / SOFL).
-Install GE-Proton under Steam’s `compatibilitytools.d`. Wine remains a selectable fallback.
-When `OnlineFix.ini` / `OnlineFix*.dll` is present, the launcher sets the usual
-`WINEDLLOVERRIDES` and SpaceWar (`480`) game id automatically. Steam should be running for
-online-fix multiplayer. `protontricks` remains for prefix tooling (VC++, .NET), not launch.
+`umu-run` when available, otherwise Steam Runtime + `proton run` (runtime taken from Proton’s
+`toolmanifest.vdf`). Install GE-Proton under Steam’s `compatibilitytools.d`. Wine remains a
+selectable fallback. When `OnlineFix.ini` / `OnlineFix*.dll` is present, the launcher sets the
+usual `WINEDLLOVERRIDES` and SpaceWar (`480`) game id automatically and skips umu (same idea as
+online-fix / SOFL). Steam should be running for online-fix multiplayer. `protontricks` remains
+for prefix tooling (VC++, .NET), not launch.
 
 ## Nextcloud library layout
 
@@ -100,7 +112,10 @@ online-fix multiplayer. `protontricks` remains for prefix tooling (VC++, .NET), 
         └── 2.png
 ```
 
-Each game is a subfolder containing the raw game files. The Admin Tool generates a `manifest.json` per game (list of files with sizes and SHA-256 hashes, total size, version) and a catalog `metadata.json` that references it. Everything except `screenshots/` and `manifest.json` counts as game content.
+Each game is a subfolder containing the raw game files. The Admin Tool generates a `manifest.json`
+per game (list of files with sizes and SHA-256 hashes, total size, version) and a catalog
+`metadata.json` that references it. Everything except `screenshots/` and `manifest.json` counts as
+game content.
 
 `metadata.json` format (generated by the Admin Tool):
 
@@ -138,13 +153,18 @@ Per-game `manifest.json`:
 }
 ```
 
-When installing, the launcher downloads only files that changed since the last installed manifest (delta update) and verifies every downloaded file against its SHA-256 checksum. The Admin Tool skips uploading files that are already up to date on the server (same size).
+When installing, the launcher downloads only files that changed since the last installed manifest
+(delta update) and verifies every downloaded file against its SHA-256 checksum. The Admin Tool
+skips copying files that already match in the destination folder (same SHA-256).
 
 ## Setup from a share link
 
-1. Use the Admin Tool: **Scan folder**, review the games, then **Generate & upload** — this creates `manifest.json` files, a catalog `metadata.json`, uploads everything to Nextcloud, and shares the folder as a **public link**.
-2. In the launcher: **Settings → Game source (Nextcloud)** — paste the share link and save.
-3. Go back to **Library** and click **Refresh**.
+1. In the Admin Tool **Game editor**, scan the folder where you test games (not the Nextcloud copy)
+   and generate `manifest.json` / `metadata.json`.
+2. On the **Publish** tab, pick the synced library folder (usually `~/Nextcloud/Games`), **Compare**,
+   then copy the delta. Nextcloud desktop uploads it; keep an existing **public link** on that folder.
+3. In the launcher: **Settings → Game source (Nextcloud)** — paste the share link and save.
+4. Go back to **Library** and click **Refresh**.
 
 ## App data
 
