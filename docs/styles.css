@@ -44,16 +44,20 @@ a:hover { color: var(--accent-hover); }
 .logo {
   width: 38px;
   height: 38px;
-  border-radius: 9px;
-  overflow: hidden;
   flex-shrink: 0;
+  background: none;
+}
+
+.logo::before,
+.logo::after {
+  content: none !important;
+  display: none !important;
 }
 
 .logo img {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 38px;
+  height: 38px;
 }
 
 nav { display: flex; gap: 16px; align-items: center; font-size: 14px; }
