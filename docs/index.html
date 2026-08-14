@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KermoLauncher</title>
+  <meta name="description" content="Osobisty launcher gier z biblioteką na Nextcloud. Windows i Linux.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236C8CFB'/><text x='16' y='22' text-anchor='middle' font-size='16'>▶</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <strong>KermoLauncher</strong>
+        <span class="muted" data-i18n="tagline">Osobista biblioteka gier</span>
+      </div>
+    </div>
+    <nav>
+      <button type="button" class="lang" id="lang-toggle" aria-label="Language">EN</button>
+      <a href="https://github.com/Kermo27/KermoLauncher">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="pill" id="version">…</p>
+      <h1 data-i18n="hero">Launcher, nie sklep.</h1>
+      <p class="lede" data-i18n="lede">
+        Katalog z publicznego share’a Nextcloud, instalacja z weryfikacją SHA-256,
+        Proton na Linuksie. Aktualizacje z GitHub Releases.
+      </p>
+    </section>
+
+    <section class="downloads" aria-labelledby="dl-title">
+      <h2 id="dl-title" data-i18n="download">Pobierz</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Windows</h3>
+          <p class="muted" data-i18n="winHint">Jeden plik .exe, x64.</p>
+          <a class="btn primary" id="dl-win" href="https://github.com/Kermo27/KermoLauncher/releases/latest">Windows x64</a>
+        </article>
+        <article class="card">
+          <h3>Linux</h3>
+          <p class="muted" data-i18n="linuxHint">Archiwum z instalatorem (.desktop + ~/.local/bin).</p>
+          <a class="btn primary" id="dl-linux" href="https://github.com/Kermo27/KermoLauncher/releases/latest">Linux x64</a>
+          <a class="btn ghost" id="dl-bin" href="https://github.com/Kermo27/KermoLauncher/releases/latest" data-i18n="linuxBin">Tylko binarka</a>
+        </article>
+      </div>
+      <p class="note" data-i18n="linuxNote">
+        Po ręcznym pobraniu binarki: <code>chmod +x KermoLauncher-*-linux-x64</code>.
+        Instalator z tar.gz robi to sam.
+      </p>
+    </section>
+
+    <section class="facts">
+      <ul>
+        <li data-i18n="f1">Biblioteka z Nextcloud (<code>metadata.json</code>)</li>
+        <li data-i18n="f2">Delta update’y i pauza pobierania</li>
+        <li data-i18n="f3">Windowsowe gry na Linuksie przez Proton</li>
+        <li data-i18n="f4">Self-update z sumą SHA-256</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <span>kermo.dev</span>
+    <a href="https://github.com/Kermo27/KermoLauncher/releases" data-i18n="allReleases">Wszystkie wydania</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
