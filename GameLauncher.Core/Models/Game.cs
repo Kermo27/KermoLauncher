@@ -37,7 +37,10 @@ public enum InstallStatus
     Downloading,
     Installing,
     Installed,
-    Failed
+    Failed,
+
+    /// <summary>Download stopped by the user; partial files are kept for a later resume.</summary>
+    Paused
 }
 
 public record GameLocalState(

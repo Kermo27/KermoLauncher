@@ -2,7 +2,7 @@ namespace GameLauncher.Tests;
 
 using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
-using GameLauncher.UI.ViewModels;
+using GameLauncher.UI.Shared.ViewModels;
 using Xunit;
 
 /// <summary>

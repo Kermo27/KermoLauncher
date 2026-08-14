@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>GameLauncher.AdminTool</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <AssemblyName>KermoLauncher.AdminTool</AssemblyName>
     <Product>KermoLauncher Admin Tool</Product>
     <OutputType>WinExe</OutputType>
@@ -24,5 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameLauncher.Core\GameLauncher.Core.csproj" />
+    <ProjectReference Include="..\GameLauncher.UI.Shared\GameLauncher.UI.Shared.csproj" />
   </ItemGroup>
 </Project>

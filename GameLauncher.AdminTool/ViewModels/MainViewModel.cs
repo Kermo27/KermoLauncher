@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.UI.Shared.ViewModels;
 
 namespace GameLauncher.AdminTool.ViewModels;
 

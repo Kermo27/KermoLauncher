@@ -99,18 +99,15 @@
                     <StackPanel Spacing="14" IsVisible="{Binding IsSourceStep}">
                         <TextBlock Text="{Binding L[Onboarding.Source.Body]}" FontSize="13"
                                    Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                            <TextBox Grid.Row="0" Grid.Column="0" Classes="field"
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Classes="field"
                                      Text="{Binding ShareUrl}"
                                      Watermark="{Binding L[Settings.Nextcloud.ShareUrlPlaceholder]}"/>
-                            <Button Grid.Row="0" Grid.Column="1" Classes="ghost" Margin="10,0,0,0"
+                            <Button Grid.Column="1" Classes="ghost" Margin="10,0,0,0"
                                     Padding="14,7"
                                     Content="{Binding L[Settings.Nextcloud.TestConnection]}"
                                     Command="{Binding TestConnectionCommand}"
                                     IsEnabled="{Binding !IsBusy}"/>
-                            <TextBox Grid.Row="1" Grid.Column="0" Classes="field" Margin="0,10,0,0"
-                                     Text="{Binding ShareToken}"
-                                     Watermark="{Binding L[Settings.Nextcloud.ShareTokenPlaceholder]}"/>
                         </Grid>
                         <TextBlock Text="{Binding ConnectionStatus}" FontSize="12" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextMutedBrush}"

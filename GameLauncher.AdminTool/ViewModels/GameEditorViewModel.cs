@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using GameLauncher.AdminTool.Services;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.UI.Shared.ViewModels;
 using Microsoft.Extensions.Logging;
 
 namespace GameLauncher.AdminTool.ViewModels;

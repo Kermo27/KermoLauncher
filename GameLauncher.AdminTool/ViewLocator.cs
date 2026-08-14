@@ -1,27 +1,8 @@
-using Avalonia.Controls;
-using Avalonia.Controls.Templates;
-using Avalonia.Markup.Xaml;
-using GameLauncher.AdminTool.ViewModels;
-using GameLauncher.AdminTool.Views;
+using GameLauncher.UI.Shared;
 
 namespace GameLauncher.AdminTool;
 
-public class ViewLocator : IDataTemplate
+public sealed class ViewLocator : ViewLocatorBase
 {
-    public Control? Build(object? data)
-    {
-        if (data is null) return null;
-
-        var name = data.GetType().FullName!.Replace("ViewModel", "View");
-        var type = Type.GetType(name);
-        
-        if (type != null)
-        {
-            return (Control)Activator.CreateInstance(type)!;
-        }
-
-        return new TextBlock { Text = $"Not Found: {name}" };
-    }
-
-    public bool Match(object? data) => data is ViewModelBase;
+    protected override IServiceProvider? Services => App.Services;
 }

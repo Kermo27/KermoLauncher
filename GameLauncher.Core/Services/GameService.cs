@@ -1,22 +1,24 @@
 namespace GameLauncher.Core.Services;
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Threading.Channels;
 using Models;
 using Interfaces;
 using Utils;
 using Microsoft.Extensions.Logging;
 
-public class GameService : IGameService
+public class GameService : IGameService, IDisposable
 {
     private readonly IDownloadService _downloadService;
     private readonly ILocalDbService _db;
     private readonly IWebDavService _webDav;
     private readonly ILogger<GameService> _logger;
     private readonly object _installLock = new();
-    private readonly Dictionary<string, CancellationTokenSource> _activeInstalls = new();
+    private readonly Dictionary<string, ActiveInstall> _activeInstalls = new(StringComparer.Ordinal);
+
+    /// <summary>Games whose running install was stopped by the user rather than cancelled.</summary>
+    private readonly HashSet<string> _pausedGames = new(StringComparer.Ordinal);
+    private bool _disposed;
 
     public event Action<GameLocalState>? OnGameStateChanged;
     public event Action<DownloadTask>? OnTaskUpdated;
@@ -32,37 +34,108 @@ public class GameService : IGameService
         _db = db;
         _webDav = webDav;
         _logger = logger;
+
+        // Transfers report through the download service; the install pipeline is the single
+        // event source the UI subscribes to.
+        _downloadService.OnTaskUpdated += RaiseTaskUpdated;
+        _downloadService.OnProgress += RaiseProgress;
     }
 
+    private void RaiseTaskUpdated(DownloadTask task) => OnTaskUpdated?.Invoke(task);
+
+    private void RaiseProgress(DownloadProgress progress) => OnProgress?.Invoke(progress);
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _downloadService.OnTaskUpdated -= RaiseTaskUpdated;
+        _downloadService.OnProgress -= RaiseProgress;
+    }
+
+    /// <summary>An install in flight: its cancellation source and the download task it drives.</summary>
+    private sealed record ActiveInstall(CancellationTokenSource Cts, string TaskId);
+
     public Task InstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
-        => InstallOrUpdateAsync(game, isUpdate: false, progress, ct);
+        => InstallOrUpdateAsync(game, progress, ct);
 
     public Task UpdateAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
-        => InstallOrUpdateAsync(game, isUpdate: true, progress, ct);
+        => InstallOrUpdateAsync(game, progress, ct);
 
-    public Task CancelInstallAsync(string gameId)
+    public Task ResumeInstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
+        => InstallOrUpdateAsync(game, progress, ct, resume: true);
+
+    public Task PauseInstallAsync(string gameId)
     {
-        CancellationTokenSource? cts;
+        ActiveInstall? active;
         lock (_installLock)
         {
-            _activeInstalls.TryGetValue(gameId, out cts);
+            if (!_activeInstalls.TryGetValue(gameId, out active)) return Task.CompletedTask;
+
+            // The install loop reads this in its cancellation handler to tell a pause from a cancel.
+            _pausedGames.Add(gameId);
         }
 
-        if (cts != null)
+        if (!TryCancel(active))
         {
-            try
-            {
-                cts.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                // The install already finished.
-            }
+            lock (_installLock) _pausedGames.Remove(gameId);
         }
+
         return Task.CompletedTask;
     }
 
-    private async Task InstallOrUpdateAsync(Game game, bool isUpdate, IProgress<InstallProgress>? progress, CancellationToken ct)
+    public async Task CancelInstallAsync(string gameId)
+    {
+        ActiveInstall? active;
+        lock (_installLock)
+        {
+            _activeInstalls.TryGetValue(gameId, out active);
+            _pausedGames.Remove(gameId);
+        }
+
+        if (active != null)
+        {
+            TryCancel(active);
+            return;
+        }
+
+        // Nothing is running: a paused install is cancelled by throwing its partial files away.
+        var localState = await _db.GetLocalStateAsync(gameId);
+        if (localState?.Status != InstallStatus.Paused) return;
+
+        DeleteStagingDir(await GetStagingDirAsync(gameId));
+        await DiscardTasksForGameAsync(gameId);
+
+        var reset = localState with
+        {
+            Status = localState.InstalledPath != null && Directory.Exists(localState.InstalledPath)
+                ? InstallStatus.Installed
+                : InstallStatus.NotInstalled
+        };
+        await _db.UpsertLocalStateAsync(reset);
+        OnGameStateChanged?.Invoke(reset);
+    }
+
+    private static bool TryCancel(ActiveInstall active)
+    {
+        try
+        {
+            active.Cts.Cancel();
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            // The install already finished.
+            return false;
+        }
+    }
+
+    private async Task InstallOrUpdateAsync(
+        Game game,
+        IProgress<InstallProgress>? progress,
+        CancellationToken ct,
+        bool resume = false)
     {
         var localState = await _db.GetLocalStateAsync(game.Id) ?? new GameLocalState(game.Id, InstallStatus.NotInstalled);
         var initialState = localState;
@@ -76,6 +149,10 @@ public class GameService : IGameService
         var installRoot = string.IsNullOrWhiteSpace(settings.InstallFolder)
             ? Path.Combine(Utils.AppPaths.DataDirectory, "games")
             : settings.InstallFolder;
+
+        // Leftovers from a paused install or an earlier crash would otherwise pile up in the
+        // task table and confuse the library view.
+        await DiscardTasksForGameAsync(game.Id);
 
         var taskId = Guid.NewGuid().ToString();
         var downloadTask = new DownloadTask(
@@ -94,11 +171,16 @@ public class GameService : IGameService
         var stagingDir = downloadTask.LocalPath;
         var safeName = string.Join("", game.Name.Split(Path.GetInvalidFileNameChars()));
         var finalDir = Path.Combine(installRoot, safeName);
-        var installedManifest = localState.Status == InstallStatus.Installed ? localState.InstalledManifest : null;
+        // A paused install keeps the manifest of the version already on disk, so a resumed update
+        // still downloads only the files that actually changed.
+        var installedManifest = localState.Status is InstallStatus.Installed or InstallStatus.Paused
+            ? localState.InstalledManifest
+            : null;
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var token = linkedCts.Token;
-        lock (_installLock) _activeInstalls[game.Id] = linkedCts;
+        lock (_installLock) _activeInstalls[game.Id] = new ActiveInstall(linkedCts, taskId);
+        var paused = false;
 
         try
         {
@@ -129,13 +211,14 @@ public class GameService : IGameService
             await _db.UpsertDownloadTaskAsync(updatedTask);
             OnTaskUpdated?.Invoke(updatedTask);
 
-            var gameFolder = Path.GetDirectoryName(game.ManifestUrl.Replace('\\', '/'))?.TrimEnd('/') ?? "";
             var fileUrl = (GameFile file) => GameUrl.GetFileUrl(config, game.ManifestUrl, file.Path);
 
             // Stage 2: Prepare staging (copy unchanged files from existing install for updates)
             progress?.Report(new InstallProgress(game.Id, InstallStage.Downloading, 0));
             await UpdateStageAsync(downloadTask.Id, InstallStage.Downloading);
-            if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+
+            // A resumed install keeps whatever the previous attempt already wrote.
+            if (!resume && Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
             Directory.CreateDirectory(stagingDir);
 
             if (installedManifest != null && Directory.Exists(finalDir))
@@ -150,51 +233,22 @@ public class GameService : IGameService
                     if (!File.Exists(source)) continue;
 
                     var target = GamePaths.Combine(stagingDir, file.Path);
+                    if (File.Exists(target)) continue;
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                     File.Copy(source, target);
                 }
             }
 
-            // Stage 3: Download changed files (parallel)
-            var maxParallel = settings.MaxParallelDownloads > 0 ? settings.MaxParallelDownloads : 2;
-            var completedBytes = 0L;
+            // Stage 3: Download changed files
+            var requests = toDownload
+                .Select(file => new DownloadFileRequest(
+                    file.Path,
+                    fileUrl(file),
+                    GamePaths.Combine(stagingDir, file.Path),
+                    file.SizeBytes))
+                .ToArray();
 
-            // Bytes of in-flight files are tracked separately so the total stays correct
-            // no matter what order the parallel downloads report progress in.
-            var inFlight = new ConcurrentDictionary<string, long>();
-            long CurrentBytes() => Volatile.Read(ref completedBytes) + inFlight.Values.Sum();
-
-            await using var pump = new ProgressPump(
-                _db,
-                updatedTask with { InstallStage = InstallStage.Downloading },
-                OnTaskUpdated,
-                OnProgress);
-
-            await Parallel.ForEachAsync(
-                toDownload,
-                new ParallelOptions { MaxDegreeOfParallelism = maxParallel, CancellationToken = token },
-                async (file, fileToken) =>
-                {
-                    var localPath = GamePaths.Combine(stagingDir, file.Path);
-                    Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-                    if (File.Exists(localPath)) File.Delete(localPath);
-
-                    var progress = new DelegatedProgress(p =>
-                    {
-                        inFlight[file.Path] = p.BytesReceived;
-                        pump.Report(CurrentBytes());
-                    });
-
-                    await _webDav.DownloadFileAsync(fileUrl(file), localPath, downloadTask.Id, progress, fileToken);
-
-                    // Order matters: drop from in-flight before adding to the total, so the
-                    // reported sum can dip for a moment but never exceed the real one.
-                    inFlight.TryRemove(file.Path, out _);
-                    Interlocked.Add(ref completedBytes, file.SizeBytes);
-                    pump.Report(CurrentBytes());
-                });
-
-            await pump.FlushAsync(totalBytes);
+            await _downloadService.DownloadFilesAsync(updatedTask, requests, token);
 
             // Stage 4: Verify checksums of downloaded files
             progress?.Report(new InstallProgress(game.Id, InstallStage.Verifying, 0));
@@ -258,6 +312,20 @@ public class GameService : IGameService
         }
         catch (OperationCanceledException)
         {
+            lock (_installLock) paused = _pausedGames.Remove(game.Id);
+
+            if (paused)
+            {
+                _logger.LogInformation("Install paused for game {GameId}", game.Id);
+                localState = localState with { Status = InstallStatus.Paused };
+                await _db.UpsertLocalStateAsync(localState);
+                OnGameStateChanged?.Invoke(localState);
+                await PauseTaskAsync(downloadTask.Id);
+
+                // Callers treat cancellation as "stopped on purpose"; the paused state is already saved.
+                throw;
+            }
+
             _logger.LogInformation("Install cancelled for game {GameId}", game.Id);
             localState = localState with { Status = initialState.Status };
             await _db.UpsertLocalStateAsync(localState);
@@ -276,16 +344,37 @@ public class GameService : IGameService
         }
         finally
         {
-            lock (_installLock) _activeInstalls.Remove(game.Id);
-            try
+            lock (_installLock)
             {
-                if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+                _activeInstalls.Remove(game.Id);
+                _pausedGames.Remove(game.Id);
             }
-            catch
-            {
-                // Best effort cleanup
-            }
+
+            // A paused install keeps its partial files; everything else cleans up after itself.
+            if (!paused) DeleteStagingDir(stagingDir);
         }
+    }
+
+    private static void DeleteStagingDir(string stagingDir)
+    {
+        try
+        {
+            if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+        }
+        catch
+        {
+            // Best effort cleanup
+        }
+    }
+
+    /// <summary>Staging folder of a game's pending install, whether or not one is running.</summary>
+    private async Task<string> GetStagingDirAsync(string gameId)
+    {
+        var settings = await _db.GetSettingsAsync();
+        var installRoot = string.IsNullOrWhiteSpace(settings.InstallFolder)
+            ? Path.Combine(Utils.AppPaths.DataDirectory, "games")
+            : settings.InstallFolder;
+        return Path.Combine(installRoot, ".update", gameId);
     }
 
     private async Task UpdateStageAsync(string taskId, InstallStage stage)
@@ -316,6 +405,34 @@ public class GameService : IGameService
         {
             // Ignore cleanup errors
         }
+    }
+
+    /// <summary>Drops unfinished task rows for a game before a fresh install or resume starts.</summary>
+    private async Task DiscardTasksForGameAsync(string gameId)
+    {
+        var tasks = await _downloadService.GetAllTasksAsync();
+        foreach (var task in tasks.Where(t => t.GameId == gameId))
+        {
+            try
+            {
+                await _db.DeleteDownloadTaskAsync(task.Id);
+            }
+            catch
+            {
+                // Ignore cleanup errors; a stale row is harmless.
+            }
+        }
+    }
+
+    /// <summary>Keeps the task row so the library can offer a resume for the partial download.</summary>
+    private async Task PauseTaskAsync(string taskId)
+    {
+        var task = await _db.GetDownloadTaskAsync(taskId);
+        if (task == null) return;
+
+        var paused = task with { Status = DownloadStatus.Paused };
+        await _db.UpsertDownloadTaskAsync(paused);
+        OnTaskUpdated?.Invoke(paused);
     }
 
     private async Task FailTaskAsync(string taskId, string error, bool cancelled)
@@ -393,8 +510,18 @@ public class GameService : IGameService
 
         try
         {
+            if (OperatingSystem.IsLinux() &&
+                GameLaunchHelper.LooksLikeOnlineFix(workDir, exePath) &&
+                !GameLaunchHelper.IsSteamRunning())
+            {
+                return new LaunchResult(
+                    false,
+                    Error: "Steam must be running to launch Online-Fix games (Steam Overlay / AppID 480).");
+            }
+
             var settings = await _db.GetSettingsAsync();
             var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings);
+            LogLaunchCommand(gameId, startInfo);
             var process = Process.Start(startInfo);
 
             if (process == null)
@@ -412,6 +539,28 @@ public class GameService : IGameService
             _logger.LogError(ex, "Failed to launch game {GameId}", gameId);
             return new LaunchResult(false, Error: ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Compatibility problems on Linux come down to which Proton, runtime and environment the game
+    /// actually got, so both go into the log instead of only into the terminal.
+    /// </summary>
+    private void LogLaunchCommand(string gameId, ProcessStartInfo startInfo)
+    {
+        _logger.LogInformation("Launching {GameId}: {Command} {Arguments}",
+            gameId,
+            startInfo.FileName,
+            string.Join(' ', startInfo.ArgumentList.Select(GameLaunchHelper.Quote)));
+
+        var interesting = new[]
+        {
+            "STEAM_COMPAT_DATA_PATH", "WINEPREFIX", "WINEDLLOVERRIDES", "LD_PRELOAD",
+            "SteamAppId", "STEAM_COMPAT_CLIENT_INSTALL_PATH", "PROTONPATH", "GAMEID"
+        };
+        var env = interesting
+            .Where(key => startInfo.Environment.ContainsKey(key))
+            .Select(key => $"{key}={startInfo.Environment[key]}");
+        _logger.LogInformation("Launch environment for {GameId}: {Environment}", gameId, string.Join(' ', env));
     }
 
     private async Task TrackPlaytimeAsync(string gameId, Process process, long initialPlaytime)
@@ -556,101 +705,4 @@ public class GameService : IGameService
         return games.Length;
     }
 
-    private sealed class DelegatedProgress : IProgress<DownloadProgress>
-    {
-        private readonly Action<DownloadProgress> _handler;
-
-        public DelegatedProgress(Action<DownloadProgress> handler)
-        {
-            _handler = handler;
-        }
-
-        public void Report(DownloadProgress value)
-        {
-            _handler(value);
-        }
-    }
-
-    /// <summary>
-    /// Collects progress reports from parallel downloads and handles them in a single consumer,
-    /// so events are raised from one thread and database writes are throttled to one per 500 ms
-    /// and actually awaited instead of being fired and forgotten.
-    /// </summary>
-    private sealed class ProgressPump : IAsyncDisposable
-    {
-        private static readonly TimeSpan PersistInterval = TimeSpan.FromMilliseconds(500);
-
-        private readonly ILocalDbService _db;
-        private readonly DownloadTask _template;
-        private readonly Action<DownloadTask>? _onTaskUpdated;
-        private readonly Action<DownloadProgress>? _onProgress;
-        private readonly Channel<long> _channel =
-            Channel.CreateUnbounded<long>(new UnboundedChannelOptions { SingleReader = true });
-        private readonly DateTime _startedAt = DateTime.UtcNow;
-        private readonly Task _consumer;
-        private DateTime _lastPersistedAt = DateTime.MinValue;
-
-        public ProgressPump(
-            ILocalDbService db,
-            DownloadTask template,
-            Action<DownloadTask>? onTaskUpdated,
-            Action<DownloadProgress>? onProgress)
-        {
-            _db = db;
-            _template = template;
-            _onTaskUpdated = onTaskUpdated;
-            _onProgress = onProgress;
-            _consumer = Task.Run(ConsumeAsync);
-        }
-
-        public void Report(long bytes) => _channel.Writer.TryWrite(bytes);
-
-        private async Task ConsumeAsync()
-        {
-            await foreach (var bytes in _channel.Reader.ReadAllAsync())
-            {
-                var elapsed = DateTime.UtcNow - _startedAt;
-                var speed = elapsed.TotalSeconds > 0 ? bytes / elapsed.TotalSeconds : 0;
-                TimeSpan? remaining = speed > 0 && _template.TotalBytes > bytes
-                    ? TimeSpan.FromSeconds((_template.TotalBytes - bytes) / speed)
-                    : null;
-
-                _onProgress?.Invoke(new DownloadProgress(_template.Id, bytes, _template.TotalBytes, speed, remaining));
-
-                if (DateTime.UtcNow - _lastPersistedAt >= PersistInterval)
-                {
-                    _lastPersistedAt = DateTime.UtcNow;
-                    await PersistAsync(bytes);
-                }
-            }
-        }
-
-        private async Task PersistAsync(long bytes)
-        {
-            var snapshot = _template with { DownloadedBytes = bytes };
-            await _db.UpsertDownloadTaskAsync(snapshot);
-            _onTaskUpdated?.Invoke(snapshot);
-        }
-
-        /// <summary>Closes the channel and guarantees one final event with the total byte count.</summary>
-        public async Task FlushAsync(long finalBytes)
-        {
-            _channel.Writer.TryComplete();
-            await _consumer;
-            await PersistAsync(finalBytes);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            _channel.Writer.TryComplete();
-            try
-            {
-                await _consumer;
-            }
-            catch (Exception)
-            {
-                // Error path: the real install exception propagates from FlushAsync.
-            }
-        }
-    }
 }

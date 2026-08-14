@@ -28,8 +28,15 @@
   <data name="Library.Uninstall" xml:space="preserve"><value>Odinstaluj</value></data>
   <data name="Library.Status.NotInstalled" xml:space="preserve"><value>Nie zainstalowano</value></data>
   <data name="Library.Status.Downloading" xml:space="preserve"><value>Pobieranie...</value></data>
+  <data name="Library.Status.DownloadingProgress" xml:space="preserve"><value>{0:0}% · {1} / {2} · {3}/s</value></data>
+  <data name="Library.Status.DownloadingSpeed" xml:space="preserve"><value>Pobieranie · {0}/s</value></data>
+  <data name="Library.Status.PausedProgress" xml:space="preserve"><value>Wstrzymane na {0:0}%</value></data>
+  <data name="Library.Status.Preparing" xml:space="preserve"><value>Przygotowywanie...</value></data>
+  <data name="Library.Status.Verifying" xml:space="preserve"><value>Weryfikacja...</value></data>
+  <data name="Library.Status.Extracting" xml:space="preserve"><value>Instalowanie plików...</value></data>
   <data name="Library.Status.Installing" xml:space="preserve"><value>Instalowanie...</value></data>
   <data name="Library.Status.Installed" xml:space="preserve"><value>Zainstalowano</value></data>
+  <data name="Library.Status.Paused" xml:space="preserve"><value>Wstrzymane</value></data>
   <data name="Library.Played" xml:space="preserve"><value>Czas gry: {0}</value></data>
   <data name="Library.Status.UpdateAvailable" xml:space="preserve"><value>Aktualizacja dostępna</value></data>
   <data name="Library.Status.Failed" xml:space="preserve"><value>Błąd</value></data>
@@ -47,6 +54,12 @@
   <data name="Library.CancelDownload" xml:space="preserve"><value>Anuluj</value></data>
   <data name="Library.DownloadCancelledTitle" xml:space="preserve"><value>Pobieranie anulowane</value></data>
   <data name="Library.DownloadCancelledMessage" xml:space="preserve"><value>Pobieranie gry {0} zostało anulowane.</value></data>
+  <data name="Library.PauseDownload" xml:space="preserve"><value>Wstrzymaj</value></data>
+  <data name="Library.ResumeDownload" xml:space="preserve"><value>Wznów</value></data>
+  <data name="Library.DownloadPausedTitle" xml:space="preserve"><value>Pobieranie wstrzymane</value></data>
+  <data name="Library.DownloadPausedMessage" xml:space="preserve"><value>Pobieranie gry {0} zostało wstrzymane; pobrane pliki zostają na dysku.</value></data>
+  <data name="Library.DownloadResumedTitle" xml:space="preserve"><value>Pobieranie wznowione</value></data>
+  <data name="Library.DownloadResumedMessage" xml:space="preserve"><value>Pobieranie gry {0} jest kontynuowane od miejsca zatrzymania.</value></data>
   <data name="Library.InstallStartedTitle" xml:space="preserve"><value>Rozpoczęto instalację</value></data>
   <data name="Library.InstallStartedMessage" xml:space="preserve"><value>Instalacja {0} rozpoczęta.</value></data>
   <data name="Library.InstallDoneTitle" xml:space="preserve"><value>Instalacja zakończona</value></data>
@@ -105,17 +118,16 @@
   <data name="Settings.Nextcloud.ShareUrl" xml:space="preserve"><value>Adres udostępniania:</value></data>
   <data name="Settings.Nextcloud.ShareUrlPlaceholder" xml:space="preserve"><value>https://twoj-serwer/s/abc123</value></data>
   <data name="Settings.Nextcloud.TestConnection" xml:space="preserve"><value>Testuj połączenie</value></data>
-  <data name="Settings.Nextcloud.ShareToken" xml:space="preserve"><value>Token udostępniania:</value></data>
-  <data name="Settings.Nextcloud.ShareTokenPlaceholder" xml:space="preserve"><value>Opcjonalnie - zwykle wyciągany z linku</value></data>
   <data name="Settings.Nextcloud.SharedFolder" xml:space="preserve"><value>Katalog udostępniony</value></data>
   <data name="Settings.Folders.Title" xml:space="preserve"><value>Foldery</value></data>
   <data name="Settings.Folders.Install" xml:space="preserve"><value>Folder instalacji:</value></data>
   <data name="Settings.Folders.InstallPlaceholder" xml:space="preserve"><value>Domyślnie: ~/KermoLauncher/games</value></data>
   <data name="Settings.Folders.Hint" xml:space="preserve"><value>Gry są pobierane i instalowane do folderu instalacji (podkatalog na każdą grę).</value></data>
+  <data name="Settings.Folders.BrowseTitle" xml:space="preserve"><value>Wybierz folder instalacji</value></data>
   <data name="Settings.Browse" xml:space="preserve"><value>Przeglądaj</value></data>
   <data name="Settings.General.Title" xml:space="preserve"><value>Ogólne</value></data>
   <data name="Settings.General.MaxParallel" xml:space="preserve"><value>Równoległe pobierania:</value></data>
-  <data name="Settings.General.MaxParallelHint" xml:space="preserve"><value>(wymaga ponownego uruchomienia)</value></data>
+  <data name="Settings.General.MaxParallelHint" xml:space="preserve"><value>(dotyczy następnego pobierania)</value></data>
   <data name="Settings.General.AutoUpdate" xml:space="preserve"><value>Automatyczna aktualizacja:</value></data>
   <data name="Settings.General.CheckUpdates" xml:space="preserve"><value>Sprawdź aktualizacje</value></data>
   <data name="Settings.General.Theme" xml:space="preserve"><value>Motyw:</value></data>
@@ -136,9 +148,15 @@
   <data name="Settings.ConnectionOkEmpty" xml:space="preserve"><value>Połączenie działa, ale katalog jest pusty (metadata.json w katalogu głównym).</value></data>
   <data name="Settings.ConnectionErrorTitle" xml:space="preserve"><value>Błąd połączenia</value></data>
   <data name="Settings.ConnectionErrorMessage" xml:space="preserve"><value>Nie udało się pobrać metadata.json: {0}</value></data>
-  <data name="Settings.Wine.Title" xml:space="preserve"><value>Gry Windows (Wine)</value></data>
-  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Większość gier w bibliotece to buildy Windows. Na Linuksie uruchamiają się przez Wine (albo Proton, jeśli wskażesz binarkę Proton w polu Polecenie).</value></data>
-  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Uruchamiaj .exe przez Wine:</value></data>
+  <data name="Settings.Wine.Title" xml:space="preserve"><value>Gry Windows (Proton / Wine)</value></data>
+  <data name="Settings.Wine.Hint" xml:space="preserve"><value>Większość gier w bibliotece to buildy Windows. Na Linuksie domyślnie lecą przez Proton (umu-run jeśli jest, inaczej Steam Runtime + proton — jak w online-fix / SOFL). Wine zostaje jako zapas. protontricks służy do instalowania runtime’ów w prefiksie, nie do codziennego odpalania.</value></data>
+  <data name="Settings.Wine.Enable" xml:space="preserve"><value>Uruchamiaj .exe przez Proton/Wine:</value></data>
+  <data name="Settings.Wine.Backend" xml:space="preserve"><value>Backend:</value></data>
+  <data name="Settings.Wine.Backend.Proton" xml:space="preserve"><value>Proton (zalecany)</value></data>
+  <data name="Settings.Wine.Backend.Wine" xml:space="preserve"><value>Wine</value></data>
+  <data name="Settings.Wine.Proton.Version" xml:space="preserve"><value>Wersja Proton:</value></data>
+  <data name="Settings.Wine.Proton.Auto" xml:space="preserve"><value>Auto (najnowsza)</value></data>
+  <data name="Settings.Wine.Proton.Hint" xml:space="preserve"><value>Prefiks, Steam Runtime i podmiany DLL są dobierane per gra — tytuły z Online-Fix dostają własny prefiks i runtime wymagany przez wybraną wersję Protona.</value></data>
   <data name="Settings.Wine.Command" xml:space="preserve"><value>Polecenie Wine:</value></data>
   <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Prefiks Wine:</value></data>

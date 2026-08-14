@@ -82,13 +82,19 @@ public class AppSettings
     /// <summary>True until the user finishes (or is migrated past) the first-run wizard.</summary>
     public bool NeedsOnboarding => !OnboardingCompleted;
 
-    /// <summary>On Linux, run .exe/.bat games through Wine (or Proton pointed at by WineCommand).</summary>
+    /// <summary>On Linux, run .exe/.bat games through Proton or Wine.</summary>
     public bool LaunchWindowsGamesWithWine { get; set; } = true;
 
-    /// <summary>Wine/Proton binary. Empty means "wine" on PATH.</summary>
+    /// <summary>"Proton" (default) or "Wine". Ignored on Windows.</summary>
+    public string LinuxCompatBackend { get; set; } = "Proton";
+
+    /// <summary>Proton folder name (e.g. GE-Proton11-5). Empty = newest discovered.</summary>
+    public string ProtonVersion { get; set; } = "";
+
+    /// <summary>Wine binary when backend is Wine. Empty means "wine" on PATH.</summary>
     public string WineCommand { get; set; } = "wine";
 
-    /// <summary>WINEPREFIX. Empty means &lt;app data&gt;/wineprefix.</summary>
+    /// <summary>WINEPREFIX for Wine backend. Empty means &lt;app data&gt;/wineprefix.</summary>
     public string WinePrefix { get; set; } = "";
 
     /// <summary>A shallow copy is enough because NextcloudConfig is an immutable record.</summary>
@@ -102,6 +108,8 @@ public class AppSettings
         Language = Language,
         OnboardingCompleted = OnboardingCompleted,
         LaunchWindowsGamesWithWine = LaunchWindowsGamesWithWine,
+        LinuxCompatBackend = LinuxCompatBackend,
+        ProtonVersion = ProtonVersion,
         WineCommand = WineCommand,
         WinePrefix = WinePrefix
     };

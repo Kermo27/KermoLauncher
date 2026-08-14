@@ -1,8 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GameLauncher.Core.Services.Interfaces;
 
-namespace GameLauncher.UI.ViewModels;
+namespace GameLauncher.UI.Shared.ViewModels;
 
+/// <summary>
+/// Shared by the launcher and the admin tool: both had their own identical copy, so every fix
+/// had to be made twice.
+/// </summary>
 public partial class ViewModelBase : ObservableObject, IDisposable
 {
     private bool _disposed;

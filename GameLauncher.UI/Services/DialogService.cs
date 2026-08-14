@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using GameLauncher.Core.Services.Interfaces;
@@ -83,27 +84,28 @@ public class DialogService : IDialogService
         {
             Title = title,
             Width = 440,
+            SizeToContent = SizeToContent.Height,
             CanResize = false,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = (IBrush?)Res("WindowBgBrush")
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
+        BindBrush(dialog, Window.BackgroundProperty, "WindowBgBrush");
 
         var iconText = new TextBlock
         {
             Text = icon,
             FontSize = 28,
-            VerticalAlignment = VerticalAlignment.Top,
-            Foreground = (IBrush?)Res(accentKey)
+            VerticalAlignment = VerticalAlignment.Top
         };
+        BindBrush(iconText, TextBlock.ForegroundProperty, accentKey);
 
         var titleText = new TextBlock
         {
             Text = title,
             FontSize = 15,
             FontWeight = FontWeight.Bold,
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (IBrush?)Res("TextPrimaryBrush")
+            TextWrapping = TextWrapping.Wrap
         };
+        BindBrush(titleText, TextBlock.ForegroundProperty, "TextPrimaryBrush");
 
         var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         iconText.Margin = new Thickness(0, 2, 12, 0);
@@ -116,9 +118,9 @@ public class DialogService : IDialogService
             Text = message,
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = (IBrush?)Res("TextSecondaryBrush"),
             Margin = new Thickness(0, 12, 0, 0)
         };
+        BindBrush(messageText, TextBlock.ForegroundProperty, "TextSecondaryBrush");
 
         var footer = new StackPanel
         {
@@ -143,15 +145,13 @@ public class DialogService : IDialogService
         return dialog;
     }
 
-    private static object? Res(string key)
-    {
-        if (Application.Current is App app &&
-            app.Resources.TryGetResource(key, app.RequestedThemeVariant, out var value))
-        {
-            return value;
-        }
-        return null;
-    }
+    /// <summary>
+    /// Theme brushes live in theme dictionaries, so they can only be resolved against the variant a
+    /// control actually renders with. A one-off lookup misses them whenever the app follows the
+    /// system theme, which left the dialog transparent and its text invisible.
+    /// </summary>
+    private static void BindBrush(AvaloniaObject target, AvaloniaProperty property, string resourceKey)
+        => target.Bind(property, new DynamicResourceExtension(resourceKey));
 
     public async Task<string?> ShowFolderPickerAsync(string title, string? initialPath = null)
     {

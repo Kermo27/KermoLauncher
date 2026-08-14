@@ -4,6 +4,7 @@ using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.Core.Utils;
 using GameLauncher.UI.Services;
+using GameLauncher.UI.Shared.ViewModels;
 
 namespace GameLauncher.UI.ViewModels;
 
@@ -46,9 +47,6 @@ public partial class OnboardingViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanContinueFromSource))]
     private string _shareUrl = "";
-
-    [ObservableProperty]
-    private string _shareToken = "";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanContinueFromSource))]
@@ -181,7 +179,8 @@ public partial class OnboardingViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var config = await _webDav.ResolveConfigAsync(new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? ""));
+            // The WebDAV token comes from the share link itself, so the wizard only asks for the link.
+            var config = await _webDav.ResolveConfigAsync(new NextcloudConfig(shareUrl, ""));
             var games = await _webDav.DownloadMetadataAsync(config);
             ConnectionOk = true;
             ConnectionStatus = games.Length > 0
@@ -259,7 +258,7 @@ public partial class OnboardingViewModel : ViewModelBase
         {
             var shareUrl = ShareUrl.Trim();
             var config = await _webDav.ResolveConfigAsync(
-                new NextcloudConfig(shareUrl, ShareToken?.Trim() ?? ""));
+                new NextcloudConfig(shareUrl, ""));
 
             var existing = await _db.GetSettingsAsync();
             var settings = new AppSettings
@@ -272,6 +271,8 @@ public partial class OnboardingViewModel : ViewModelBase
                 Nextcloud = config,
                 OnboardingCompleted = true,
                 LaunchWindowsGamesWithWine = existing.LaunchWindowsGamesWithWine,
+                LinuxCompatBackend = existing.LinuxCompatBackend,
+                ProtonVersion = existing.ProtonVersion,
                 WineCommand = existing.WineCommand,
                 WinePrefix = existing.WinePrefix
             };

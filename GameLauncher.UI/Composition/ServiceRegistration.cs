@@ -55,16 +55,9 @@ public static class ServiceRegistration
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ScreenshotService)),
             sp.GetRequiredService<ILogger<ScreenshotService>>()));
 
-        var maxParallel = startup.Settings.MaxParallelDownloads > 0
-            ? startup.Settings.MaxParallelDownloads
-            : 2;
-
-        services.AddSingleton<IDownloadService>(sp => new DownloadService(
-            sp.GetRequiredService<IWebDavService>(),
-            sp.GetRequiredService<ILocalDbService>(),
-            sp.GetRequiredService<ILogger<DownloadService>>(),
-            maxParallel));
-
+        // The parallel download limit is read from settings per download, so changing it in
+        // Settings takes effect without a restart.
+        services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IGameService, GameService>();
         services.AddSingleton(new AutoUpdateOptions(
             typeof(ServiceRegistration).Assembly.GetName().Version?.ToString(3) ?? "1.0.0",

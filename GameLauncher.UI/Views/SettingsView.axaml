@@ -42,19 +42,14 @@
                     <TextBlock Text="{Binding L[Settings.Nextcloud.Title]}" Classes="SectionTitle"/>
                 </StackPanel>
 
-                    <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding L[Settings.Nextcloud.ShareUrl]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="0" Grid.Column="1" Classes="field"
+                    <Grid ColumnDefinitions="150,*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Nextcloud.ShareUrl]}" Classes="FieldLabel" Margin="0,8"/>
+                        <TextBox Grid.Column="1" Classes="field"
                                  Text="{Binding ShareUrl}"
                                  Watermark="{Binding L[Settings.Nextcloud.ShareUrlPlaceholder]}" Margin="0,8"/>
-                        <Button Grid.Row="0" Grid.Column="2" Content="{Binding L[Settings.Nextcloud.TestConnection]}" Classes="ghost"
+                        <Button Grid.Column="2" Content="{Binding L[Settings.Nextcloud.TestConnection]}" Classes="ghost"
                                 Command="{Binding TestConnectionCommand}"
                                 Margin="10,8,0,8" Padding="14,7"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding L[Settings.Nextcloud.ShareToken]}" Classes="FieldLabel" Margin="0,8"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field"
-                                 Text="{Binding ShareToken}"
-                                 Watermark="{Binding L[Settings.Nextcloud.ShareTokenPlaceholder]}" Margin="0,8"/>
                     </Grid>
 
                     <TextBlock Text="{Binding L[Settings.Nextcloud.SharedFolder]}"
@@ -129,7 +124,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============ WINE (Linux) ============ -->
+            <!-- ============ PROTON / WINE (Linux) ============ -->
             <Border Classes="Section" IsVisible="{Binding ShowWineSettings}">
                 <StackPanel Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -146,19 +141,40 @@
                     </Grid>
 
                     <Grid ColumnDefinitions="200,*">
-                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Command]}" Classes="FieldLabel"/>
-                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WineCommand}"
-                                 Watermark="{Binding L[Settings.Wine.CommandPlaceholder]}"/>
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Backend]}" Classes="FieldLabel"/>
+                        <ComboBox Grid.Column="1" Width="220" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding CompatBackendOptions}"
+                                  SelectedIndex="{Binding SelectedCompatBackendIndex}"/>
                     </Grid>
 
-                    <Grid ColumnDefinitions="200,*,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Prefix]}" Classes="FieldLabel"/>
-                        <TextBox Grid.Column="1" Classes="field" Text="{Binding WinePrefix}"
-                                 Watermark="{Binding L[Settings.Wine.PrefixPlaceholder]}"/>
-                        <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
-                                Content="{Binding L[Settings.Browse]}"
-                                Command="{Binding BrowseWinePrefixCommand}"/>
-                    </Grid>
+                    <StackPanel Spacing="14" IsVisible="{Binding ShowProtonFields}">
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Proton.Version]}" Classes="FieldLabel"/>
+                            <ComboBox Grid.Column="1" MinWidth="260" HorizontalAlignment="Left"
+                                      ItemsSource="{Binding ProtonVersionOptions}"
+                                      SelectedIndex="{Binding SelectedProtonVersionIndex}"/>
+                        </Grid>
+
+                        <TextBlock Text="{Binding L[Settings.Wine.Proton.Hint]}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="14" IsVisible="{Binding ShowWineFields}">
+                        <Grid ColumnDefinitions="200,*">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Command]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WineCommand}"
+                                     Watermark="{Binding L[Settings.Wine.CommandPlaceholder]}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="200,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding L[Settings.Wine.Prefix]}" Classes="FieldLabel"/>
+                            <TextBox Grid.Column="1" Classes="field" Text="{Binding WinePrefix}"
+                                     Watermark="{Binding L[Settings.Wine.PrefixPlaceholder]}"/>
+                            <Button Grid.Column="2" Classes="ghost" Margin="10,0,0,0" Padding="14,7"
+                                    Content="{Binding L[Settings.Browse]}"
+                                    Command="{Binding BrowseWinePrefixCommand}"/>
+                        </Grid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

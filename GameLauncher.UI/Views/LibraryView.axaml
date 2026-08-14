@@ -5,20 +5,41 @@
              x:Class="GameLauncher.UI.Views.LibraryView"
              x:DataType="vm:LibraryViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="Border.GameCard">
-            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="10"/>
+    <!-- One card shell for both the skeleton and the real game card, so their frame and
+         dimensions cannot drift apart -->
+    <UserControl.Resources>
+        <sys:Double x:Key="GameCardWidth">268</sys:Double>
+        <sys:Double x:Key="GameCardHeight">372</sys:Double>
+        <sys:Double x:Key="GameCardCoverHeight">120</sys:Double>
+        <sys:Double x:Key="GameCardActionsHeight">78</sys:Double>
+
+        <ControlTheme x:Key="GameCardShell" TargetType="ContentControl">
+            <Setter Property="Width" Value="{StaticResource GameCardWidth}"/>
+            <Setter Property="Height" Value="{StaticResource GameCardHeight}"/>
             <Setter Property="Margin" Value="8"/>
-            <Setter Property="Padding" Value="14"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Border.GameCard:pointerover">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-            <Setter Property="BoxShadow" Value="0 3 12 0 #22000000"/>
-        </Style>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Frame"
+                            Background="{DynamicResource CardBgBrush}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1" CornerRadius="10" Padding="14">
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+
+            <!-- Only real cards react to the pointer; a skeleton is not clickable -->
+            <Style Selector="^.interactive">
+                <Setter Property="Cursor" Value="Hand"/>
+            </Style>
+            <Style Selector="^.interactive:pointerover /template/ Border#PART_Frame">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="BoxShadow" Value="0 3 12 0 #22000000"/>
+            </Style>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
         <Style Selector="Border.Skeleton">
             <Setter Property="Background" Value="{DynamicResource TagBgBrush}"/>
             <Setter Property="Opacity" Value="0.5"/>
@@ -179,9 +200,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="sys:Object">
-                            <Border Classes="GameCard" Width="268" Height="372">
+                            <ContentControl Theme="{StaticResource GameCardShell}">
                                 <Grid RowDefinitions="Auto,*,Auto">
-                                    <Border Grid.Row="0" Height="120" CornerRadius="8" Margin="0,0,0,10"
+                                    <Border Grid.Row="0" Height="{StaticResource GameCardCoverHeight}"
+                                            CornerRadius="8" Margin="0,0,0,10"
                                             Classes="Skeleton"/>
                                     <StackPanel Grid.Row="1" Spacing="8">
                                         <Border Height="24" Width="80" CornerRadius="4" Classes="Skeleton"/>
@@ -189,7 +211,8 @@
                                         <Border Height="12" Width="220" CornerRadius="4" Classes="Skeleton"/>
                                         <Border Height="12" Width="180" CornerRadius="4" Classes="Skeleton"/>
                                     </StackPanel>
-                                    <Grid Grid.Row="2" ColumnDefinitions="118,118" RowDefinitions="Auto,Auto"
+                                    <Grid Grid.Row="2" Height="{StaticResource GameCardActionsHeight}"
+                                          ColumnDefinitions="118,118" RowDefinitions="Auto,Auto"
                                           Margin="0,6,0,0">
                                         <Border Grid.Row="0" Grid.Column="0" Height="40" CornerRadius="8"
                                                 Margin="0,0,4,0" Classes="Skeleton"/>
@@ -199,7 +222,7 @@
                                                 CornerRadius="8" Margin="0,4,0,0" Classes="Skeleton"/>
                                     </Grid>
                                 </Grid>
-                            </Border>
+                            </ContentControl>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -213,10 +236,11 @@
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:GameItemViewModel">
-                            <Border Classes="GameCard" Width="268" Height="372">
+                            <ContentControl Theme="{StaticResource GameCardShell}" Classes="interactive">
                                 <Grid RowDefinitions="Auto,*,Auto">
                                     <!-- Cover -->
-                                    <Border Grid.Row="0" Height="120" CornerRadius="8" Margin="0,0,0,10"
+                                    <Border Grid.Row="0" Height="{StaticResource GameCardCoverHeight}"
+                                            CornerRadius="8" Margin="0,0,0,10"
                                             Background="{DynamicResource TagBgBrush}" ClipToBounds="True">
                                         <Grid>
                                             <Image Source="{Binding CoverImage}"
@@ -233,8 +257,9 @@
                                                     Classes.busy="{Binding IsStatusBusy}"
                                                     Classes.failed="{Binding IsStatusFailed}"
                                                     HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                    Margin="8" CornerRadius="12" Padding="10,3">
-                                                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"/>
+                                                    Margin="8" CornerRadius="12" Padding="10,3" MaxWidth="150">
+                                                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
                                             </Border>
                                             <!-- Update available badge -->
                                             <Border HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -271,35 +296,57 @@
                                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                                    TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
                                                    MinHeight="46" Margin="0,1,0,1"/>
-                                        <ItemsControl ItemsSource="{Binding Tags}" Height="24">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="sys:String">
-                                                    <Border Background="{DynamicResource TagBgBrush}"
-                                                            CornerRadius="10" Padding="9,3" Margin="0,0,5,5">
-                                                        <TextBlock Text="{Binding}" FontSize="10"
-                                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <!-- Tags give up their row to the transfer progress, so the
+                                             percentage and speed sit on the card instead of over the cover -->
+                                        <Grid Height="24">
+                                            <ItemsControl ItemsSource="{Binding Tags}"
+                                                          IsVisible="{Binding !ShowProgress}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="sys:String">
+                                                        <Border Background="{DynamicResource TagBgBrush}"
+                                                                CornerRadius="10" Padding="9,3" Margin="0,0,5,5">
+                                                            <TextBlock Text="{Binding}" FontSize="10"
+                                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <StackPanel Spacing="3" VerticalAlignment="Center"
+                                                        IsVisible="{Binding ShowProgress}">
+                                                <TextBlock Text="{Binding ProgressText}" FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <ProgressBar Minimum="0" Maximum="100"
+                                                             Value="{Binding ProgressPercent}"
+                                                             IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                                             Height="5" CornerRadius="3"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
 
                                     <!-- Actions -->
-                                    <Grid Grid.Row="2" Height="78" ColumnDefinitions="118,118"
+                                    <Grid Grid.Row="2" Height="{StaticResource GameCardActionsHeight}"
+                                          ColumnDefinitions="118,118"
                                           RowDefinitions="Auto,Auto" Margin="0,6,0,0">
                                         <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0" HorizontalAlignment="Stretch"
                                                 Content="{Binding L[Library.Install]}" FontSize="12.5" Padding="10,9"
                                                 Command="{Binding InstallCommand}"
                                                 IsVisible="{Binding CanInstall}"/>
                                         <Button Grid.Row="0" Grid.Column="0" Classes="ghost" Margin="0,0,4,0" HorizontalAlignment="Stretch"
-                                                Content="{Binding L[Library.CancelDownload]}" FontSize="12.5" Padding="10,9"
-                                                Command="{Binding CancelDownloadCommand}"
-                                                IsVisible="{Binding CanCancelDownload}"/>
+                                                Content="{Binding L[Library.PauseDownload]}" FontSize="12.5" Padding="10,9"
+                                                Command="{Binding PauseDownloadCommand}"
+                                                IsVisible="{Binding CanPauseDownload}"/>
+                                        <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0" HorizontalAlignment="Stretch"
+                                                Content="{Binding L[Library.ResumeDownload]}" FontSize="12.5" Padding="10,9"
+                                                Command="{Binding ResumeDownloadCommand}"
+                                                IsVisible="{Binding CanResumeDownload}"/>
                                         <Button Grid.Row="0" Grid.Column="0" Classes="primary" Margin="0,0,4,0" HorizontalAlignment="Stretch"
                                                 Content="{Binding L[Library.Update]}" FontSize="12.5" Padding="10,9"
                                                 Command="{Binding UpdateCommand}"
@@ -309,6 +356,10 @@
                                                 Content="{Binding L[Library.Launch]}" FontSize="12.5" Padding="10,9"
                                                 Command="{Binding LaunchCommand}"
                                                 IsVisible="{Binding CanLaunch}"/>
+                                        <Button Grid.Row="0" Grid.Column="1" Classes="ghost" Margin="4,0,0,0" HorizontalAlignment="Stretch"
+                                                Content="{Binding L[Library.CancelDownload]}" FontSize="12.5" Padding="10,9"
+                                                Command="{Binding CancelDownloadCommand}"
+                                                IsVisible="{Binding CanCancelDownload}"/>
                                         <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="ghost"
                                                 Margin="0,4,0,0" HorizontalAlignment="Stretch"
                                                 Content="{Binding L[Library.Uninstall]}" FontSize="12" Padding="10,7"
@@ -316,7 +367,7 @@
                                                 IsVisible="{Binding CanUninstall}"/>
                                     </Grid>
                                 </Grid>
-                            </Border>
+                            </ContentControl>
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>

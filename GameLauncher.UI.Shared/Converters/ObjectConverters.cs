@@ -1,9 +1,12 @@
-using Avalonia.Data.Converters;
-using System;
 using System.Globalization;
+using Avalonia.Data.Converters;
 
-namespace GameLauncher.AdminTool.Converters;
+namespace GameLauncher.UI.Shared.Converters;
 
+/// <summary>
+/// The handful of value converters both apps need. Avalonia ships IsNull/IsNotNull, but not the
+/// numeric and boolean ones, so they live here in one place.
+/// </summary>
 public static class ObjectConverters
 {
     public static readonly IValueConverter IsNotZero = new IsNotZeroConverter();

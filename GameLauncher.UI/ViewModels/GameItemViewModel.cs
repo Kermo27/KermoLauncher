@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.UI.Services;
+using GameLauncher.UI.Shared.ViewModels;
 using Microsoft.Extensions.Logging;
 
 namespace GameLauncher.UI.ViewModels;
@@ -155,16 +156,44 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(PlayTimeText));
         OnPropertyChanged(nameof(HasPlayTime));
         OnPropertyChanged(nameof(CanCancelDownload));
+        OnPropertyChanged(nameof(CanPauseDownload));
+        OnPropertyChanged(nameof(CanResumeDownload));
         OnPropertyChanged(nameof(IsStatusInstalled));
         OnPropertyChanged(nameof(IsStatusBusy));
         OnPropertyChanged(nameof(IsStatusFailed));
+        OnPropertyChanged(nameof(ShowProgress));
+        OnPropertyChanged(nameof(ProgressText));
+
+        if (value?.Status == InstallStatus.Paused)
+            MarkPaused();
+        else if (value?.Status is not (InstallStatus.Downloading or InstallStatus.Installing))
+            ClearProgress();
     }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressText))]
+    private string _progressDetail = "";
+
+    [ObservableProperty]
+    private InstallStage? _activeInstallStage;
+
+    [ObservableProperty]
+    private double _progressPercent;
+
+    /// <summary>Set while a phase reports no measurable byte progress (preparing, verifying, extracting).</summary>
+    [ObservableProperty]
+    private bool _isProgressIndeterminate;
 
     public InstallStatus Status => LocalState?.Status ?? InstallStatus.NotInstalled;
 
-    public bool CanCancelDownload => Status == InstallStatus.Downloading;
+    public bool CanCancelDownload => Status is InstallStatus.Downloading or InstallStatus.Paused;
 
-    public bool CanInstall => Status is not (InstallStatus.Installed or InstallStatus.Downloading or InstallStatus.Installing);
+    public bool CanPauseDownload => Status == InstallStatus.Downloading;
+
+    public bool CanResumeDownload => Status == InstallStatus.Paused;
+
+    public bool CanInstall => Status is not (InstallStatus.Installed or InstallStatus.Downloading
+        or InstallStatus.Installing or InstallStatus.Paused);
 
     public bool CanUninstall => Status == InstallStatus.Installed;
 
@@ -181,22 +210,128 @@ public partial class GameItemViewModel : ViewModelBase
     public bool IsStatusBusy => Status is InstallStatus.Downloading or InstallStatus.Installing;
     public bool IsStatusFailed => Status == InstallStatus.Failed;
 
+    /// <summary>
+    /// Short label for the pill on the cover. Percentages and speed go to <see cref="ProgressText"/>,
+    /// because a long string over the artwork was unreadable.
+    /// </summary>
     public string StatusText => Status switch
     {
         InstallStatus.NotInstalled => L["Library.Status.NotInstalled"],
         InstallStatus.Downloading => L["Library.Status.Downloading"],
         InstallStatus.Installing => L["Library.Status.Installing"],
-        // A separate badge announces an available update, so the status pill sticks to the
-        // install state; otherwise the same message shows up twice on one card.
         InstallStatus.Installed => L["Library.Status.Installed"],
         InstallStatus.Failed => L["Library.Status.Failed"],
+        InstallStatus.Paused => L["Library.Status.Paused"],
         _ => L["Library.Status.Unknown"]
     };
+
+    /// <summary>The progress row replaces the tag row while a game is being fetched or installed.</summary>
+    public bool ShowProgress => Status is InstallStatus.Downloading or InstallStatus.Installing
+        or InstallStatus.Paused;
+
+    public string ProgressText => ProgressDetail.Length > 0 ? ProgressDetail : StatusText;
+
+    /// <summary>Stage label from DownloadTask (Preparing / Verifying / Extracting…).</summary>
+    public void ApplyInstallStage(InstallStage stage)
+    {
+        var previousStage = ActiveInstallStage;
+        ActiveInstallStage = stage;
+        if (stage is InstallStage.Preparing or InstallStage.Verifying or InstallStage.Extracting)
+        {
+            IsProgressIndeterminate = true;
+            ProgressDetail = stage switch
+            {
+                InstallStage.Preparing => L["Library.Status.Preparing"],
+                InstallStage.Verifying => L["Library.Status.Verifying"],
+                InstallStage.Extracting => L["Library.Status.Extracting"],
+                _ => ProgressDetail
+            };
+        }
+        else if (stage == InstallStage.Downloading && previousStage != InstallStage.Downloading)
+        {
+            // A task update repeats the stage far more often than bytes arrive, so the percentage may
+            // only give way to the plain label when the download is genuinely starting.
+            IsProgressIndeterminate = true;
+            ProgressDetail = "";
+        }
+        else if (stage is InstallStage.Completed or InstallStage.Failed)
+        {
+            ClearProgress();
+        }
+    }
+
+    /// <summary>Byte progress while files are downloading.</summary>
+    public void ApplyByteProgress(long bytesReceived, long totalBytes, double speedBytesPerSecond)
+    {
+        if (Status is not (InstallStatus.Downloading or InstallStatus.Installing))
+            return;
+
+        // Prefer stage labels for non-download phases.
+        if (ActiveInstallStage is InstallStage.Preparing or InstallStage.Verifying or InstallStage.Extracting)
+            return;
+
+        var speed = FormatBytes(speedBytesPerSecond);
+        if (totalBytes > 0)
+        {
+            ProgressPercent = Math.Clamp(100.0 * bytesReceived / totalBytes, 0, 100);
+            IsProgressIndeterminate = false;
+            ProgressDetail = string.Format(L["Library.Status.DownloadingProgress"],
+                ProgressPercent, FormatBytes(bytesReceived), FormatBytes(totalBytes), speed);
+        }
+        else
+        {
+            ProgressPercent = 0;
+            IsProgressIndeterminate = true;
+            ProgressDetail = string.Format(L["Library.Status.DownloadingSpeed"], speed);
+        }
+    }
+
+    public void ClearProgress()
+    {
+        ProgressDetail = "";
+        ActiveInstallStage = null;
+        ProgressPercent = 0;
+        IsProgressIndeterminate = false;
+    }
+
+    /// <summary>Keeps the bar where the transfer stopped; the last speed is dropped because it is stale.</summary>
+    private void MarkPaused()
+    {
+        ActiveInstallStage = null;
+        IsProgressIndeterminate = false;
+        ProgressDetail = ProgressPercent > 0
+            ? string.Format(L["Library.Status.PausedProgress"], ProgressPercent)
+            : "";
+    }
+
+    private static string FormatBytes(double bytes)
+    {
+        if (double.IsNaN(bytes) || double.IsInfinity(bytes) || bytes < 0)
+            return "—";
+        if (bytes < 1024)
+            return $"{bytes:0} B";
+
+        string[] units = ["B", "KB", "MB", "GB"];
+        var value = bytes;
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return value >= 100
+            ? $"{value:0} {units[unit]}"
+            : value >= 10
+                ? $"{value:0.0} {units[unit]}"
+                : $"{value:0.00} {units[unit]}";
+    }
 
     protected override void OnLanguageChanged()
     {
         base.OnLanguageChanged();
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(PlayTimeText));
         OnPropertyChanged(nameof(HasPlayTime));
         OnPropertyChanged(nameof(DescriptionText));
@@ -302,9 +437,50 @@ public partial class GameItemViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task PauseDownloadAsync()
+    {
+        if (!CanPauseDownload) return;
+
+        try
+        {
+            await _gameService.PauseInstallAsync(Game.Id);
+            _notificationService.Show(L["Library.DownloadPausedTitle"],
+                string.Format(L["Library.DownloadPausedMessage"], Name));
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.InstallErrorTitle"], ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResumeDownloadAsync()
+    {
+        if (!CanResumeDownload) return;
+
+        try
+        {
+            _notificationService.Show(L["Library.DownloadResumedTitle"],
+                string.Format(L["Library.DownloadResumedMessage"], Name));
+            await _gameService.ResumeInstallAsync(Game);
+            _notificationService.Show(L["Library.InstallDoneTitle"],
+                string.Format(L["Library.InstallDoneMessage"], Name));
+        }
+        catch (OperationCanceledException)
+        {
+            // Paused or cancelled again; those commands raise their own notifications.
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.InstallErrorTitle"],
+                string.Format(L["Library.InstallErrorMessage"], Name, ex.Message));
+        }
+    }
+
+    [RelayCommand]
     private async Task CancelDownloadAsync()
     {
-        if (Status != InstallStatus.Downloading) return;
+        if (!CanCancelDownload) return;
 
         try
         {

@@ -10,6 +10,11 @@ public interface IGameService
     
     Task InstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default);
     Task UpdateAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default);
+
+    /// <summary>Stops the transfer but keeps downloaded files, so ResumeInstallAsync can continue.</summary>
+    Task PauseInstallAsync(string gameId);
+
+    Task ResumeInstallAsync(Game game, IProgress<InstallProgress>? progress = null, CancellationToken ct = default);
     Task CancelInstallAsync(string gameId);
     Task UninstallAsync(string gameId);
     Task<LaunchResult> LaunchAsync(string gameId);

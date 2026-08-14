@@ -112,7 +112,9 @@ public partial class App : Application
         services.AddSingleton<GameEditorViewModel>();
         services.AddSingleton<UploadViewModel>();
 
-        // Views
+        // Views: the ViewLocator resolves them from here, so every view must be registered.
         services.AddSingleton<MainWindow>();
+        services.AddTransient<GameEditorView>();
+        services.AddTransient<UploadView>();
     }
 }

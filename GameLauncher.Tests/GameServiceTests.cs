@@ -53,10 +53,12 @@ public class GameServiceTests : IDisposable
             [f2.Path] = c2
         };
 
-        var service = new GameService(
-            new FakeDownloadService(),
+        var webDav = new FakeWebDav(manifest, contents);
+        using var downloads = new DownloadService(webDav, _db, NullLogger<DownloadService>.Instance);
+        using var service = new GameService(
+            downloads,
             _db,
-            new FakeWebDav(manifest, contents),
+            webDav,
             NullLogger<GameService>.Instance);
 
         var progressEvents = new List<DownloadProgress>();
@@ -106,20 +108,6 @@ public class GameServiceTests : IDisposable
         Assert.Equal(InstallStatus.Installed, state.Status);
         Assert.True(File.Exists(Path.Combine(state.InstalledPath!, "data.bin")));
         Assert.True(File.Exists(Path.Combine(state.InstalledPath!, "assets", "texture.bin")));
-    }
-
-    private sealed class FakeDownloadService : IDownloadService
-    {
-        public event Action<DownloadTask>? OnTaskUpdated { add { } remove { } }
-        public event Action<DownloadProgress>? OnProgress { add { } remove { } }
-
-        public Task PauseAsync(string taskId) => Task.CompletedTask;
-        public Task ResumeAsync(string taskId) => Task.CompletedTask;
-        public Task CancelAsync(string taskId) => Task.CompletedTask;
-        public Task RemoveAsync(string taskId) => Task.CompletedTask;
-        public Task UpdateInstallStageAsync(string taskId, InstallStage stage) => Task.CompletedTask;
-        public Task<IReadOnlyList<DownloadTask>> GetAllTasksAsync() => Task.FromResult<IReadOnlyList<DownloadTask>>([]);
-        public Task<DownloadTask?> GetTaskAsync(string taskId) => Task.FromResult<DownloadTask?>(null);
     }
 
     private sealed class FakeWebDav : IWebDavService
