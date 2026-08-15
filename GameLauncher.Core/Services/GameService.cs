@@ -527,7 +527,7 @@ public class GameService : IGameService, IDisposable
             }
 
             var settings = await _db.GetSettingsAsync();
-            var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings);
+            var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings, localState);
             LogLaunchCommand(gameId, startInfo);
             var process = Process.Start(startInfo);
 
@@ -546,6 +546,21 @@ public class GameService : IGameService, IDisposable
             _logger.LogError(ex, "Failed to launch game {GameId}", gameId);
             return new LaunchResult(false, Error: ex.Message);
         }
+    }
+
+    public async Task SaveCompatOverridesAsync(string gameId, string? protonVersion, string? compatPrefix)
+    {
+        var local = await _db.GetLocalStateAsync(gameId)
+            ?? new GameLocalState(gameId, InstallStatus.NotInstalled);
+        var updated = local with
+        {
+            ProtonVersion = string.IsNullOrWhiteSpace(protonVersion) ? null : protonVersion.Trim(),
+            CompatPrefix = string.IsNullOrWhiteSpace(compatPrefix) ? null : compatPrefix.Trim()
+        };
+        if (updated == local) return;
+
+        await _db.UpsertLocalStateAsync(updated);
+        OnGameStateChanged?.Invoke(updated);
     }
 
     /// <summary>

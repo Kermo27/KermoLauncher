@@ -101,6 +101,15 @@
   <data name="Library.Screenshots" xml:space="preserve"><value>Screenshots</value></data>
   <data name="Library.OnlineFix" xml:space="preserve"><value>Online-Fix</value></data>
   <data name="Library.OnlineFixHint" xml:space="preserve"><value>Steam should be running for Online-Fix multiplayer.</value></data>
+  <data name="Library.Compat.Title" xml:space="preserve"><value>Proton / Wine</value></data>
+  <data name="Library.Compat.Hint" xml:space="preserve"><value>Overrides apply only to this game. Leave them on Default to follow Settings. Proton uses the prefix folder as STEAM_COMPAT_DATA_PATH (a pfx directory is created inside); Wine uses it as WINEPREFIX.</value></data>
+  <data name="Library.Compat.Proton" xml:space="preserve"><value>Proton version:</value></data>
+  <data name="Library.Compat.ProtonDefault" xml:space="preserve"><value>Default (from Settings)</value></data>
+  <data name="Library.Compat.Prefix" xml:space="preserve"><value>Prefix:</value></data>
+  <data name="Library.Compat.PrefixPlaceholder" xml:space="preserve"><value>Leave empty for the default prefix</value></data>
+  <data name="Library.Compat.BrowsePrefix" xml:space="preserve"><value>Select prefix folder</value></data>
+  <data name="Library.Compat.ClearPrefix" xml:space="preserve"><value>Default</value></data>
+  <data name="Library.Compat.SaveErrorTitle" xml:space="preserve"><value>Could not save launch settings</value></data>
   <data name="Library.DiskFullTitle" xml:space="preserve"><value>Not enough disk space</value></data>
   <data name="Library.DiskFullMessage" xml:space="preserve"><value>Need {0} free; this drive has {1}.</value></data>
   <data name="Library.NoResultsTitle" xml:space="preserve"><value>No games match your filters</value></data>
@@ -130,6 +139,11 @@
   <data name="Settings.General.CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
   <data name="Settings.General.Theme" xml:space="preserve"><value>Theme:</value></data>
   <data name="Settings.General.Language" xml:space="preserve"><value>Language:</value></data>
+  <data name="Settings.General.Log" xml:space="preserve"><value>Log file:</value></data>
+  <data name="Settings.General.OpenLog" xml:space="preserve"><value>Open log</value></data>
+  <data name="Settings.LogMissingTitle" xml:space="preserve"><value>No log yet</value></data>
+  <data name="Settings.LogMissingMessage" xml:space="preserve"><value>The log file has not been created yet. Use the launcher a bit, then try again.</value></data>
+  <data name="Settings.LogOpenErrorTitle" xml:space="preserve"><value>Could not open the log</value></data>
   <data name="Settings.Theme.Light" xml:space="preserve"><value>Light</value></data>
   <data name="Settings.Theme.Dark" xml:space="preserve"><value>Dark</value></data>
   <data name="Settings.Theme.System" xml:space="preserve"><value>System</value></data>
@@ -154,7 +168,7 @@
   <data name="Settings.Wine.Backend.Wine" xml:space="preserve"><value>Wine</value></data>
   <data name="Settings.Wine.Proton.Version" xml:space="preserve"><value>Proton version:</value></data>
   <data name="Settings.Wine.Proton.Auto" xml:space="preserve"><value>Auto (newest)</value></data>
-  <data name="Settings.Wine.Proton.Hint" xml:space="preserve"><value>The prefix, the Steam Runtime and the DLL overrides are picked per game — Online-Fix titles get their own prefix and the runtime the chosen Proton build asks for.</value></data>
+  <data name="Settings.Wine.Proton.Hint" xml:space="preserve"><value>Each game can override the Proton version and prefix in its details pane. Online-Fix titles still get their own default prefix and the runtime the chosen Proton build asks for.</value></data>
   <data name="Settings.Wine.Command" xml:space="preserve"><value>Wine command:</value></data>
   <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Wine prefix:</value></data>

@@ -156,6 +156,7 @@ public class LibraryViewModelTests : IDisposable
     private sealed class RecordingShell : IShellService
     {
         public void OpenFolder(string path) { }
+        public void OpenFile(string path) { }
     }
 
     private sealed class FakeDownloadService : IDownloadService
@@ -210,6 +211,19 @@ public class LibraryViewModelTests : IDisposable
         public Task CancelInstallAsync(string gameId) => Task.CompletedTask;
         public Task UninstallAsync(string gameId) => Task.CompletedTask;
         public Task<LaunchResult> LaunchAsync(string gameId) => Task.FromResult(new LaunchResult(true));
+        public Task SaveCompatOverridesAsync(string gameId, string? protonVersion, string? compatPrefix)
+        {
+            var i = States.FindIndex(s => s.GameId == gameId);
+            if (i >= 0)
+            {
+                States[i] = States[i] with
+                {
+                    ProtonVersion = string.IsNullOrWhiteSpace(protonVersion) ? null : protonVersion.Trim(),
+                    CompatPrefix = string.IsNullOrWhiteSpace(compatPrefix) ? null : compatPrefix.Trim()
+                };
+            }
+            return Task.CompletedTask;
+        }
         public Task<GameLocalState?> GetLocalStateAsync(string gameId)
             => Task.FromResult(States.FirstOrDefault(s => s.GameId == gameId));
         public Task<IReadOnlyList<GameLocalState>> GetAllLocalStatesAsync()

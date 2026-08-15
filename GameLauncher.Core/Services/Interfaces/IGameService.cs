@@ -18,6 +18,11 @@ public interface IGameService
     Task CancelInstallAsync(string gameId);
     Task UninstallAsync(string gameId);
     Task<LaunchResult> LaunchAsync(string gameId);
+    /// <summary>
+    /// Stores per-game Proton version / prefix overrides. Empty values inherit Settings.
+    /// Survives uninstall so a reinstall keeps the same launch setup.
+    /// </summary>
+    Task SaveCompatOverridesAsync(string gameId, string? protonVersion, string? compatPrefix);
     Task<GameLocalState?> GetLocalStateAsync(string gameId);
     Task<IReadOnlyList<GameLocalState>> GetAllLocalStatesAsync();
     Task<Game[]> GetAllGamesAsync();

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services.Interfaces;
 using GameLauncher.Core.Utils;
@@ -19,21 +20,33 @@ public interface IScreenshotService
 
 public class ScreenshotService : IScreenshotService
 {
-    private const int MaxCachedCovers = 64;
+    private const int MaxMemoryEntries = 64;
+    private const int MaxDiskFiles = 256;
 
     private readonly ILocalDbService _db;
     private readonly HttpClient _http;
     private readonly ILogger<ScreenshotService> _logger;
+    private readonly string? _diskCacheDir;
 
     private readonly Dictionary<string, byte[]> _cache = new();
     private readonly LinkedList<string> _lru = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public ScreenshotService(ILocalDbService db, HttpClient http, ILogger<ScreenshotService> logger)
+    public ScreenshotService(
+        ILocalDbService db,
+        HttpClient http,
+        ILogger<ScreenshotService> logger,
+        string? diskCacheDir = null)
     {
         _db = db;
         _http = http;
         _logger = logger;
+        _diskCacheDir = diskCacheDir;
+
+        if (!string.IsNullOrWhiteSpace(_diskCacheDir))
+        {
+            Directory.CreateDirectory(_diskCacheDir);
+        }
     }
 
     public Task<byte[]?> LoadCoverAsync(Game game, CancellationToken ct = default)
@@ -52,17 +65,29 @@ public class ScreenshotService : IScreenshotService
 
         var url = settings.Nextcloud.GetFileUrl(game.ScreenshotUrls[index]);
 
-        var cached = await TryGetCachedAsync(url, ct);
+        var cached = await TryGetMemoryAsync(url, ct);
         if (cached != null) return cached;
+
+        var fromDisk = await TryReadDiskAsync(url, ct);
+        if (fromDisk != null)
+        {
+            await StoreMemoryAsync(url, fromDisk, ct);
+            return fromDisk;
+        }
 
         var bytes = await DownloadAsync(url, ct);
 
         // Failed downloads are not cached, so refreshing the library retries them.
-        if (bytes != null) await StoreAsync(url, bytes, ct);
+        if (bytes != null)
+        {
+            await StoreMemoryAsync(url, bytes, ct);
+            await WriteDiskAsync(url, bytes, ct);
+        }
+
         return bytes;
     }
 
-    private async Task<byte[]?> TryGetCachedAsync(string url, CancellationToken ct)
+    private async Task<byte[]?> TryGetMemoryAsync(string url, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
         try
@@ -77,7 +102,7 @@ public class ScreenshotService : IScreenshotService
         }
     }
 
-    private async Task StoreAsync(string url, byte[] bytes, CancellationToken ct)
+    private async Task StoreMemoryAsync(string url, byte[] bytes, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
         try
@@ -85,7 +110,7 @@ public class ScreenshotService : IScreenshotService
             _cache[url] = bytes;
             Touch(url);
 
-            while (_lru.Count > MaxCachedCovers)
+            while (_lru.Count > MaxMemoryEntries)
             {
                 var oldest = _lru.Last!.Value;
                 _lru.RemoveLast();
@@ -103,6 +128,78 @@ public class ScreenshotService : IScreenshotService
         var node = _lru.Find(url);
         if (node != null) _lru.Remove(node);
         _lru.AddFirst(url);
+    }
+
+    private async Task<byte[]?> TryReadDiskAsync(string url, CancellationToken ct)
+    {
+        var path = DiskPath(url);
+        if (path == null || !File.Exists(path)) return null;
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(path, ct);
+            if (bytes.Length == 0) return null;
+            try { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); } catch { }
+            return bytes;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Screenshot disk cache read failed for {Url}", UrlSanitizer.Mask(url));
+            return null;
+        }
+    }
+
+    private async Task WriteDiskAsync(string url, byte[] bytes, CancellationToken ct)
+    {
+        var path = DiskPath(url);
+        if (path == null) return;
+
+        try
+        {
+            var tmp = path + ".tmp";
+            await File.WriteAllBytesAsync(tmp, bytes, ct);
+            File.Move(tmp, path, overwrite: true);
+            EvictDiskIfNeeded();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Screenshot disk cache write failed for {Url}", UrlSanitizer.Mask(url));
+        }
+    }
+
+    private void EvictDiskIfNeeded()
+    {
+        if (_diskCacheDir == null) return;
+
+        try
+        {
+            var files = new DirectoryInfo(_diskCacheDir).GetFiles();
+            if (files.Length <= MaxDiskFiles) return;
+
+            foreach (var file in files.OrderBy(f => f.LastWriteTimeUtc).Take(files.Length - MaxDiskFiles))
+            {
+                try { file.Delete(); } catch { }
+            }
+        }
+        catch
+        {
+            // Eviction is best-effort; a full disk must not break cover loading.
+        }
+    }
+
+    private string? DiskPath(string url)
+    {
+        if (string.IsNullOrWhiteSpace(_diskCacheDir)) return null;
+        var hash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(url))).ToLowerInvariant();
+        return Path.Combine(_diskCacheDir, hash);
     }
 
     private async Task<byte[]?> DownloadAsync(string url, CancellationToken ct)

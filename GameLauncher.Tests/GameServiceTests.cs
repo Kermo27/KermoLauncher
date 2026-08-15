@@ -145,6 +145,24 @@ public class GameServiceTests : IDisposable
         Assert.Equal(InstallStatus.Failed, (await _db.GetLocalStateAsync("g1"))!.Status);
     }
 
+    [Fact]
+    public async Task SaveCompatOverridesAsync_PersistsAndSurvivesUninstall()
+    {
+        var (file, content) = MakeFile("data.bin", 4096);
+        using var service = await InstallOneAsync(file, content);
+
+        await service.SaveCompatOverridesAsync("g1", "GE-Proton10-1", "/tmp/custom-pfx");
+        var saved = await _db.GetLocalStateAsync("g1");
+        Assert.Equal("GE-Proton10-1", saved!.ProtonVersion);
+        Assert.Equal("/tmp/custom-pfx", saved.CompatPrefix);
+
+        await service.UninstallAsync("g1");
+        var after = await _db.GetLocalStateAsync("g1");
+        Assert.Equal(InstallStatus.NotInstalled, after!.Status);
+        Assert.Equal("GE-Proton10-1", after.ProtonVersion);
+        Assert.Equal("/tmp/custom-pfx", after.CompatPrefix);
+    }
+
     private async Task<GameService> InstallOneAsync(GameFile file, byte[] content)
     {
         var manifest = new GameManifest("1.0.0", file.SizeBytes, [file]);

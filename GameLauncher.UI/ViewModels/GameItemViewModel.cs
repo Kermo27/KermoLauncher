@@ -78,6 +78,10 @@ public partial class GameItemViewModel : ViewModelBase
     private Task? _coverLoad;
     private CancellationTokenSource? _galleryCts;
     private Task? _galleryLoad;
+    private bool _compatWanted;
+    private bool _compatReady;
+    private bool _compatOptionsLoaded;
+    private string[] _protonVersionValues = [""];
 
     public Game Game { get; }
 
@@ -164,6 +168,7 @@ public partial class GameItemViewModel : ViewModelBase
     /// <summary>Loads every screenshot. Called when details open; <see cref="ClearGallery"/> frees them.</summary>
     public void BeginLoadGallery()
     {
+        BeginLoadCompat();
         if (_galleryLoad != null || Game.ScreenshotUrls.Length == 0) return;
         _galleryCts = new CancellationTokenSource();
         _galleryLoad = LoadGalleryAsync(_galleryCts.Token);
@@ -171,6 +176,7 @@ public partial class GameItemViewModel : ViewModelBase
 
     public void ClearGallery()
     {
+        _compatWanted = false;
         _galleryCts?.Cancel();
         _galleryCts?.Dispose();
         _galleryCts = null;
@@ -246,6 +252,10 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsOnlineFix));
         OnPropertyChanged(nameof(ShowProgress));
         OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(ShowCompatSettings));
+
+        if (_compatWanted)
+            BeginLoadCompat();
 
         if (value?.Status == InstallStatus.Paused)
             MarkPaused();
@@ -287,6 +297,24 @@ public partial class GameItemViewModel : ViewModelBase
         && LocalState.InstalledPath != null;
 
     public bool CanOpenFolder => !string.IsNullOrEmpty(LocalState?.InstalledPath);
+
+    public bool ShowCompatSettings =>
+        OperatingSystem.IsLinux()
+        && LocalState?.InstalledPath != null
+        && Status is InstallStatus.Installed or InstallStatus.Failed
+        && Game.LaunchConfig != null
+        && GamePaths.LooksLikeWindowsBinary(Game.LaunchConfig.ExecutablePath);
+
+    public ObservableCollection<string> ProtonVersionOptions { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomPrefix))]
+    private string _compatPrefix = "";
+
+    [ObservableProperty]
+    private int _selectedProtonVersionIndex;
+
+    public bool HasCustomPrefix => !string.IsNullOrWhiteSpace(CompatPrefix);
 
     public bool IsUpdateAvailable => Status == InstallStatus.Installed &&
                                      LocalState!.InstalledVersion != null &&
@@ -718,6 +746,113 @@ public partial class GameItemViewModel : ViewModelBase
                 NotificationType.Error);
         }
     }
+
+    public void BeginLoadCompat()
+    {
+        _compatWanted = true;
+        if (!ShowCompatSettings) return;
+
+        if (!_compatOptionsLoaded)
+        {
+            _compatOptionsLoaded = true;
+            RefreshProtonVersions(LocalState?.ProtonVersion);
+            CompatPrefix = LocalState?.CompatPrefix ?? "";
+            _compatReady = true;
+            return;
+        }
+
+        SyncCompatFromState();
+    }
+
+    private void SyncCompatFromState()
+    {
+        var version = LocalState?.ProtonVersion ?? "";
+        var prefix = LocalState?.CompatPrefix ?? "";
+        if (string.Equals(CompatPrefix, prefix, StringComparison.Ordinal) &&
+            string.Equals(SelectedProtonVersion, version, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var ready = _compatReady;
+        _compatReady = false;
+        CompatPrefix = prefix;
+        RefreshProtonVersions(version);
+        _compatReady = ready;
+    }
+
+    private string SelectedProtonVersion =>
+        _protonVersionValues[Math.Clamp(SelectedProtonVersionIndex, 0, _protonVersionValues.Length - 1)];
+
+    private void RefreshProtonVersions(string? preferred)
+    {
+        var names = ProtonLocator.FindInstalled().Select(p => p.Name).ToList();
+        var preferredTrim = preferred?.Trim() ?? "";
+        if (preferredTrim.Length > 0 &&
+            !names.Any(n => string.Equals(n, preferredTrim, StringComparison.OrdinalIgnoreCase)))
+        {
+            names.Insert(0, preferredTrim);
+        }
+
+        _protonVersionValues = ["", .. names];
+        ProtonVersionOptions.Clear();
+        ProtonVersionOptions.Add(L["Library.Compat.ProtonDefault"]);
+        for (var i = 1; i < _protonVersionValues.Length; i++)
+            ProtonVersionOptions.Add(_protonVersionValues[i]);
+
+        var idx = 0;
+        if (preferredTrim.Length > 0)
+        {
+            for (var i = 1; i < _protonVersionValues.Length; i++)
+            {
+                if (string.Equals(_protonVersionValues[i], preferredTrim, StringComparison.OrdinalIgnoreCase))
+                {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+
+        SelectedProtonVersionIndex = idx;
+    }
+
+    partial void OnSelectedProtonVersionIndexChanged(int value)
+    {
+        _ = value;
+        if (_compatReady) _ = PersistCompatAsync();
+    }
+
+    partial void OnCompatPrefixChanged(string value)
+    {
+        _ = value;
+        if (_compatReady) _ = PersistCompatAsync();
+    }
+
+    private async Task PersistCompatAsync()
+    {
+        try
+        {
+            await _gameService.SaveCompatOverridesAsync(Game.Id, SelectedProtonVersion, CompatPrefix);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save compat overrides for {GameId}", Game.Id);
+            _notificationService.Show(L["Library.Compat.SaveErrorTitle"], ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseCompatPrefixAsync()
+    {
+        var folder = await _dialogService.ShowFolderPickerAsync(
+            L["Library.Compat.BrowsePrefix"],
+            string.IsNullOrWhiteSpace(CompatPrefix) ? LocalState?.InstalledPath : CompatPrefix);
+        if (!string.IsNullOrEmpty(folder))
+            CompatPrefix = folder;
+    }
+
+    [RelayCommand]
+    private void ClearCompatPrefix() => CompatPrefix = "";
 
     protected override void DisposeCore()
     {

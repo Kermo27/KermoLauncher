@@ -182,6 +182,33 @@ public class GameLaunchHelperTests
     }
 
     [Fact]
+    public void Build_UsesGameCompatPrefixForWine()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var settingsPrefix = Path.Combine(Path.GetTempPath(), "gl-wine-settings-" + Guid.NewGuid().ToString("N"));
+        var gamePrefix = Path.Combine(Path.GetTempPath(), "gl-wine-game-" + Guid.NewGuid().ToString("N"));
+        var settings = new AppSettings
+        {
+            LaunchWindowsGamesWithWine = true,
+            LinuxCompatBackend = GameLaunchHelper.BackendWine,
+            WineCommand = "/usr/bin/wine",
+            WinePrefix = settingsPrefix
+        };
+        var local = new GameLocalState("demo", InstallStatus.Installed, CompatPrefix: gamePrefix);
+
+        var psi = GameLaunchHelper.Build(
+            "/games/Demo/game.exe",
+            "/games/Demo",
+            null,
+            settings,
+            local);
+
+        Assert.Equal(gamePrefix, psi.Environment["WINEPREFIX"]);
+        try { Directory.Delete(gamePrefix, recursive: true); } catch { }
+    }
+
+    [Fact]
     public void Build_UsesUmuOrProtonWhenBackendIsProton()
     {
         if (OperatingSystem.IsWindows()) return;
@@ -229,6 +256,62 @@ public class GameLaunchHelperTests
         {
             Environment.SetEnvironmentVariable("HOME", previousHome);
             try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Build_UsesGameProtonVersionAndPrefix()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var home = Path.Combine(Path.GetTempPath(), "gl-home-" + Guid.NewGuid().ToString("N"));
+        var tools = Path.Combine(home, ".local", "share", "Steam", "compatibilitytools.d");
+        foreach (var name in new[] { "GE-Proton99-settings", "GE-Proton99-game" })
+        {
+            var dir = Path.Combine(tools, name);
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "proton"), "#!/bin/sh\n");
+        }
+
+        var gamePrefix = Path.Combine(Path.GetTempPath(), "gl-pfx-" + Guid.NewGuid().ToString("N"));
+        var previousHome = Environment.GetEnvironmentVariable("HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("HOME", home);
+
+            var settings = new AppSettings
+            {
+                LaunchWindowsGamesWithWine = true,
+                LinuxCompatBackend = GameLaunchHelper.BackendProton,
+                ProtonVersion = "GE-Proton99-settings"
+            };
+            var local = new GameLocalState(
+                "demo",
+                InstallStatus.Installed,
+                ProtonVersion: "GE-Proton99-game",
+                CompatPrefix: gamePrefix);
+
+            var psi = GameLaunchHelper.Build("/games/Demo/game.exe", "/games/Demo", null, settings, local);
+
+            Assert.Equal(gamePrefix, psi.Environment["STEAM_COMPAT_DATA_PATH"]);
+            Assert.Equal(Path.Combine(gamePrefix, "pfx"), psi.Environment["WINEPREFIX"]);
+
+            var umu = ProtonLocator.FindUmuRun();
+            if (umu != null)
+            {
+                Assert.Equal(umu, psi.FileName);
+                Assert.Equal(Path.Combine(tools, "GE-Proton99-game"), psi.Environment["PROTONPATH"]);
+            }
+            else
+            {
+                Assert.Equal(Path.Combine(tools, "GE-Proton99-game", "proton"), psi.FileName);
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOME", previousHome);
+            try { Directory.Delete(home, recursive: true); } catch { }
+            try { Directory.Delete(gamePrefix, recursive: true); } catch { }
         }
     }
 

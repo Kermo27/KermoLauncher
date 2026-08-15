@@ -31,7 +31,8 @@ public static class GameLaunchHelper
         string exePath,
         string workDir,
         string[]? launchArgs,
-        AppSettings settings)
+        AppSettings settings,
+        GameLocalState? localState = null)
     {
         if (OperatingSystem.IsWindows() || !GamePaths.LooksLikeWindowsBinary(exePath))
         {
@@ -53,8 +54,8 @@ public static class GameLaunchHelper
 
         var backend = NormalizeBackend(settings.LinuxCompatBackend);
         return backend == BackendWine
-            ? BuildWine(exePath, workDir, launchArgs, settings)
-            : BuildProton(exePath, workDir, launchArgs, settings);
+            ? BuildWine(exePath, workDir, launchArgs, settings, localState)
+            : BuildProton(exePath, workDir, launchArgs, settings, localState);
     }
 
     /// <summary>
@@ -128,12 +129,14 @@ public static class GameLaunchHelper
         string exePath,
         string workDir,
         string[]? launchArgs,
-        AppSettings settings)
+        AppSettings settings,
+        GameLocalState? localState)
     {
         var wine = string.IsNullOrWhiteSpace(settings.WineCommand) ? "wine" : settings.WineCommand.Trim();
-        var prefix = string.IsNullOrWhiteSpace(settings.WinePrefix)
-            ? Path.Combine(AppPaths.DataDirectory, "wineprefix")
-            : settings.WinePrefix.Trim();
+        var prefix = NonEmpty(localState?.CompatPrefix)
+            ?? (string.IsNullOrWhiteSpace(settings.WinePrefix)
+                ? Path.Combine(AppPaths.DataDirectory, "wineprefix")
+                : settings.WinePrefix.Trim());
 
         Directory.CreateDirectory(prefix);
 
@@ -154,16 +157,19 @@ public static class GameLaunchHelper
         string exePath,
         string workDir,
         string[]? launchArgs,
-        AppSettings settings)
+        AppSettings settings,
+        GameLocalState? localState)
     {
-        var proton = ProtonLocator.Resolve(settings.ProtonVersion)
+        var protonVersion = NonEmpty(localState?.ProtonVersion) ?? settings.ProtonVersion;
+        var proton = ProtonLocator.Resolve(protonVersion)
             ?? throw new InvalidOperationException(
                 "No Proton install found. Install GE-Proton (Steam → compatibilitytools.d), " +
                 "or switch the Linux backend to Wine in Settings.");
 
         var onlineFix = LooksLikeOnlineFix(workDir, exePath);
         var steamRoot = ProtonLocator.FindSteamClientRoot();
-        var prefix = ResolveProtonPrefix(workDir, exePath, onlineFix);
+        var prefix = NonEmpty(localState?.CompatPrefix)
+            ?? ResolveProtonPrefix(workDir, exePath, onlineFix);
         Directory.CreateDirectory(prefix);
         // Proton/OFLL layout: STEAM_COMPAT_DATA_PATH/<pfx>/drive_c/...
         var winePrefix = Path.Combine(prefix, "pfx");
@@ -299,6 +305,9 @@ public static class GameLaunchHelper
 
         return "default";
     }
+
+    private static string? NonEmpty(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
     /// Error 126 (Steam Overlay / steamclient) — OnlineFix loads steamclient64 from the game dir.

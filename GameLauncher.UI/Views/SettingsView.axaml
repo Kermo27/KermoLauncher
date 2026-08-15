@@ -121,6 +121,13 @@
                                   ItemsSource="{Binding LanguageOptions}"
                                   SelectedIndex="{Binding SelectedLanguageIndex}"/>
                     </Grid>
+
+                    <Grid ColumnDefinitions="200,*">
+                        <TextBlock Grid.Column="0" Text="{Binding L[Settings.General.Log]}" Classes="FieldLabel"/>
+                        <Button Grid.Column="1" Content="{Binding L[Settings.General.OpenLog]}"
+                                Command="{Binding OpenLogCommand}" Classes="ghost"
+                                HorizontalAlignment="Left" Padding="14,7"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 

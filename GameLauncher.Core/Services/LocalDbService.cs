@@ -75,6 +75,8 @@ public class LocalDbService : ILocalDbService
                     installed_path TEXT,
                     play_time_seconds INTEGER DEFAULT 0,
                     last_played INTEGER,
+                    proton_version TEXT,
+                    compat_prefix TEXT,
                     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
                 );
             """);
@@ -128,15 +130,22 @@ public class LocalDbService : ILocalDbService
             await AddColumnIfMissingAsync(conn, "game_local_state", "installed_manifest", "TEXT");
             await conn.ExecuteAsync("INSERT INTO schema_version (version) VALUES (2)");
         }
+
+        if (versionRow < 3)
+        {
+            await AddColumnIfMissingAsync(conn, "game_local_state", "proton_version", "TEXT");
+            await AddColumnIfMissingAsync(conn, "game_local_state", "compat_prefix", "TEXT");
+            await conn.ExecuteAsync("INSERT INTO schema_version (version) VALUES (3)");
+        }
     }
 
     private static async Task AddColumnIfMissingAsync(SqliteConnection conn, string table, string column, string type)
     {
-        var cols = await conn.QueryAsync<string>($"PRAGMA table_info({table})");
-        if (!cols.Any(c => string.Equals(c, column, StringComparison.OrdinalIgnoreCase)))
-        {
-            await conn.ExecuteAsync($"ALTER TABLE {table} ADD COLUMN {column} {type}");
-        }
+        var cols = await conn.QueryAsync<string>($"SELECT name FROM pragma_table_info('{table}')");
+        if (cols.Any(c => string.Equals(c, column, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        await conn.ExecuteAsync($"ALTER TABLE {table} ADD COLUMN {column} {type}");
     }
 
     public async Task UpsertGamesAsync(Game[] games)
@@ -280,11 +289,12 @@ public class LocalDbService : ILocalDbService
             ? JsonSerializer.Serialize(state.InstalledManifest)
             : null;
         await conn.ExecuteAsync("""
-            INSERT INTO game_local_state (game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest)
-            VALUES (@GameId, @Status, @InstalledPath, @PlayTimeSeconds, @LastPlayed, @InstalledVersion, @InstalledManifest)
+            INSERT INTO game_local_state (game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest, proton_version, compat_prefix)
+            VALUES (@GameId, @Status, @InstalledPath, @PlayTimeSeconds, @LastPlayed, @InstalledVersion, @InstalledManifest, @ProtonVersion, @CompatPrefix)
             ON CONFLICT(game_id) DO UPDATE SET
                 status=@Status, installed_path=@InstalledPath, play_time_seconds=@PlayTimeSeconds,
-                last_played=@LastPlayed, installed_version=@InstalledVersion, installed_manifest=@InstalledManifest
+                last_played=@LastPlayed, installed_version=@InstalledVersion, installed_manifest=@InstalledManifest,
+                proton_version=@ProtonVersion, compat_prefix=@CompatPrefix
         """, new
         {
             state.GameId,
@@ -293,7 +303,9 @@ public class LocalDbService : ILocalDbService
             state.PlayTimeSeconds,
             LastPlayed = lastPlayed,
             state.InstalledVersion,
-            InstalledManifest = installedManifestJson
+            InstalledManifest = installedManifestJson,
+            ProtonVersion = EmptyToNull(state.ProtonVersion),
+            CompatPrefix = EmptyToNull(state.CompatPrefix)
         });
     }
 
@@ -303,7 +315,7 @@ public class LocalDbService : ILocalDbService
         await using var conn = await OpenConnectionAsync();
 
         var row = await conn.QueryFirstOrDefaultAsync("""
-            SELECT game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest
+            SELECT game_id, status, installed_path, play_time_seconds, last_played, installed_version, installed_manifest, proton_version, compat_prefix
             FROM game_local_state WHERE game_id = @GameId
         """, new { GameId = gameId });
 
@@ -338,8 +350,21 @@ public class LocalDbService : ILocalDbService
             (long)row.play_time_seconds,
             lastPlayed,
             row.installed_version as string,
-            manifest
+            manifest,
+            EmptyToNull(OptionalString(row, "proton_version")),
+            EmptyToNull(OptionalString(row, "compat_prefix"))
         );
+    }
+
+    private static string? EmptyToNull(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? OptionalString(dynamic row, string columnName)
+    {
+        var dict = (IDictionary<string, object>)row;
+        if (!dict.TryGetValue(columnName, out var value) || value is null or DBNull)
+            return null;
+        return value as string ?? Convert.ToString(value);
     }
 
     public async Task UpsertDownloadTaskAsync(DownloadTask task)

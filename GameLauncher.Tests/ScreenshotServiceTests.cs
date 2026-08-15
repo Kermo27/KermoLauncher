@@ -71,6 +71,35 @@ public class ScreenshotServiceTests : IDisposable
         Assert.Equal(1, _handler.Hits);
     }
 
+    [Fact]
+    public async Task LoadAsync_SecondInstance_ReadsDiskCacheWithoutHttp()
+    {
+        var cacheDir = Path.Combine(Path.GetTempPath(), "gl-covers-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(cacheDir);
+        try
+        {
+            var bytes = new byte[] { 7, 8, 9 };
+            var game = GameWithShots("a.jpg");
+            var nc = (await _db.GetSettingsAsync()).Nextcloud!;
+            var firstHandler = new MapHandler();
+            firstHandler.ByUrl[nc.GetFileUrl("a.jpg")] = bytes;
+            var first = new ScreenshotService(_db, new HttpClient(firstHandler), NullLogger<ScreenshotService>.Instance, cacheDir);
+
+            Assert.Equal(bytes, await first.LoadCoverAsync(game));
+            Assert.Equal(1, firstHandler.Hits);
+            Assert.NotEmpty(Directory.GetFiles(cacheDir));
+
+            var secondHandler = new MapHandler();
+            var second = new ScreenshotService(_db, new HttpClient(secondHandler), NullLogger<ScreenshotService>.Instance, cacheDir);
+            Assert.Equal(bytes, await second.LoadCoverAsync(game));
+            Assert.Equal(0, secondHandler.Hits);
+        }
+        finally
+        {
+            try { Directory.Delete(cacheDir, true); } catch { }
+        }
+    }
+
     private static Game GameWithShots(params string[] urls) => new(
         "g", "Game", "1.0", "", [], [], urls, "g/manifest.json", 1);
 
