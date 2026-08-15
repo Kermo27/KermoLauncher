@@ -3,7 +3,9 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Models;
+using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
+using GameLauncher.Core.Utils;
 using GameLauncher.UI.Services;
 using GameLauncher.UI.Shared.ViewModels;
 using Microsoft.Extensions.Logging;
@@ -241,6 +243,7 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStatusInstalled));
         OnPropertyChanged(nameof(IsStatusBusy));
         OnPropertyChanged(nameof(IsStatusFailed));
+        OnPropertyChanged(nameof(IsOnlineFix));
         OnPropertyChanged(nameof(ShowProgress));
         OnPropertyChanged(nameof(ProgressText));
 
@@ -295,6 +298,19 @@ public partial class GameItemViewModel : ViewModelBase
     public bool IsStatusInstalled => Status == InstallStatus.Installed;
     public bool IsStatusBusy => Status is InstallStatus.Downloading or InstallStatus.Installing;
     public bool IsStatusFailed => Status == InstallStatus.Failed;
+
+    public bool IsOnlineFix =>
+        GameLaunchHelper.LooksLikeOnlineFix(LocalState?.InstalledManifest)
+        || LooksLikeOnlineFixOnDisk();
+
+    private bool LooksLikeOnlineFixOnDisk()
+    {
+        var path = LocalState?.InstalledPath;
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return false;
+        var exe = Game.LaunchConfig?.ExecutablePath;
+        var exePath = string.IsNullOrEmpty(exe) ? path : GamePaths.Combine(path, exe);
+        return GameLaunchHelper.LooksLikeOnlineFix(path, exePath);
+    }
 
     /// <summary>
     /// Short label for the pill on the cover. Percentages and speed go to <see cref="ProgressText"/>,
@@ -413,6 +429,19 @@ public partial class GameItemViewModel : ViewModelBase
                 : $"{value:0.00} {units[unit]}";
     }
 
+    private void ShowTransferError(string title, Exception ex)
+    {
+        if (ex is InsufficientDiskSpaceException disk)
+        {
+            _notificationService.Show(L["Library.DiskFullTitle"],
+                string.Format(L["Library.DiskFullMessage"], FormatBytes(disk.RequiredBytes), FormatBytes(disk.AvailableBytes)),
+                NotificationType.Warning);
+            return;
+        }
+
+        _notificationService.Show(title, string.Format(L["Library.InstallErrorMessage"], Name, ex.Message));
+    }
+
     protected override void OnLanguageChanged()
     {
         base.OnLanguageChanged();
@@ -511,8 +540,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _notificationService.Show(L["Library.InstallErrorTitle"],
-                string.Format(L["Library.InstallErrorMessage"], Name, ex.Message));
+            ShowTransferError(L["Library.InstallErrorTitle"], ex);
         }
     }
 
@@ -535,8 +563,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _notificationService.Show(L["Library.UpdateErrorTitle"],
-                string.Format(L["Library.InstallErrorMessage"], Name, ex.Message));
+            ShowTransferError(L["Library.UpdateErrorTitle"], ex);
         }
         finally
         {
@@ -580,8 +607,7 @@ public partial class GameItemViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _notificationService.Show(L["Library.InstallErrorTitle"],
-                string.Format(L["Library.InstallErrorMessage"], Name, ex.Message));
+            ShowTransferError(L["Library.InstallErrorTitle"], ex);
         }
     }
 

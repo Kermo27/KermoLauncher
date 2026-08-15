@@ -290,6 +290,30 @@ public class GameLaunchHelperTests
         }
     }
 
+    [Theory]
+    [InlineData("OnlineFix.ini", true)]
+    [InlineData("OnlineFix64.dll", true)]
+    [InlineData("steamoverlay64.dll", true)]
+    [InlineData("game.exe", false)]
+    [InlineData("onlinefix.txt", false)]
+    public void LooksLikeOnlineFixFile_MatchesMarkers(string name, bool expected)
+    {
+        Assert.Equal(expected, GameLaunchHelper.LooksLikeOnlineFixFile(name));
+    }
+
+    [Fact]
+    public void LooksLikeOnlineFix_ReadsMarkersFromManifestPaths()
+    {
+        var manifest = new GameManifest("1.0", 10, [
+            new GameFile("bin/game.exe", 8, "aa"),
+            new GameFile(@"redist\OnlineFix64.dll", 2, "bb")
+        ]);
+
+        Assert.True(GameLaunchHelper.LooksLikeOnlineFix(manifest));
+        Assert.False(GameLaunchHelper.LooksLikeOnlineFix(new GameManifest("1.0", 8, [new GameFile("bin/game.exe", 8, "aa")])));
+        Assert.False(GameLaunchHelper.LooksLikeOnlineFix((GameManifest?)null));
+    }
+
     [Fact]
     public void PrefixKey_UsesExeStem()
     {

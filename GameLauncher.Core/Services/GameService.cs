@@ -207,6 +207,13 @@ public class GameService : IGameService, IDisposable
             }
 
             var totalBytes = toDownload.Sum(f => f.SizeBytes);
+            var stagingCopy = installedManifest != null && !resume
+                ? Math.Max(0, manifest.TotalBytes - totalBytes)
+                : 0;
+            InstallFolder.ThrowIfInsufficient(
+                installRoot,
+                totalBytes + stagingCopy + InstallFolder.DiskSpaceMarginBytes);
+
             var updatedTask = downloadTask with { TotalBytes = totalBytes, Status = DownloadStatus.Downloading };
             await _db.UpsertDownloadTaskAsync(updatedTask);
             OnTaskUpdated?.Invoke(updatedTask);

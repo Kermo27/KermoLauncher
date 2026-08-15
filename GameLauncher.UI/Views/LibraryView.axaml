@@ -250,7 +250,18 @@
                                                 <TextBlock Text="{Binding L[Library.UpdateAvailable]}" FontSize="10"
                                                            FontWeight="Bold" Foreground="White"/>
                                             </Border>
+                                            <Border CornerRadius="12" Padding="10,3"
+                                                    Background="{DynamicResource TagBgBrush}"
+                                                    IsVisible="{Binding IsOnlineFix}">
+                                                <TextBlock Text="{Binding L[Library.OnlineFix]}" FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </Border>
                                         </StackPanel>
+                                        <TextBlock Text="{Binding L[Library.OnlineFixHint]}" FontSize="12"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   IsVisible="{Binding IsOnlineFix}"/>
                                         <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,6,0,0">
                                             <TextBlock Grid.Row="0" Text="{Binding L[Library.DetailsVersion]}"
                                                        FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
@@ -469,6 +480,13 @@
                                                     Background="{DynamicResource CardBgBrush}"
                                                     IsVisible="{Binding HasSizeText}">
                                                 <TextBlock Text="{Binding SizeText}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </Border>
+                                            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                    Margin="8" CornerRadius="8" Padding="8,2"
+                                                    Background="{DynamicResource CardBgBrush}"
+                                                    IsVisible="{Binding IsOnlineFix}">
+                                                <TextBlock Text="{Binding L[Library.OnlineFix]}" FontSize="11" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource TextSecondaryBrush}"/>
                                             </Border>
                                         </Grid>

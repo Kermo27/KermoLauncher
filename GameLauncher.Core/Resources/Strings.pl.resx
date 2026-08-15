@@ -99,6 +99,10 @@
   <data name="Library.OpenFolderErrorMessage" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Library.DetailsLastPlayed" xml:space="preserve"><value>Ostatnia sesja</value></data>
   <data name="Library.Screenshots" xml:space="preserve"><value>Zrzuty ekranu</value></data>
+  <data name="Library.OnlineFix" xml:space="preserve"><value>Online-Fix</value></data>
+  <data name="Library.OnlineFixHint" xml:space="preserve"><value>Steam powinien być włączony, żeby multiplayer Online-Fix działał.</value></data>
+  <data name="Library.DiskFullTitle" xml:space="preserve"><value>Za mało miejsca na dysku</value></data>
+  <data name="Library.DiskFullMessage" xml:space="preserve"><value>Potrzeba {0} wolnego miejsca; ten dysk ma {1}.</value></data>
   <data name="Library.NoResultsTitle" xml:space="preserve"><value>Brak gier pasujących do filtrów</value></data>
   <data name="Library.NoResultsMessage" xml:space="preserve"><value>Zmień frazę wyszukiwania lub wybierz inny tag.</value></data>
   <data name="Library.ClearFilters" xml:space="preserve"><value>Wyczyść filtry</value></data>

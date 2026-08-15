@@ -58,6 +58,39 @@ public static class GameLaunchHelper
     }
 
     /// <summary>
+    /// True when a file name is an Online-Fix marker such as OnlineFix.ini / OnlineFix64.dll.
+    /// </summary>
+    public static bool LooksLikeOnlineFixFile(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return false;
+        if (fileName.Equals("OnlineFix.ini", StringComparison.OrdinalIgnoreCase) ||
+            fileName.Equals("SteamOverlay64.dll", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return fileName.StartsWith("OnlineFix", StringComparison.OrdinalIgnoreCase) &&
+               (fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
+                fileName.EndsWith(".ini", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>True when the stored manifest lists Online-Fix files — no disk scan needed.</summary>
+    public static bool LooksLikeOnlineFix(GameManifest? manifest)
+    {
+        if (manifest?.Files is not { Length: > 0 } files) return false;
+
+        foreach (var file in files)
+        {
+            var path = file.Path.Replace('\\', '/');
+            var slash = path.LastIndexOf('/');
+            var name = slash >= 0 ? path[(slash + 1)..] : path;
+            if (LooksLikeOnlineFixFile(name)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// True when the game folder (or exe dir) contains Online-Fix markers
     /// such as OnlineFix64.dll / OnlineFix.ini.
     /// </summary>
@@ -71,14 +104,7 @@ public static class GameLaunchHelper
             {
                 foreach (var entry in Directory.EnumerateFileSystemEntries(dir))
                 {
-                    var name = Path.GetFileName(entry);
-                    if (name.Equals("OnlineFix.ini", StringComparison.OrdinalIgnoreCase) ||
-                        name.Equals("SteamOverlay64.dll", StringComparison.OrdinalIgnoreCase))
-                        return true;
-                    if (name.StartsWith("OnlineFix", StringComparison.OrdinalIgnoreCase) &&
-                        (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-                         name.EndsWith(".ini", StringComparison.OrdinalIgnoreCase)))
-                        return true;
+                    if (LooksLikeOnlineFixFile(Path.GetFileName(entry))) return true;
                 }
             }
             catch (IOException)

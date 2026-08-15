@@ -99,6 +99,10 @@
   <data name="Library.OpenFolderErrorMessage" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Library.DetailsLastPlayed" xml:space="preserve"><value>Last played</value></data>
   <data name="Library.Screenshots" xml:space="preserve"><value>Screenshots</value></data>
+  <data name="Library.OnlineFix" xml:space="preserve"><value>Online-Fix</value></data>
+  <data name="Library.OnlineFixHint" xml:space="preserve"><value>Steam should be running for Online-Fix multiplayer.</value></data>
+  <data name="Library.DiskFullTitle" xml:space="preserve"><value>Not enough disk space</value></data>
+  <data name="Library.DiskFullMessage" xml:space="preserve"><value>Need {0} free; this drive has {1}.</value></data>
   <data name="Library.NoResultsTitle" xml:space="preserve"><value>No games match your filters</value></data>
   <data name="Library.NoResultsMessage" xml:space="preserve"><value>Try a different search phrase or select another tag.</value></data>
   <data name="Library.ClearFilters" xml:space="preserve"><value>Clear filters</value></data>
