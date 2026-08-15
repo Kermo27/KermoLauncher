@@ -630,10 +630,10 @@ public class GameService : IGameService, IDisposable
         return await _db.GetGameAsync(gameId);
     }
 
-    public async Task VerifyInstallAsync(string gameId)
+    public async Task<bool> VerifyInstallAsync(string gameId)
     {
         var localState = await _db.GetLocalStateAsync(gameId);
-        if (localState?.InstalledManifest == null || localState.InstalledPath == null) return;
+        if (localState?.InstalledManifest == null || localState.InstalledPath == null) return false;
 
         foreach (var file in localState.InstalledManifest.Files)
         {
@@ -641,13 +641,13 @@ public class GameService : IGameService, IDisposable
             if (!File.Exists(path))
             {
                 await MarkCorruptAsync(localState, $"Missing file: {file.Path}");
-                return;
+                return false;
             }
             var sha256 = await ComputeSha256Async(path);
             if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
             {
                 await MarkCorruptAsync(localState, $"Checksum mismatch: {file.Path}");
-                return;
+                return false;
             }
         }
 
@@ -657,6 +657,8 @@ public class GameService : IGameService, IDisposable
             await _db.UpsertLocalStateAsync(ok);
             OnGameStateChanged?.Invoke(ok);
         }
+
+        return true;
     }
 
     private async Task MarkCorruptAsync(GameLocalState state, string reason)

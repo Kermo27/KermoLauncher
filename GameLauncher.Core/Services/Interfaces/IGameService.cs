@@ -22,6 +22,10 @@ public interface IGameService
     Task<IReadOnlyList<GameLocalState>> GetAllLocalStatesAsync();
     Task<Game[]> GetAllGamesAsync();
     Task<Game?> GetGameAsync(string gameId);
-    Task VerifyInstallAsync(string gameId);
+    /// <summary>
+    /// Re-hashes installed files against the stored manifest.
+    /// Returns true when the install is intact (and repairs a Failed status back to Installed).
+    /// </summary>
+    Task<bool> VerifyInstallAsync(string gameId);
     Task<int> RefreshFromRemoteAsync(CancellationToken ct = default);
 }

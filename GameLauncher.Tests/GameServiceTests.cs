@@ -110,6 +110,54 @@ public class GameServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(state.InstalledPath!, "assets", "texture.bin")));
     }
 
+    [Fact]
+    public async Task VerifyInstallAsync_IntactFiles_ReturnsTrue()
+    {
+        var (file, content) = MakeFile("data.bin", 4096);
+        var service = await InstallOneAsync(file, content);
+
+        Assert.True(await service.VerifyInstallAsync("g1"));
+        var state = await _db.GetLocalStateAsync("g1");
+        Assert.Equal(InstallStatus.Installed, state!.Status);
+    }
+
+    [Fact]
+    public async Task VerifyInstallAsync_MissingFile_MarksFailed()
+    {
+        var (file, content) = MakeFile("data.bin", 4096);
+        var service = await InstallOneAsync(file, content);
+        var state = await _db.GetLocalStateAsync("g1");
+        File.Delete(Path.Combine(state!.InstalledPath!, "data.bin"));
+
+        Assert.False(await service.VerifyInstallAsync("g1"));
+        Assert.Equal(InstallStatus.Failed, (await _db.GetLocalStateAsync("g1"))!.Status);
+    }
+
+    [Fact]
+    public async Task VerifyInstallAsync_ChecksumMismatch_MarksFailed()
+    {
+        var (file, content) = MakeFile("data.bin", 4096);
+        var service = await InstallOneAsync(file, content);
+        var state = await _db.GetLocalStateAsync("g1");
+        await File.WriteAllBytesAsync(Path.Combine(state!.InstalledPath!, "data.bin"), [1, 2, 3, 4]);
+
+        Assert.False(await service.VerifyInstallAsync("g1"));
+        Assert.Equal(InstallStatus.Failed, (await _db.GetLocalStateAsync("g1"))!.Status);
+    }
+
+    private async Task<GameService> InstallOneAsync(GameFile file, byte[] content)
+    {
+        var manifest = new GameManifest("1.0.0", file.SizeBytes, [file]);
+        var webDav = new FakeWebDav(manifest, new Dictionary<string, byte[]> { [file.Path] = content });
+        var downloads = new DownloadService(webDav, _db, NullLogger<DownloadService>.Instance);
+        var service = new GameService(downloads, _db, webDav, NullLogger<GameService>.Instance);
+
+        var game = new Game("g1", "Game 1", "1.0.0", "", [], [], [], "g1/manifest.json", manifest.TotalBytes);
+        await _db.UpsertGamesAsync([game]);
+        await service.InstallAsync(game);
+        return service;
+    }
+
     private sealed class FakeWebDav : IWebDavService
     {
         private readonly GameManifest _manifest;

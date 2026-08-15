@@ -41,6 +41,7 @@ public class CompositionRootTests : IDisposable
     [InlineData(typeof(IGameService))]
     [InlineData(typeof(IAutoUpdateService))]
     [InlineData(typeof(IScreenshotService))]
+    [InlineData(typeof(IShellService))]
     [InlineData(typeof(IUpdateFlowService))]
     [InlineData(typeof(IGameItemViewModelFactory))]
     [InlineData(typeof(LibraryViewModel))]

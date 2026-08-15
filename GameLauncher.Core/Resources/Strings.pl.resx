@@ -6,7 +6,6 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="Sidebar.Subtitle" xml:space="preserve"><value>Twoja biblioteka</value></data>
   <data name="Nav.Library" xml:space="preserve"><value>Biblioteka</value></data>
-  <data name="Nav.Downloads" xml:space="preserve"><value>Pobieranie</value></data>
   <data name="Nav.Settings" xml:space="preserve"><value>Ustawienia</value></data>
   <data name="Library.Title" xml:space="preserve"><value>Biblioteka</value></data>
   <data name="Library.SearchPlaceholder" xml:space="preserve"><value>Szukaj gier...</value></data>
@@ -83,6 +82,23 @@
   <data name="Library.SortName" xml:space="preserve"><value>Nazwa</value></data>
   <data name="Library.SortPlayTime" xml:space="preserve"><value>Czas gry</value></data>
   <data name="Library.SortSize" xml:space="preserve"><value>Rozmiar</value></data>
+  <data name="Library.SortLastPlayed" xml:space="preserve"><value>Ostatnia sesja</value></data>
+  <data name="Library.FilterAll" xml:space="preserve"><value>Wszystkie</value></data>
+  <data name="Library.FilterInstalled" xml:space="preserve"><value>Zainstalowane</value></data>
+  <data name="Library.FilterUpdates" xml:space="preserve"><value>Aktualizacje</value></data>
+  <data name="Library.FilterAvailable" xml:space="preserve"><value>Niezainstalowane</value></data>
+  <data name="Library.Verify" xml:space="preserve"><value>Weryfikuj</value></data>
+  <data name="Library.OpenFolder" xml:space="preserve"><value>Otwórz folder</value></data>
+  <data name="Library.VerifyOkTitle" xml:space="preserve"><value>Instalacja zgodna</value></data>
+  <data name="Library.VerifyOkMessage" xml:space="preserve"><value>{0} zgadza się z zapisanymi sumami kontrolnymi.</value></data>
+  <data name="Library.VerifyFailedTitle" xml:space="preserve"><value>Weryfikacja nieudana</value></data>
+  <data name="Library.VerifyFailedMessage" xml:space="preserve"><value>{0} ma brakujące albo zmienione pliki. Użyj Aktualizuj, żeby naprawić.</value></data>
+  <data name="Library.VerifyErrorTitle" xml:space="preserve"><value>Błąd weryfikacji</value></data>
+  <data name="Library.OpenFolderErrorTitle" xml:space="preserve"><value>Nie można otworzyć folderu</value></data>
+  <data name="Library.OpenFolderMissing" xml:space="preserve"><value>Brak folderu instalacji gry {0}.</value></data>
+  <data name="Library.OpenFolderErrorMessage" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Library.DetailsLastPlayed" xml:space="preserve"><value>Ostatnia sesja</value></data>
+  <data name="Library.Screenshots" xml:space="preserve"><value>Zrzuty ekranu</value></data>
   <data name="Library.NoResultsTitle" xml:space="preserve"><value>Brak gier pasujących do filtrów</value></data>
   <data name="Library.NoResultsMessage" xml:space="preserve"><value>Zmień frazę wyszukiwania lub wybierz inny tag.</value></data>
   <data name="Library.ClearFilters" xml:space="preserve"><value>Wyczyść filtry</value></data>
@@ -90,28 +106,6 @@
   <data name="Dialog.Ok" xml:space="preserve"><value>OK</value></data>
   <data name="Dialog.Cancel" xml:space="preserve"><value>Anuluj</value></data>
   <data name="Dialog.Confirm" xml:space="preserve"><value>Potwierdź</value></data>
-  <data name="Downloads.Title" xml:space="preserve"><value>Pobieranie</value></data>
-  <data name="Downloads.Subtitle" xml:space="preserve"><value>Lista pobrań i postęp instalacji</value></data>
-  <data name="Downloads.EmptyTitle" xml:space="preserve"><value>Brak aktywnych pobrań</value></data>
-  <data name="Downloads.EmptyHint" xml:space="preserve"><value>Zainstaluj grę z zakładki Biblioteka, aby rozpocząć pobieranie.</value></data>
-  <data name="Downloads.ColumnGame" xml:space="preserve"><value>Gra</value></data>
-  <data name="Downloads.ColumnProgress" xml:space="preserve"><value>Postęp</value></data>
-  <data name="Downloads.ColumnSpeed" xml:space="preserve"><value>Prędkość</value></data>
-  <data name="Downloads.ColumnActions" xml:space="preserve"><value>Akcje</value></data>
-  <data name="Downloads.Pause" xml:space="preserve"><value>Pauza</value></data>
-  <data name="Downloads.Resume" xml:space="preserve"><value>Wznów</value></data>
-  <data name="Downloads.Cancel" xml:space="preserve"><value>Anuluj</value></data>
-  <data name="Downloads.Remove" xml:space="preserve"><value>Usuń</value></data>
-  <data name="Downloads.Status.Queued" xml:space="preserve"><value>W kolejce</value></data>
-  <data name="Downloads.Status.Preparing" xml:space="preserve"><value>Przygotowywanie...</value></data>
-  <data name="Downloads.Status.Downloading" xml:space="preserve"><value>Pobieranie {0:F1} / {1:F1} MB</value></data>
-  <data name="Downloads.Status.Verifying" xml:space="preserve"><value>Weryfikowanie...</value></data>
-  <data name="Downloads.Status.Extracting" xml:space="preserve"><value>Rozpakowywanie...</value></data>
-  <data name="Downloads.Status.Installed" xml:space="preserve"><value>Zainstalowano</value></data>
-  <data name="Downloads.Status.Error" xml:space="preserve"><value>Błąd: {0}</value></data>
-  <data name="Downloads.Status.Paused" xml:space="preserve"><value>Wstrzymano</value></data>
-  <data name="Downloads.Status.Done" xml:space="preserve"><value>Zakończono</value></data>
-  <data name="Downloads.Status.Cancelled" xml:space="preserve"><value>Anulowano</value></data>
   <data name="Settings.Title" xml:space="preserve"><value>Ustawienia</value></data>
   <data name="Settings.Subtitle" xml:space="preserve"><value>Konfiguracja źródła gier (Nextcloud) i folderów</value></data>
   <data name="Settings.Nextcloud.Title" xml:space="preserve"><value>Źródło gier (Nextcloud)</value></data>

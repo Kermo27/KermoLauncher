@@ -93,7 +93,8 @@
 
     <DockPanel Margin="20">
         <!-- ============ HEADER ============ -->
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,18" Spacing="12">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,18" Spacing="12"
+                    IsVisible="{Binding !HasSelectedGame}">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                 <StackPanel VerticalAlignment="Center" Spacing="1">
                     <TextBlock Text="{Binding L[Library.Title]}" FontSize="24" FontWeight="Bold"
@@ -107,7 +108,7 @@
                          Watermark="{Binding L[Library.SearchPlaceholder]}" Width="280" VerticalAlignment="Center"
                          VerticalContentAlignment="Center"/>
 
-                <ComboBox Grid.Column="2" Margin="12,0,0,0" Width="150"
+                <ComboBox Grid.Column="2" Margin="12,0,0,0" Width="170"
                           ItemsSource="{Binding SortOptions}"
                           SelectedIndex="{Binding SelectedSortIndex}"
                           VerticalAlignment="Center"/>
@@ -126,6 +127,21 @@
                              IsVisible="{Binding IsRefreshing}"
                              IsIndeterminate="True" VerticalAlignment="Center"/>
             </Grid>
+
+            <ItemsControl ItemsSource="{Binding StatusFilters}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:StatusFilterViewModel">
+                        <Button Classes="TagChip" Classes.selected="{Binding IsSelected}"
+                                Content="{Binding Label}"
+                                Command="{Binding SelectCommand}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <ItemsControl ItemsSource="{Binding Tags}">
                 <ItemsControl.ItemsPanel>
@@ -188,8 +204,186 @@
             </StackPanel>
         </Border>
 
+        <Grid>
+        <!-- ============ GAME DETAILS ============ -->
+        <DockPanel IsVisible="{Binding HasSelectedGame}">
+            <Button DockPanel.Dock="Top" Classes="ghost" HorizontalAlignment="Left"
+                    Margin="0,0,0,16" Padding="14,7"
+                    Content="{Binding L[Library.Back]}"
+                    Command="{Binding CloseDetailsCommand}"/>
+
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ContentControl Content="{Binding SelectedGame}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate x:DataType="vm:GameItemViewModel">
+                            <StackPanel Spacing="16" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,8,24">
+                                <Grid ColumnDefinitions="320,*">
+                                    <Border Height="200" CornerRadius="10" ClipToBounds="True"
+                                            Background="{DynamicResource TagBgBrush}">
+                                        <Grid>
+                                            <Image Source="{Binding CoverImage}"
+                                                   IsVisible="{Binding HasCover}"
+                                                   Stretch="UniformToFill"
+                                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                                            <TextBlock Text="&#127918;" FontSize="56"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       IsVisible="{Binding !HasCover}"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" Spacing="8" Margin="24,0,0,0">
+                                        <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border Classes="StatusPill"
+                                                    Classes.installed="{Binding IsStatusInstalled}"
+                                                    Classes.busy="{Binding IsStatusBusy}"
+                                                    Classes.failed="{Binding IsStatusFailed}"
+                                                    CornerRadius="12" Padding="10,3">
+                                                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"/>
+                                            </Border>
+                                            <Border CornerRadius="12" Padding="10,3"
+                                                    Background="{DynamicResource AccentBrush}"
+                                                    IsVisible="{Binding IsUpdateAvailable}">
+                                                <TextBlock Text="{Binding L[Library.UpdateAvailable]}" FontSize="10"
+                                                           FontWeight="Bold" Foreground="White"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,6,0,0">
+                                            <TextBlock Grid.Row="0" Text="{Binding L[Library.DetailsVersion]}"
+                                                       FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Version}"
+                                                       FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <TextBlock Grid.Row="1" Text="{Binding L[Library.DetailsSize]}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       IsVisible="{Binding HasSizeText}"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SizeText}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       IsVisible="{Binding HasSizeText}"/>
+                                            <TextBlock Grid.Row="2" Text="{Binding L[Library.DetailsPlayed]}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       IsVisible="{Binding HasPlayTime}"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PlayTimeText}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       IsVisible="{Binding HasPlayTime}"/>
+                                            <TextBlock Grid.Row="3" Text="{Binding L[Library.DetailsLastPlayed]}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       IsVisible="{Binding HasLastPlayed}"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LastPlayedText}"
+                                                       FontSize="12" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       IsVisible="{Binding HasLastPlayed}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="{Binding DescriptionText}" FontSize="14" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" LineHeight="22"/>
+
+                                <ItemsControl ItemsSource="{Binding Tags}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="sys:String">
+                                            <Border Background="{DynamicResource TagBgBrush}"
+                                                    CornerRadius="10" Padding="10,4" Margin="0,0,6,6">
+                                                <TextBlock Text="{Binding}" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding ShowProgress}">
+                                    <TextBlock Text="{Binding ProgressText}" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <ProgressBar Minimum="0" Maximum="100"
+                                                 Value="{Binding ProgressPercent}"
+                                                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                                 Height="6" CornerRadius="3"/>
+                                </StackPanel>
+
+                                <WrapPanel>
+                                    <Button Classes="primary" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.Install]}"
+                                            Command="{Binding InstallCommand}"
+                                            IsVisible="{Binding CanInstall}"/>
+                                    <Button Classes="ghost" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.PauseDownload]}"
+                                            Command="{Binding PauseDownloadCommand}"
+                                            IsVisible="{Binding CanPauseDownload}"/>
+                                    <Button Classes="primary" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.ResumeDownload]}"
+                                            Command="{Binding ResumeDownloadCommand}"
+                                            IsVisible="{Binding CanResumeDownload}"/>
+                                    <Button Classes="primary" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.Update]}"
+                                            Command="{Binding UpdateCommand}"
+                                            IsEnabled="{Binding CanUpdate}"
+                                            IsVisible="{Binding IsUpdateAvailable}"/>
+                                    <Button Classes="primary" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.Launch]}"
+                                            Command="{Binding LaunchCommand}"
+                                            IsVisible="{Binding CanLaunch}"/>
+                                    <Button Classes="ghost" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.CancelDownload]}"
+                                            Command="{Binding CancelDownloadCommand}"
+                                            IsVisible="{Binding CanCancelDownload}"/>
+                                    <Button Classes="ghost" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.Verify]}"
+                                            Command="{Binding VerifyInstallCommand}"
+                                            IsVisible="{Binding CanVerify}"
+                                            IsEnabled="{Binding !IsVerifying}"/>
+                                    <Button Classes="ghost" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.OpenFolder]}"
+                                            Command="{Binding OpenFolderCommand}"
+                                            IsVisible="{Binding CanOpenFolder}"/>
+                                    <Button Classes="ghost" Margin="0,0,8,8" Padding="16,9"
+                                            Content="{Binding L[Library.Uninstall]}"
+                                            Command="{Binding UninstallCommand}"
+                                            IsVisible="{Binding CanUninstall}"/>
+                                </WrapPanel>
+
+                                <StackPanel Spacing="10" IsVisible="{Binding HasGallery}">
+                                    <TextBlock Text="{Binding L[Library.Screenshots]}" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <ItemsControl ItemsSource="{Binding Gallery}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ScreenshotItemViewModel">
+                                                <Border Width="220" Height="124" Margin="0,0,10,10"
+                                                        CornerRadius="8" ClipToBounds="True"
+                                                        Background="{DynamicResource TagBgBrush}">
+                                                    <Image Source="{Binding Image}" Stretch="UniformToFill"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </ScrollViewer>
+        </DockPanel>
+
         <!-- ============ GAMES GRID ============ -->
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding !HasSelectedGame}">
             <Grid>
                 <!-- Skeletons: the collection is empty once loading ends, so nothing stays in the tree -->
                 <ItemsControl ItemsSource="{Binding SkeletonItems}">
@@ -236,7 +430,8 @@
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:GameItemViewModel">
-                            <ContentControl Theme="{StaticResource GameCardShell}" Classes="interactive">
+                            <ContentControl Theme="{StaticResource GameCardShell}" Classes="interactive"
+                                            PointerPressed="OnCardPointerPressed">
                                 <Grid RowDefinitions="Auto,*,Auto">
                                     <!-- Cover -->
                                     <Border Grid.Row="0" Height="{StaticResource GameCardCoverHeight}"
@@ -373,5 +568,6 @@
                 </ItemsRepeater>
             </Grid>
         </ScrollViewer>
+        </Grid>
     </DockPanel>
 </UserControl>

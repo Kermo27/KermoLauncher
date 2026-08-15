@@ -68,6 +68,7 @@ public static class ServiceRegistration
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<IAppShutdown, AppShutdown>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IShellService, DesktopShellService>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
         services.AddSingleton<IGameItemViewModelFactory, GameItemViewModelFactory>();

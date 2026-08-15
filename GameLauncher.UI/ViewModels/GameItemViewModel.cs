@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,6 +25,7 @@ public sealed class GameItemViewModelFactory : IGameItemViewModelFactory
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
     private readonly IScreenshotService _screenshots;
+    private readonly IShellService _shell;
     private readonly ILocalizationService _localization;
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<GameItemViewModel> _logger;
@@ -33,6 +35,7 @@ public sealed class GameItemViewModelFactory : IGameItemViewModelFactory
         IDialogService dialogService,
         INotificationService notificationService,
         IScreenshotService screenshots,
+        IShellService shell,
         ILocalizationService localization,
         IUiDispatcher dispatcher,
         ILogger<GameItemViewModel> logger)
@@ -41,6 +44,7 @@ public sealed class GameItemViewModelFactory : IGameItemViewModelFactory
         _dialogService = dialogService;
         _notificationService = notificationService;
         _screenshots = screenshots;
+        _shell = shell;
         _localization = localization;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -53,6 +57,7 @@ public sealed class GameItemViewModelFactory : IGameItemViewModelFactory
         _dialogService,
         _notificationService,
         _screenshots,
+        _shell,
         _localization,
         _dispatcher,
         _logger);
@@ -64,12 +69,17 @@ public partial class GameItemViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
     private readonly IScreenshotService _screenshots;
+    private readonly IShellService _shell;
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<GameItemViewModel> _logger;
     private readonly CancellationTokenSource _cts = new();
     private Task? _coverLoad;
+    private CancellationTokenSource? _galleryCts;
+    private Task? _galleryLoad;
 
     public Game Game { get; }
+
+    public ObservableCollection<ScreenshotItemViewModel> Gallery { get; } = [];
 
     [ObservableProperty]
     private GameLocalState? _localState;
@@ -81,6 +91,10 @@ public partial class GameItemViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanUpdate))]
     private bool _isBusy;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanVerify))]
+    private bool _isVerifying;
+
     public GameItemViewModel(
         Game game,
         GameLocalState? localState,
@@ -88,6 +102,7 @@ public partial class GameItemViewModel : ViewModelBase
         IDialogService dialogService,
         INotificationService notificationService,
         IScreenshotService screenshots,
+        IShellService shell,
         ILocalizationService localization,
         IUiDispatcher dispatcher,
         ILogger<GameItemViewModel> logger)
@@ -99,6 +114,7 @@ public partial class GameItemViewModel : ViewModelBase
         _dialogService = dialogService;
         _notificationService = notificationService;
         _screenshots = screenshots;
+        _shell = shell;
         _dispatcher = dispatcher;
         _logger = logger;
     }
@@ -143,7 +159,67 @@ public partial class GameItemViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Loads every screenshot. Called when details open; <see cref="ClearGallery"/> frees them.</summary>
+    public void BeginLoadGallery()
+    {
+        if (_galleryLoad != null || Game.ScreenshotUrls.Length == 0) return;
+        _galleryCts = new CancellationTokenSource();
+        _galleryLoad = LoadGalleryAsync(_galleryCts.Token);
+    }
+
+    public void ClearGallery()
+    {
+        _galleryCts?.Cancel();
+        _galleryCts?.Dispose();
+        _galleryCts = null;
+        _galleryLoad = null;
+
+        foreach (var shot in Gallery)
+        {
+            shot.Dispose();
+        }
+        Gallery.Clear();
+        OnPropertyChanged(nameof(HasGallery));
+    }
+
+    private async Task LoadGalleryAsync(CancellationToken ct)
+    {
+        try
+        {
+            for (var i = 0; i < Game.ScreenshotUrls.Length; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var bytes = await _screenshots.LoadAsync(Game, i, ct);
+                if (bytes == null) continue;
+
+                using var ms = new MemoryStream(bytes);
+                var bitmap = new Bitmap(ms);
+
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        bitmap.Dispose();
+                        return;
+                    }
+                    Gallery.Add(new ScreenshotItemViewModel(bitmap));
+                    OnPropertyChanged(nameof(HasGallery));
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Details closed.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Gallery load failed for {GameId}", Game.Id);
+        }
+    }
+
     public bool HasCover => CoverImage != null;
+
+    public bool HasGallery => Gallery.Count > 0;
 
     partial void OnLocalStateChanged(GameLocalState? value)
     {
@@ -155,9 +231,13 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(PlayTimeText));
         OnPropertyChanged(nameof(HasPlayTime));
+        OnPropertyChanged(nameof(LastPlayedText));
+        OnPropertyChanged(nameof(HasLastPlayed));
         OnPropertyChanged(nameof(CanCancelDownload));
         OnPropertyChanged(nameof(CanPauseDownload));
         OnPropertyChanged(nameof(CanResumeDownload));
+        OnPropertyChanged(nameof(CanVerify));
+        OnPropertyChanged(nameof(CanOpenFolder));
         OnPropertyChanged(nameof(IsStatusInstalled));
         OnPropertyChanged(nameof(IsStatusBusy));
         OnPropertyChanged(nameof(IsStatusFailed));
@@ -198,6 +278,12 @@ public partial class GameItemViewModel : ViewModelBase
     public bool CanUninstall => Status == InstallStatus.Installed;
 
     public bool CanLaunch => Status == InstallStatus.Installed;
+
+    public bool CanVerify => Status is InstallStatus.Installed or InstallStatus.Failed
+        && LocalState?.InstalledManifest != null
+        && LocalState.InstalledPath != null;
+
+    public bool CanOpenFolder => !string.IsNullOrEmpty(LocalState?.InstalledPath);
 
     public bool IsUpdateAvailable => Status == InstallStatus.Installed &&
                                      LocalState!.InstalledVersion != null &&
@@ -334,10 +420,26 @@ public partial class GameItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(PlayTimeText));
         OnPropertyChanged(nameof(HasPlayTime));
+        OnPropertyChanged(nameof(LastPlayedText));
+        OnPropertyChanged(nameof(HasLastPlayed));
         OnPropertyChanged(nameof(DescriptionText));
+        OnPropertyChanged(nameof(CanVerify));
     }
 
-    public string PlayTimeText
+    public bool HasPlayTime => PlayDuration.Length > 0;
+
+    public string LastPlayedText
+    {
+        get
+        {
+            if (LocalState?.LastPlayed is not { } at) return "";
+            return at.ToLocalTime().ToString("g");
+        }
+    }
+
+    public bool HasLastPlayed => LastPlayedText.Length > 0;
+
+    private string PlayDuration
     {
         get
         {
@@ -345,16 +447,22 @@ public partial class GameItemViewModel : ViewModelBase
             if (seconds <= 0) return "";
 
             var ts = TimeSpan.FromSeconds(seconds);
-            var duration = ts.TotalHours >= 1
+            return ts.TotalHours >= 1
                 ? $"{(int)ts.TotalHours}h {ts.Minutes}m"
                 : ts.TotalMinutes >= 1
                     ? $"{ts.Minutes}m"
                     : $"{ts.Seconds}s";
-            return string.Format(L["Library.Played"], duration);
         }
     }
 
-    public bool HasPlayTime => PlayTimeText.Length > 0;
+    public string PlayTimeText
+    {
+        get
+        {
+            var duration = PlayDuration;
+            return duration.Length == 0 ? "" : string.Format(L["Library.Played"], duration);
+        }
+    }
 
     public string SizeText => Game.SizeBytes > 0
         ? $"{Game.SizeBytes / (1024d * 1024d * 1024d):F1} GB"
@@ -530,10 +638,66 @@ public partial class GameItemViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task VerifyInstallAsync()
+    {
+        if (!CanVerify) return;
+
+        IsVerifying = true;
+        try
+        {
+            var ok = await _gameService.VerifyInstallAsync(Game.Id);
+            if (ok)
+            {
+                _notificationService.Show(L["Library.VerifyOkTitle"],
+                    string.Format(L["Library.VerifyOkMessage"], Name));
+            }
+            else
+            {
+                _notificationService.Show(L["Library.VerifyFailedTitle"],
+                    string.Format(L["Library.VerifyFailedMessage"], Name),
+                    NotificationType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.VerifyErrorTitle"], ex.Message, NotificationType.Error);
+        }
+        finally
+        {
+            IsVerifying = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenFolder()
+    {
+        var path = LocalState?.InstalledPath;
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+        {
+            _notificationService.Show(L["Library.OpenFolderErrorTitle"],
+                string.Format(L["Library.OpenFolderMissing"], Name),
+                NotificationType.Warning);
+            return;
+        }
+
+        try
+        {
+            _shell.OpenFolder(path);
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show(L["Library.OpenFolderErrorTitle"],
+                string.Format(L["Library.OpenFolderErrorMessage"], Name, ex.Message),
+                NotificationType.Error);
+        }
+    }
+
     protected override void DisposeCore()
     {
         _cts.Cancel();
         _cts.Dispose();
+        ClearGallery();
         CoverImage?.Dispose();
         CoverImage = null;
     }
@@ -543,7 +707,28 @@ public enum LibrarySortMode
 {
     Name,
     PlayTime,
-    Size
+    Size,
+    LastPlayed
+}
+
+public enum LibraryStatusFilter
+{
+    All,
+    Installed,
+    Updates,
+    Available
+}
+
+/// <summary>
+/// A screenshot bitmap owned by the details gallery, so it can be disposed when the panel closes.
+/// </summary>
+public sealed class ScreenshotItemViewModel : IDisposable
+{
+    public Bitmap Image { get; }
+
+    public ScreenshotItemViewModel(Bitmap image) => Image = image;
+
+    public void Dispose() => Image.Dispose();
 }
 
 /// <summary>
@@ -568,4 +753,35 @@ public partial class TagFilterViewModel : ObservableObject
 
     [RelayCommand]
     private void Select() => _onSelected(Tag);
+}
+
+/// <summary>
+/// Install-state chip next to the tag row. Same style as tags; the label is localized.
+/// </summary>
+public partial class StatusFilterViewModel : ObservableObject
+{
+    private readonly Action<LibraryStatusFilter> _onSelected;
+
+    public LibraryStatusFilter Filter { get; }
+
+    [ObservableProperty]
+    private string _label;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public StatusFilterViewModel(
+        LibraryStatusFilter filter,
+        string label,
+        bool isSelected,
+        Action<LibraryStatusFilter> onSelected)
+    {
+        Filter = filter;
+        _label = label;
+        _isSelected = isSelected;
+        _onSelected = onSelected;
+    }
+
+    [RelayCommand]
+    private void Select() => _onSelected(Filter);
 }
