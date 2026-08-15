@@ -111,43 +111,4 @@ public class InstallFolderTests
         Assert.False(InstallFolder.TryValidate("  ", out var error, out _));
         Assert.Equal("empty", error);
     }
-
-    [Fact]
-    public void GetAvailableBytes_ReturnsPositiveForTemp()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "gl-free-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var free = InstallFolder.GetAvailableBytes(dir);
-            Assert.NotNull(free);
-            Assert.True(free > 0);
-        }
-        finally
-        {
-            try { Directory.Delete(dir, true); } catch { }
-        }
-    }
-
-    [Fact]
-    public void ThrowIfInsufficient_ThrowsWhenNeedExceedsFreeSpace()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "gl-space-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var ex = Assert.Throws<InsufficientDiskSpaceException>(
-                () => InstallFolder.ThrowIfInsufficient(dir, long.MaxValue));
-            Assert.Equal(long.MaxValue, ex.RequiredBytes);
-            Assert.True(ex.AvailableBytes >= 0);
-        }
-        finally
-        {
-            try { Directory.Delete(dir, true); } catch { }
-        }
-    }
-
-    [Fact]
-    public void ThrowIfInsufficient_AllowsZeroNeed()
-    {
-        InstallFolder.ThrowIfInsufficient(Path.GetTempPath(), 0);
-    }
 }

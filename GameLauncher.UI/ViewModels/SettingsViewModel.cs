@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Core.Models;
 using GameLauncher.Core.Services;
 using GameLauncher.Core.Services.Interfaces;
-using GameLauncher.Core.Utils;
 using GameLauncher.UI.Services;
 using GameLauncher.UI.Shared.ViewModels;
 
@@ -18,7 +17,6 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IUpdateFlowService _updateFlow;
     private readonly IDialogService _dialogService;
     private readonly INotificationService _notificationService;
-    private readonly IShellService _shell;
 
     /// <summary>
     /// Public share links carry the token, so the field was dropped from the form. A token configured
@@ -100,7 +98,6 @@ public partial class SettingsViewModel : ViewModelBase
         IUpdateFlowService updateFlow,
         IDialogService dialogService,
         INotificationService notificationService,
-        IShellService shell,
         ILocalizationService localization)
         : base(localization)
     {
@@ -110,7 +107,6 @@ public partial class SettingsViewModel : ViewModelBase
         _updateFlow = updateFlow;
         _dialogService = dialogService;
         _notificationService = notificationService;
-        _shell = shell;
     }
 
     /// <summary>The database read is kept out of the constructor so errors cannot vanish into an unobserved task.</summary>
@@ -256,26 +252,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(folder))
         {
             InstallFolder = folder;
-        }
-    }
-
-    [RelayCommand]
-    private void OpenLog()
-    {
-        var path = Path.Combine(AppPaths.DataDirectory, "launcher.log");
-        if (!File.Exists(path))
-        {
-            _notificationService.Show(L["Settings.LogMissingTitle"], L["Settings.LogMissingMessage"], NotificationType.Warning);
-            return;
-        }
-
-        try
-        {
-            _shell.OpenFile(path);
-        }
-        catch (Exception ex)
-        {
-            _notificationService.Show(L["Settings.LogOpenErrorTitle"], ex.Message, NotificationType.Error);
         }
     }
 

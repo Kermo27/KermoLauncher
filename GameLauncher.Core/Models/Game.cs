@@ -50,13 +50,5 @@ public record GameLocalState(
     long PlayTimeSeconds = 0,
     DateTime? LastPlayed = null,
     string? InstalledVersion = null,
-    GameManifest? InstalledManifest = null,
-    /// <summary>Proton folder name. Empty/null = use the global Settings value.</summary>
-    string? ProtonVersion = null,
-    /// <summary>
-    /// Custom prefix path. Empty/null = default (shared protonprefix, per-game Online-Fix
-    /// prefix, or the Wine prefix from Settings). Proton treats this as STEAM_COMPAT_DATA_PATH;
-    /// Wine treats it as WINEPREFIX.
-    /// </summary>
-    string? CompatPrefix = null
+    GameManifest? InstalledManifest = null
 );

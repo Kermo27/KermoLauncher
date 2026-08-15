@@ -6,6 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="Sidebar.Subtitle" xml:space="preserve"><value>Your library</value></data>
   <data name="Nav.Library" xml:space="preserve"><value>Library</value></data>
+  <data name="Nav.Downloads" xml:space="preserve"><value>Downloads</value></data>
   <data name="Nav.Settings" xml:space="preserve"><value>Settings</value></data>
   <data name="Library.Title" xml:space="preserve"><value>Library</value></data>
   <data name="Library.SearchPlaceholder" xml:space="preserve"><value>Search games...</value></data>
@@ -82,36 +83,6 @@
   <data name="Library.SortName" xml:space="preserve"><value>Name</value></data>
   <data name="Library.SortPlayTime" xml:space="preserve"><value>Play time</value></data>
   <data name="Library.SortSize" xml:space="preserve"><value>Size</value></data>
-  <data name="Library.SortLastPlayed" xml:space="preserve"><value>Last played</value></data>
-  <data name="Library.FilterAll" xml:space="preserve"><value>All</value></data>
-  <data name="Library.FilterInstalled" xml:space="preserve"><value>Installed</value></data>
-  <data name="Library.FilterUpdates" xml:space="preserve"><value>Updates</value></data>
-  <data name="Library.FilterAvailable" xml:space="preserve"><value>Not installed</value></data>
-  <data name="Library.Verify" xml:space="preserve"><value>Verify</value></data>
-  <data name="Library.OpenFolder" xml:space="preserve"><value>Open folder</value></data>
-  <data name="Library.VerifyOkTitle" xml:space="preserve"><value>Install verified</value></data>
-  <data name="Library.VerifyOkMessage" xml:space="preserve"><value>{0} matches the stored checksums.</value></data>
-  <data name="Library.VerifyFailedTitle" xml:space="preserve"><value>Verification failed</value></data>
-  <data name="Library.VerifyFailedMessage" xml:space="preserve"><value>{0} is missing files or they no longer match. Use Update to repair.</value></data>
-  <data name="Library.VerifyErrorTitle" xml:space="preserve"><value>Verification error</value></data>
-  <data name="Library.OpenFolderErrorTitle" xml:space="preserve"><value>Could not open folder</value></data>
-  <data name="Library.OpenFolderMissing" xml:space="preserve"><value>The install folder for {0} is missing.</value></data>
-  <data name="Library.OpenFolderErrorMessage" xml:space="preserve"><value>{0}: {1}</value></data>
-  <data name="Library.DetailsLastPlayed" xml:space="preserve"><value>Last played</value></data>
-  <data name="Library.Screenshots" xml:space="preserve"><value>Screenshots</value></data>
-  <data name="Library.OnlineFix" xml:space="preserve"><value>Online-Fix</value></data>
-  <data name="Library.OnlineFixHint" xml:space="preserve"><value>Steam should be running for Online-Fix multiplayer.</value></data>
-  <data name="Library.Compat.Title" xml:space="preserve"><value>Proton / Wine</value></data>
-  <data name="Library.Compat.Hint" xml:space="preserve"><value>Overrides apply only to this game. Leave them on Default to follow Settings. Proton uses the prefix folder as STEAM_COMPAT_DATA_PATH (a pfx directory is created inside); Wine uses it as WINEPREFIX.</value></data>
-  <data name="Library.Compat.Proton" xml:space="preserve"><value>Proton version:</value></data>
-  <data name="Library.Compat.ProtonDefault" xml:space="preserve"><value>Default (from Settings)</value></data>
-  <data name="Library.Compat.Prefix" xml:space="preserve"><value>Prefix:</value></data>
-  <data name="Library.Compat.PrefixPlaceholder" xml:space="preserve"><value>Leave empty for the default prefix</value></data>
-  <data name="Library.Compat.BrowsePrefix" xml:space="preserve"><value>Select prefix folder</value></data>
-  <data name="Library.Compat.ClearPrefix" xml:space="preserve"><value>Default</value></data>
-  <data name="Library.Compat.SaveErrorTitle" xml:space="preserve"><value>Could not save launch settings</value></data>
-  <data name="Library.DiskFullTitle" xml:space="preserve"><value>Not enough disk space</value></data>
-  <data name="Library.DiskFullMessage" xml:space="preserve"><value>Need {0} free; this drive has {1}.</value></data>
   <data name="Library.NoResultsTitle" xml:space="preserve"><value>No games match your filters</value></data>
   <data name="Library.NoResultsMessage" xml:space="preserve"><value>Try a different search phrase or select another tag.</value></data>
   <data name="Library.ClearFilters" xml:space="preserve"><value>Clear filters</value></data>
@@ -119,6 +90,28 @@
   <data name="Dialog.Ok" xml:space="preserve"><value>OK</value></data>
   <data name="Dialog.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Dialog.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Downloads.Title" xml:space="preserve"><value>Downloads</value></data>
+  <data name="Downloads.Subtitle" xml:space="preserve"><value>Download list and install progress</value></data>
+  <data name="Downloads.EmptyTitle" xml:space="preserve"><value>No active downloads</value></data>
+  <data name="Downloads.EmptyHint" xml:space="preserve"><value>Install a game from the Library tab to start downloading.</value></data>
+  <data name="Downloads.ColumnGame" xml:space="preserve"><value>Game</value></data>
+  <data name="Downloads.ColumnProgress" xml:space="preserve"><value>Progress</value></data>
+  <data name="Downloads.ColumnSpeed" xml:space="preserve"><value>Speed</value></data>
+  <data name="Downloads.ColumnActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Downloads.Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Downloads.Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Downloads.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Downloads.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Downloads.Status.Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Downloads.Status.Preparing" xml:space="preserve"><value>Preparing...</value></data>
+  <data name="Downloads.Status.Downloading" xml:space="preserve"><value>Downloading {0:F1} / {1:F1} MB</value></data>
+  <data name="Downloads.Status.Verifying" xml:space="preserve"><value>Verifying...</value></data>
+  <data name="Downloads.Status.Extracting" xml:space="preserve"><value>Extracting...</value></data>
+  <data name="Downloads.Status.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Downloads.Status.Error" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Downloads.Status.Paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Downloads.Status.Done" xml:space="preserve"><value>Finished</value></data>
+  <data name="Downloads.Status.Cancelled" xml:space="preserve"><value>Cancelled</value></data>
   <data name="Settings.Title" xml:space="preserve"><value>Settings</value></data>
   <data name="Settings.Subtitle" xml:space="preserve"><value>Configuration of the game source (Nextcloud) and folders</value></data>
   <data name="Settings.Nextcloud.Title" xml:space="preserve"><value>Game source (Nextcloud)</value></data>
@@ -139,11 +132,6 @@
   <data name="Settings.General.CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
   <data name="Settings.General.Theme" xml:space="preserve"><value>Theme:</value></data>
   <data name="Settings.General.Language" xml:space="preserve"><value>Language:</value></data>
-  <data name="Settings.General.Log" xml:space="preserve"><value>Log file:</value></data>
-  <data name="Settings.General.OpenLog" xml:space="preserve"><value>Open log</value></data>
-  <data name="Settings.LogMissingTitle" xml:space="preserve"><value>No log yet</value></data>
-  <data name="Settings.LogMissingMessage" xml:space="preserve"><value>The log file has not been created yet. Use the launcher a bit, then try again.</value></data>
-  <data name="Settings.LogOpenErrorTitle" xml:space="preserve"><value>Could not open the log</value></data>
   <data name="Settings.Theme.Light" xml:space="preserve"><value>Light</value></data>
   <data name="Settings.Theme.Dark" xml:space="preserve"><value>Dark</value></data>
   <data name="Settings.Theme.System" xml:space="preserve"><value>System</value></data>
@@ -168,7 +156,7 @@
   <data name="Settings.Wine.Backend.Wine" xml:space="preserve"><value>Wine</value></data>
   <data name="Settings.Wine.Proton.Version" xml:space="preserve"><value>Proton version:</value></data>
   <data name="Settings.Wine.Proton.Auto" xml:space="preserve"><value>Auto (newest)</value></data>
-  <data name="Settings.Wine.Proton.Hint" xml:space="preserve"><value>Each game can override the Proton version and prefix in its details pane. Online-Fix titles still get their own default prefix and the runtime the chosen Proton build asks for.</value></data>
+  <data name="Settings.Wine.Proton.Hint" xml:space="preserve"><value>The prefix, the Steam Runtime and the DLL overrides are picked per game — Online-Fix titles get their own prefix and the runtime the chosen Proton build asks for.</value></data>
   <data name="Settings.Wine.Command" xml:space="preserve"><value>Wine command:</value></data>
   <data name="Settings.Wine.CommandPlaceholder" xml:space="preserve"><value>wine</value></data>
   <data name="Settings.Wine.Prefix" xml:space="preserve"><value>Wine prefix:</value></data>

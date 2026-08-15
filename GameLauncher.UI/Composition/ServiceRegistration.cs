@@ -53,8 +53,7 @@ public static class ServiceRegistration
         services.AddSingleton<IScreenshotService>(sp => new ScreenshotService(
             sp.GetRequiredService<ILocalDbService>(),
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ScreenshotService)),
-            sp.GetRequiredService<ILogger<ScreenshotService>>(),
-            Path.Combine(AppPaths.DataDirectory, "covers")));
+            sp.GetRequiredService<ILogger<ScreenshotService>>()));
 
         // The parallel download limit is read from settings per download, so changing it in
         // Settings takes effect without a restart.
@@ -69,7 +68,6 @@ public static class ServiceRegistration
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<IAppShutdown, AppShutdown>();
         services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<IShellService, DesktopShellService>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
         services.AddSingleton<IGameItemViewModelFactory, GameItemViewModelFactory>();

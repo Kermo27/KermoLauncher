@@ -48,24 +48,14 @@ public partial class LibraryViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(SelectedSortIndex))]
     private LibrarySortMode _sortMode = LibrarySortMode.Name;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedGame))]
-    [NotifyPropertyChangedFor(nameof(HasNoGames))]
-    [NotifyPropertyChangedFor(nameof(HasNoFilteredResults))]
-    private GameItemViewModel? _selectedGame;
-
-    public ObservableCollection<StatusFilterViewModel> StatusFilters { get; } = [];
-
     private string _selectedTag = AllTag;
-    private LibraryStatusFilter _statusFilter = LibraryStatusFilter.All;
 
     private const string AllTag = "All";
 
     /// <summary>Empty once loading is done, so the skeletons do not linger in the visual tree.</summary>
     public object[] SkeletonItems => IsLoading ? _skeletons : [];
 
-    public string[] SortOptions =>
-        [L["Library.SortName"], L["Library.SortPlayTime"], L["Library.SortSize"], L["Library.SortLastPlayed"]];
+    public string[] SortOptions => [L["Library.SortName"], L["Library.SortPlayTime"], L["Library.SortSize"]];
 
     public int SelectedSortIndex
     {
@@ -83,11 +73,9 @@ public partial class LibraryViewModel : ViewModelBase
 
     public string CountText => string.Format(L["Library.CountGames"], FilteredCount);
 
-    public bool HasSelectedGame => SelectedGame != null;
+    public bool HasNoGames => !IsLoading && Games.Count == 0;
 
-    public bool HasNoGames => !IsLoading && !HasSelectedGame && Games.Count == 0;
-
-    public bool HasNoFilteredResults => !IsLoading && !HasSelectedGame && Games.Count > 0 && FilteredGames.Count == 0;
+    public bool HasNoFilteredResults => !IsLoading && Games.Count > 0 && FilteredGames.Count == 0;
 
     public LibraryViewModel(
         IGameService gameService,
@@ -107,11 +95,6 @@ public partial class LibraryViewModel : ViewModelBase
         _gameService.OnGameStateChanged += OnGameStateChanged;
         _downloadService.OnTaskUpdated += OnDownloadTaskUpdated;
         _gameService.OnProgress += OnDownloadProgress;
-
-        foreach (var filter in Enum.GetValues<LibraryStatusFilter>())
-        {
-            StatusFilters.Add(new StatusFilterViewModel(filter, StatusLabel(filter), filter == _statusFilter, SelectStatus));
-        }
     }
 
     public Task InitializeAsync() => LoadAsync();
@@ -162,9 +145,6 @@ public partial class LibraryViewModel : ViewModelBase
 
     private void ReplaceGames(IEnumerable<GameItemViewModel> items)
     {
-        var selectedId = SelectedGame?.Game.Id;
-        SelectedGame = null;
-
         foreach (var old in Games)
         {
             old.Dispose();
@@ -175,12 +155,6 @@ public partial class LibraryViewModel : ViewModelBase
         {
             item.BeginLoadCover();
             Games.Add(item);
-        }
-
-        if (selectedId != null)
-        {
-            var restored = Games.FirstOrDefault(g => g.Game.Id == selectedId);
-            if (restored != null) OpenDetails(restored);
         }
 
         ApplyFilter();
@@ -213,20 +187,10 @@ public partial class LibraryViewModel : ViewModelBase
             query = query.Where(g => g.Tags.Contains(_selectedTag));
         }
 
-        query = _statusFilter switch
-        {
-            LibraryStatusFilter.Installed => query.Where(g => g.Status == InstallStatus.Installed),
-            LibraryStatusFilter.Updates => query.Where(g => g.IsUpdateAvailable),
-            LibraryStatusFilter.Available => query.Where(g =>
-                g.Status is InstallStatus.NotInstalled or InstallStatus.Failed),
-            _ => query
-        };
-
         query = SortMode switch
         {
             LibrarySortMode.PlayTime => query.OrderByDescending(g => g.LocalState?.PlayTimeSeconds ?? 0),
             LibrarySortMode.Size => query.OrderByDescending(g => g.Game.SizeBytes),
-            LibrarySortMode.LastPlayed => query.OrderByDescending(g => g.LocalState?.LastPlayed ?? DateTime.MinValue),
             _ => query.OrderBy(g => g.Name)
         };
 
@@ -277,11 +241,7 @@ public partial class LibraryViewModel : ViewModelBase
             if (item != null)
             {
                 item.LocalState = state;
-                if (SortMode is LibrarySortMode.PlayTime or LibrarySortMode.LastPlayed
-                    || _statusFilter != LibraryStatusFilter.All)
-                {
-                    ApplyFilter();
-                }
+                if (SortMode == LibrarySortMode.PlayTime) ApplyFilter();
                 return;
             }
 
@@ -408,50 +368,6 @@ public partial class LibraryViewModel : ViewModelBase
         base.OnLanguageChanged();
         OnPropertyChanged(nameof(SortOptions));
         OnPropertyChanged(nameof(CountText));
-        foreach (var chip in StatusFilters)
-        {
-            chip.Label = StatusLabel(chip.Filter);
-        }
-    }
-
-    public void OpenDetails(GameItemViewModel item)
-    {
-        if (SelectedGame == item)
-        {
-            item.BeginLoadGallery();
-            return;
-        }
-
-        SelectedGame?.ClearGallery();
-        SelectedGame = item;
-        item.BeginLoadGallery();
-    }
-
-    [RelayCommand]
-    private void CloseDetails()
-    {
-        SelectedGame?.ClearGallery();
-        SelectedGame = null;
-    }
-
-    private string StatusLabel(LibraryStatusFilter filter) => filter switch
-    {
-        LibraryStatusFilter.Installed => L["Library.FilterInstalled"],
-        LibraryStatusFilter.Updates => L["Library.FilterUpdates"],
-        LibraryStatusFilter.Available => L["Library.FilterAvailable"],
-        _ => L["Library.FilterAll"]
-    };
-
-    private void SelectStatus(LibraryStatusFilter filter)
-    {
-        if (_statusFilter == filter) return;
-        _statusFilter = filter;
-
-        foreach (var chip in StatusFilters)
-        {
-            chip.IsSelected = chip.Filter == filter;
-        }
-        ApplyFilter();
     }
 
     private void SelectTag(string tag)
@@ -471,7 +387,6 @@ public partial class LibraryViewModel : ViewModelBase
     {
         SearchText = "";
         SelectTag(AllTag);
-        SelectStatus(LibraryStatusFilter.All);
     }
 
     protected override void DisposeCore()
@@ -489,6 +404,5 @@ public partial class LibraryViewModel : ViewModelBase
         }
         Games.Clear();
         FilteredGames.Clear();
-        SelectedGame = null;
     }
 }

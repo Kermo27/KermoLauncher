@@ -66,45 +66,4 @@ public class LocalDbServiceTests : IDisposable
 
         Assert.Single(await _db.GetAllGamesAsync());
     }
-
-    [Fact]
-    public async Task UpsertLocalStateAsync_RoundTripsCompatOverridesAndKeepsThemOnPlaytimeUpdate()
-    {
-        await _db.UpsertGamesAsync([Game("g")]);
-        await _db.UpsertLocalStateAsync(new GameLocalState(
-            "g",
-            InstallStatus.Installed,
-            "/tmp/g",
-            12,
-            null,
-            "1.0",
-            null,
-            "GE-Proton10-1",
-            "/tmp/pfx"));
-
-        var loaded = await _db.GetLocalStateAsync("g");
-        Assert.Equal("GE-Proton10-1", loaded!.ProtonVersion);
-        Assert.Equal("/tmp/pfx", loaded.CompatPrefix);
-
-        await _db.UpsertLocalStateAsync(loaded with { PlayTimeSeconds = 99 });
-        var again = await _db.GetLocalStateAsync("g");
-        Assert.Equal(99, again!.PlayTimeSeconds);
-        Assert.Equal("GE-Proton10-1", again.ProtonVersion);
-        Assert.Equal("/tmp/pfx", again.CompatPrefix);
-    }
-
-    [Fact]
-    public async Task UpsertLocalStateAsync_BlankCompatOverridesBecomeNull()
-    {
-        await _db.UpsertGamesAsync([Game("g")]);
-        await _db.UpsertLocalStateAsync(new GameLocalState(
-            "g",
-            InstallStatus.Installed,
-            ProtonVersion: "  ",
-            CompatPrefix: ""));
-
-        var loaded = await _db.GetLocalStateAsync("g");
-        Assert.Null(loaded!.ProtonVersion);
-        Assert.Null(loaded.CompatPrefix);
-    }
 }

@@ -207,13 +207,6 @@ public class GameService : IGameService, IDisposable
             }
 
             var totalBytes = toDownload.Sum(f => f.SizeBytes);
-            var stagingCopy = installedManifest != null && !resume
-                ? Math.Max(0, manifest.TotalBytes - totalBytes)
-                : 0;
-            InstallFolder.ThrowIfInsufficient(
-                installRoot,
-                totalBytes + stagingCopy + InstallFolder.DiskSpaceMarginBytes);
-
             var updatedTask = downloadTask with { TotalBytes = totalBytes, Status = DownloadStatus.Downloading };
             await _db.UpsertDownloadTaskAsync(updatedTask);
             OnTaskUpdated?.Invoke(updatedTask);
@@ -527,7 +520,7 @@ public class GameService : IGameService, IDisposable
             }
 
             var settings = await _db.GetSettingsAsync();
-            var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings, localState);
+            var startInfo = GameLaunchHelper.Build(exePath, workDir, config.LaunchArgs, settings);
             LogLaunchCommand(gameId, startInfo);
             var process = Process.Start(startInfo);
 
@@ -546,21 +539,6 @@ public class GameService : IGameService, IDisposable
             _logger.LogError(ex, "Failed to launch game {GameId}", gameId);
             return new LaunchResult(false, Error: ex.Message);
         }
-    }
-
-    public async Task SaveCompatOverridesAsync(string gameId, string? protonVersion, string? compatPrefix)
-    {
-        var local = await _db.GetLocalStateAsync(gameId)
-            ?? new GameLocalState(gameId, InstallStatus.NotInstalled);
-        var updated = local with
-        {
-            ProtonVersion = string.IsNullOrWhiteSpace(protonVersion) ? null : protonVersion.Trim(),
-            CompatPrefix = string.IsNullOrWhiteSpace(compatPrefix) ? null : compatPrefix.Trim()
-        };
-        if (updated == local) return;
-
-        await _db.UpsertLocalStateAsync(updated);
-        OnGameStateChanged?.Invoke(updated);
     }
 
     /// <summary>
@@ -652,10 +630,10 @@ public class GameService : IGameService, IDisposable
         return await _db.GetGameAsync(gameId);
     }
 
-    public async Task<bool> VerifyInstallAsync(string gameId)
+    public async Task VerifyInstallAsync(string gameId)
     {
         var localState = await _db.GetLocalStateAsync(gameId);
-        if (localState?.InstalledManifest == null || localState.InstalledPath == null) return false;
+        if (localState?.InstalledManifest == null || localState.InstalledPath == null) return;
 
         foreach (var file in localState.InstalledManifest.Files)
         {
@@ -663,13 +641,13 @@ public class GameService : IGameService, IDisposable
             if (!File.Exists(path))
             {
                 await MarkCorruptAsync(localState, $"Missing file: {file.Path}");
-                return false;
+                return;
             }
             var sha256 = await ComputeSha256Async(path);
             if (!string.Equals(sha256, file.Sha256, StringComparison.OrdinalIgnoreCase))
             {
                 await MarkCorruptAsync(localState, $"Checksum mismatch: {file.Path}");
-                return false;
+                return;
             }
         }
 
@@ -679,8 +657,6 @@ public class GameService : IGameService, IDisposable
             await _db.UpsertLocalStateAsync(ok);
             OnGameStateChanged?.Invoke(ok);
         }
-
-        return true;
     }
 
     private async Task MarkCorruptAsync(GameLocalState state, string reason)
