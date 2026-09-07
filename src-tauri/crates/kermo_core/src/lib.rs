@@ -1,3 +1,9 @@
+mod error;
+mod models;
+
+pub use error::{Error, Result};
+pub use models::*;
+
 pub fn app_name() -> &'static str {
     "KermoLauncher"
 }
