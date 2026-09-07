@@ -1,8 +1,10 @@
+mod db;
 mod error;
 mod models;
 mod paths;
 mod url_sanitizer;
 
+pub use db::LocalDb;
 pub use error::{Error, Result};
 pub use models::*;
 pub use paths::{data_directory, data_directory_from, db_path};
