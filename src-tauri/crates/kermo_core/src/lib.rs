@@ -1,8 +1,12 @@
 mod error;
 mod models;
+mod paths;
+mod url_sanitizer;
 
 pub use error::{Error, Result};
 pub use models::*;
+pub use paths::{data_directory, data_directory_from, db_path};
+pub use url_sanitizer::mask_url;
 
 pub fn app_name() -> &'static str {
     "KermoLauncher"

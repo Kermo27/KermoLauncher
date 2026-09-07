@@ -2,7 +2,6 @@ use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-/// RFC 3986 unreserved — jak `Uri.EscapeDataString` w C#.
 const ESCAPE_DATA: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'-')
     .remove(b'.')
