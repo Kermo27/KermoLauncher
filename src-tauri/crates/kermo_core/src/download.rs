@@ -44,6 +44,7 @@ impl DownloadService {
 
         let webdav = self.webdav.clone();
         let task_id = task.id.clone();
+        let first_err: Arc<Mutex<Option<crate::Error>>> = Arc::new(Mutex::new(None));
 
         stream::iter(files.to_vec())
             .for_each_concurrent(max_parallel, |file| {
@@ -51,6 +52,7 @@ impl DownloadService {
                 let completed = completed.clone();
                 let in_flight = in_flight.clone();
                 let task_id = task_id.clone();
+                let first_err = first_err.clone();
                 async move {
                     let on_disk = prepare_local_file(&file);
                     if on_disk == file.size_bytes as u64 && file.size_bytes > 0 {
@@ -67,7 +69,7 @@ impl DownloadService {
 
                     let key = file.key.clone();
                     let in_flight_cb = in_flight.clone();
-                    let _ = webdav
+                    let download_result = webdav
                         .download_file(
                             &file.remote_url,
                             Path::new(&file.local_path),
@@ -82,10 +84,24 @@ impl DownloadService {
                         .await;
 
                     in_flight.lock().expect("in_flight").remove(&file.key);
-                    completed.fetch_add(file.size_bytes as u64, Ordering::Relaxed);
+                    match download_result {
+                        Ok(()) => {
+                            completed.fetch_add(file.size_bytes as u64, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            let mut slot = first_err.lock().expect("err");
+                            if slot.is_none() {
+                                *slot = Some(e);
+                            }
+                        }
+                    }
                 }
             })
             .await;
+
+        if let Some(e) = first_err.lock().expect("err").take() {
+            return Err(e);
+        }
 
         let mut done = task.clone();
         done.status = DownloadStatus::Completed;
