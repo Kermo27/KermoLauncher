@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use futures_util::stream::{self, StreamExt};
@@ -25,6 +25,7 @@ impl DownloadService {
         &self,
         task: &DownloadTask,
         files: &[DownloadFileRequest],
+        cancel: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         let mut running = task.clone();
         running.status = DownloadStatus::Downloading;
@@ -53,7 +54,18 @@ impl DownloadService {
                 let in_flight = in_flight.clone();
                 let task_id = task_id.clone();
                 let first_err = first_err.clone();
+                let cancel = cancel.clone();
                 async move {
+                    if cancel
+                        .as_ref()
+                        .is_some_and(|c| c.load(Ordering::Relaxed))
+                    {
+                        let mut slot = first_err.lock().expect("err");
+                        if slot.is_none() {
+                            *slot = Some(crate::Error::Cancelled);
+                        }
+                        return;
+                    }
                     let on_disk = prepare_local_file(&file);
                     if on_disk == file.size_bytes as u64 && file.size_bytes > 0 {
                         completed.fetch_add(file.size_bytes as u64, Ordering::Relaxed);
@@ -80,6 +92,7 @@ impl DownloadService {
                                     .expect("in_flight")
                                     .insert(key.clone(), p.bytes_received as u64);
                             },
+                            cancel.clone(),
                         )
                         .await;
 
@@ -190,6 +203,7 @@ mod tests {
                 local_path: dest.to_string_lossy().into(),
                 size_bytes: 5,
             }],
+            None,
         )
         .await
         .unwrap();
@@ -226,6 +240,7 @@ mod tests {
                 local_path: dest.to_string_lossy().into(),
                 size_bytes: 2,
             }],
+            None,
         )
         .await
         .unwrap();

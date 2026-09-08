@@ -147,6 +147,62 @@ pub struct DownloadFileRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchResult {
+    pub success: bool,
+    pub process_id: Option<u32>,
+    pub error: Option<String>,
+}
+
+impl LaunchResult {
+    pub fn ok(pid: u32) -> Self {
+        Self {
+            success: true,
+            process_id: Some(pid),
+            error: None,
+        }
+    }
+
+    pub fn fail(error: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            process_id: None,
+            error: Some(error.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderValidation {
+    pub ok: bool,
+    pub error: Option<String>,
+    pub free_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SteamCache {
+    pub game_id: String,
+    pub steam_app_id: Option<i64>,
+    pub tags: Vec<String>,
+    pub description: String,
+    pub cover_path: Option<String>,
+    pub hero_path: Option<String>,
+    pub fetched_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryItem {
+    pub game: Game,
+    pub local: Option<GameLocalState>,
+    pub cover_path: Option<String>,
+    pub extra_tags: Vec<String>,
+    pub extra_description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AppSettings {
     #[serde(default)]

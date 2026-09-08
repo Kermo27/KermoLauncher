@@ -1,4 +1,6 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use reqwest::header::{HeaderValue, RANGE};
@@ -108,12 +110,16 @@ impl WebDavClient {
         local_path: &Path,
         task_id: &str,
         mut on_progress: impl FnMut(DownloadProgress),
+        cancel: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         tracing::info!(
             "Downloading {} to {}",
             mask_url(remote_url),
             local_path.display()
         );
+        if cancel.as_ref().is_some_and(|c| c.load(Ordering::Relaxed)) {
+            return Err(Error::Cancelled);
+        }
         if let Some(parent) = local_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
@@ -121,21 +127,21 @@ impl WebDavClient {
             Ok(meta) => meta.len(),
             Err(_) => 0,
         };
-        let response = self.get_with_optional_range(remote_url, existing).await?;
+        let response = cancellable(self.get_with_optional_range(remote_url, existing), &cancel).await?;
         if response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
             tracing::warn!(
                 "Server rejected resume for {}; restarting from scratch",
                 local_path.display()
             );
             let _ = tokio::fs::remove_file(local_path).await;
-            let retry = self.get_with_optional_range(remote_url, 0).await?;
+            let retry = cancellable(self.get_with_optional_range(remote_url, 0), &cancel).await?;
             ensure_success(&retry, remote_url)?;
-            self.write_body(retry, local_path, task_id, 0, &mut on_progress)
+            self.write_body(retry, local_path, task_id, 0, &mut on_progress, cancel.clone())
                 .await?;
             return Ok(());
         }
         ensure_success(&response, remote_url)?;
-        self.write_body(response, local_path, task_id, existing, &mut on_progress)
+        self.write_body(response, local_path, task_id, existing, &mut on_progress, cancel)
             .await?;
         Ok(())
     }
@@ -160,6 +166,7 @@ impl WebDavClient {
         task_id: &str,
         existing: u64,
         on_progress: &mut impl FnMut(DownloadProgress),
+        cancel: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         let remaining = response.content_length().unwrap_or(0);
         let total = existing + remaining;
@@ -171,7 +178,14 @@ impl WebDavClient {
             .append(true)
             .open(local_path)
             .await?;
-        while let Some(chunk) = response.chunk().await? {
+        loop {
+            let chunk = tokio::select! {
+                chunk = response.chunk() => chunk?,
+                _ = wait_until_cancelled(&cancel) => return Err(Error::Cancelled),
+            };
+            let Some(chunk) = chunk else {
+                break;
+            };
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
             if last_report.elapsed() >= Duration::from_millis(100) {
@@ -199,6 +213,28 @@ impl WebDavClient {
         }
         file.flush().await?;
         Ok(())
+    }
+}
+
+async fn wait_until_cancelled(cancel: &Option<Arc<AtomicBool>>) {
+    match cancel {
+        None => std::future::pending::<()>().await,
+        Some(flag) => loop {
+            if flag.load(Ordering::Relaxed) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        },
+    }
+}
+
+async fn cancellable<T>(
+    fut: impl std::future::Future<Output = Result<T>>,
+    cancel: &Option<Arc<AtomicBool>>,
+) -> Result<T> {
+    tokio::select! {
+        result = fut => result,
+        _ = wait_until_cancelled(cancel) => Err(Error::Cancelled),
     }
 }
 
@@ -314,7 +350,7 @@ mod tests {
         let dest = dir.path().join("file.bin");
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"hello");
@@ -336,7 +372,7 @@ mod tests {
 
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"hellworld");
@@ -363,7 +399,7 @@ mod tests {
 
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"abc");

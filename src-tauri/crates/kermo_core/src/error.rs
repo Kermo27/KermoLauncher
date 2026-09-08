@@ -14,6 +14,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("http {status} from {url}")]
     HttpStatus { status: u16, url: String },
+    #[error("cancelled")]
+    Cancelled,
     #[error("{0}")]
     Message(String),
 }
@@ -28,5 +30,9 @@ impl Error {
             status: status.as_u16(),
             url: mask_url(url),
         }
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        matches!(self, Error::Cancelled)
     }
 }

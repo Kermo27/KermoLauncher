@@ -330,6 +330,51 @@ impl LocalDb {
         *self.settings_cache.lock().expect("settings lock") = Some(settings.clone());
         Ok(())
     }
+
+    pub fn upsert_steam_cache(&self, cache: &SteamCache) -> Result<()> {
+        self.initialize()?;
+        let conn = self.connect()?;
+        conn.execute(
+            r#"
+            INSERT INTO steam_cache (game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            ON CONFLICT(game_id) DO UPDATE SET
+                steam_app_id=?2, tags=?3, description=?4, cover_path=?5, hero_path=?6, fetched_at=?7
+            "#,
+            params![
+                cache.game_id,
+                cache.steam_app_id,
+                serde_json::to_string(&cache.tags)?,
+                cache.description,
+                cache.cover_path,
+                cache.hero_path,
+                cache.fetched_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_steam_cache(&self, game_id: &str) -> Result<Option<SteamCache>> {
+        self.initialize()?;
+        let conn = self.connect()?;
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at
+            FROM steam_cache WHERE game_id = ?1
+            "#,
+        )?;
+        Ok(stmt
+            .query_row(params![game_id], map_steam_cache)
+            .optional()?)
+    }
+
+    pub fn get_all_steam_cache(&self) -> Result<Vec<SteamCache>> {
+        self.initialize()?;
+        let conn = self.connect()?;
+        let mut stmt = conn.prepare("SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at FROM steam_cache")?;
+        let rows = stmt.query_map([], map_steam_cache)?;
+        Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+    }
 }
 
 fn migrate_schema(conn: &Connection) -> Result<()> {
@@ -345,11 +390,27 @@ fn migrate_schema(conn: &Connection) -> Result<()> {
         )
         .unwrap_or(0);
 
-    if version < 2 {
+        if version < 2 {
         add_column_if_missing(conn, "games", "manifest_url", "TEXT")?;
         add_column_if_missing(conn, "game_local_state", "installed_version", "TEXT")?;
         add_column_if_missing(conn, "game_local_state", "installed_manifest", "TEXT")?;
         conn.execute("INSERT INTO schema_version (version) VALUES (2)", [])?;
+    }
+    if version < 3 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS steam_cache (
+                game_id TEXT PRIMARY KEY,
+                steam_app_id INTEGER,
+                tags TEXT,
+                description TEXT,
+                cover_path TEXT,
+                hero_path TEXT,
+                fetched_at INTEGER
+            );
+            "#,
+        )?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (3)", [])?;
     }
     Ok(())
 }
@@ -396,6 +457,19 @@ fn parse_json_vec(raw: Option<String>) -> Vec<String> {
     raw.as_deref()
         .and_then(|s| serde_json::from_str(s).ok())
         .unwrap_or_default()
+}
+
+fn map_steam_cache(row: &Row<'_>) -> rusqlite::Result<SteamCache> {
+    let tags = parse_json_vec(row.get("tags")?);
+    Ok(SteamCache {
+        game_id: row.get("game_id")?,
+        steam_app_id: row.get("steam_app_id")?,
+        tags,
+        description: row.get::<_, Option<String>>("description")?.unwrap_or_default(),
+        cover_path: row.get("cover_path")?,
+        hero_path: row.get("hero_path")?,
+        fetched_at: row.get::<_, Option<i64>>("fetched_at")?.unwrap_or(0),
+    })
 }
 
 fn map_local_state(row: &Row<'_>) -> rusqlite::Result<GameLocalState> {

@@ -1,6 +1,41 @@
 use crate::db::LocalDb;
+use crate::models::LibraryItem;
 use crate::webdav::WebDavClient;
 use crate::Result;
+
+pub fn library_items(db: &LocalDb) -> Result<Vec<LibraryItem>> {
+    let games = db.get_all_games()?;
+    let states: std::collections::HashMap<_, _> = db
+        .get_all_local_states()?
+        .into_iter()
+        .map(|s| (s.game_id.clone(), s))
+        .collect();
+    let steam: std::collections::HashMap<_, _> = db
+        .get_all_steam_cache()?
+        .into_iter()
+        .map(|s| (s.game_id.clone(), s))
+        .collect();
+    Ok(games
+        .into_iter()
+        .map(|game| {
+            let cached = steam.get(&game.id);
+            LibraryItem {
+                local: states.get(&game.id).cloned(),
+                cover_path: cached.and_then(|s| s.cover_path.clone()),
+                extra_tags: cached.map(|s| s.tags.clone()).unwrap_or_default(),
+                extra_description: cached.and_then(|s| {
+                    let d = s.description.trim();
+                    if d.is_empty() {
+                        None
+                    } else {
+                        Some(s.description.clone())
+                    }
+                }),
+                game,
+            }
+        })
+        .collect())
+}
 
 pub async fn refresh_from_remote(db: &LocalDb, webdav: &WebDavClient) -> Result<usize> {
     let mut settings = db.get_settings()?;
