@@ -11,6 +11,7 @@ use crate::{Error, Result};
 
 const METADATA_TIMEOUT: Duration = Duration::from_secs(120);
 
+#[derive(Clone)]
 pub struct WebDavClient {
     client: reqwest::Client,
 }

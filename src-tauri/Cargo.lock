@@ -2096,6 +2096,7 @@ name = "kermo_core"
 version = "2.0.0"
 dependencies = [
  "dirs",
+ "futures-util",
  "percent-encoding",
  "regex",
  "reqwest 0.12.28",

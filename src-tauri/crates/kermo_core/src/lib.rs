@@ -1,5 +1,6 @@
 mod catalog;
 mod db;
+mod download;
 mod error;
 mod manifest_diff;
 mod models;
@@ -9,6 +10,7 @@ mod webdav;
 
 pub use catalog::refresh_from_remote;
 pub use db::LocalDb;
+pub use download::DownloadService;
 pub use error::{Error, Result};
 pub use manifest_diff::{files_to_download, is_same_file, stale_files};
 pub use models::*;

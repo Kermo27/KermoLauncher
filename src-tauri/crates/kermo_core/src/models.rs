@@ -82,7 +82,6 @@ pub struct GameLocalState {
     pub status: InstallStatus,
     pub installed_path: Option<String>,
     pub play_time_seconds: i64,
-    /// Unix seconds; `None` when never played (C# stored 0 as null).
     pub last_played: Option<i64>,
     pub installed_version: Option<String>,
     pub installed_manifest: Option<GameManifest>,
@@ -139,7 +138,14 @@ pub struct DownloadProgress {
     pub estimated_time_remaining_secs: Option<f64>,
 }
 
-/// PascalCase — tak C# zapisuje `app_settings` w SQLite. Nie zmieniaj na camelCase.
+#[derive(Debug, Clone)]
+pub struct DownloadFileRequest {
+    pub key: String,
+    pub remote_url: String,
+    pub local_path: String,
+    pub size_bytes: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AppSettings {
