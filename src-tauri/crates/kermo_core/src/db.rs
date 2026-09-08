@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Row};
@@ -19,6 +19,10 @@ impl LocalDb {
             initialized: Mutex::new(false),
             settings_cache: Mutex::new(None),
         }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     fn connect(&self) -> Result<Connection> {
@@ -561,8 +565,8 @@ mod tests {
         })
         .unwrap();
 
-        // Nowa instancja = pusty cache, jak `new LocalDbService(path)` w teście C#.
-        let reopened = LocalDb::open(db.path.clone());
+
+        let reopened = LocalDb::open(db.path());
         let settings = reopened.get_settings().unwrap();
         assert!(settings.onboarding_completed);
         assert!(!settings.needs_onboarding());
@@ -582,7 +586,7 @@ mod tests {
         .unwrap();
         drop(conn);
 
-        let reopened = LocalDb::open(db.path.clone());
+        let reopened = LocalDb::open(db.path());
         let s = reopened.get_settings().unwrap();
         assert_eq!(s.install_folder, "/games");
         assert_eq!(s.max_parallel_downloads, 4);

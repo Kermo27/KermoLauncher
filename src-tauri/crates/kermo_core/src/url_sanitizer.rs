@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 pub fn mask_url(url: &str) -> String {
     if url.trim().is_empty() {
         return url.to_string();
@@ -50,7 +52,10 @@ fn mask_parsed(uri: &url::Url) -> Option<String> {
 }
 
 fn mask_by_heuristics(url: &str) -> String {
-    let re = regex::Regex::new(r"(?i)(/s/|/dav/files/)([^/?#\s]+)").expect("static regex");
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(r"(?i)(/s/|/dav/files/)([^/?#\s]+)").expect("static regex")
+    });
     re.replace_all(url, "$1***").into_owned()
 }
 

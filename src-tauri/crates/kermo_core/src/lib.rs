@@ -1,14 +1,18 @@
+mod catalog;
 mod db;
 mod error;
 mod models;
 mod paths;
 mod url_sanitizer;
+mod webdav;
 
+pub use catalog::refresh_from_remote;
 pub use db::LocalDb;
 pub use error::{Error, Result};
 pub use models::*;
 pub use paths::{data_directory, data_directory_from, db_path};
 pub use url_sanitizer::mask_url;
+pub use webdav::WebDavClient;
 
 pub fn app_name() -> &'static str {
     "KermoLauncher"

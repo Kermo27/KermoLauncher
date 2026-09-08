@@ -11,23 +11,25 @@ const ESCAPE_DATA: &AsciiSet = &NON_ALPHANUMERIC
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Game {
+    #[serde(alias = "Id")]
     pub id: String,
+    #[serde(alias = "Name")]
     pub name: String,
-    #[serde(default)]
+    #[serde(default, alias = "Version")]
     pub version: String,
-    #[serde(default)]
+    #[serde(default, alias = "Description")]
     pub description: String,
-    #[serde(default)]
+    #[serde(default, alias = "Tags")]
     pub tags: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "Dependencies")]
     pub dependencies: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "ScreenshotUrls")]
     pub screenshot_urls: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "ManifestUrl")]
     pub manifest_url: String,
-    #[serde(default)]
+    #[serde(default, alias = "SizeBytes")]
     pub size_bytes: i64,
-    #[serde(default)]
+    #[serde(default, alias = "LaunchConfig")]
     pub launch_config: Option<LaunchConfig>,
 }
 
@@ -60,7 +62,7 @@ pub struct GameManifest {
     pub version: String,
     #[serde(alias = "TotalBytes")]
     pub total_bytes: i64,
-    #[serde(alias = "Files")]
+    #[serde(default, alias = "Files")]
     pub files: Vec<GameFile>,
 }
 
@@ -118,7 +120,7 @@ pub struct DownloadTask {
     pub error: Option<String>,
     pub started_at: Option<i64>,
     pub completed_at: Option<i64>,
-    #[serde(skip)]
+    #[serde(skip, default)]
     pub install_stage: InstallStage,
 }
 
@@ -387,5 +389,16 @@ mod tests {
         s.onboarding_completed = true;
         s.nextcloud = None;
         assert!(!s.needs_onboarding());
+    }
+
+    #[test]
+    fn game_deserializes_pascal_case_like_csharp() {
+        let g: Game = serde_json::from_str(
+            r#"{"Id":"x","Name":"X","ManifestUrl":"x/manifest.json","SizeBytes":1}"#,
+        )
+        .unwrap();
+        assert_eq!(g.id, "x");
+        assert_eq!(g.manifest_url, "x/manifest.json");
+        assert_eq!(g.size_bytes, 1);
     }
 }
