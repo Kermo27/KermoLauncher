@@ -1,6 +1,11 @@
-use std::time::Duration;
+use std::path::Path;
+use std::time::{Duration, Instant};
 
-use crate::models::{Game, GameManifest, NextcloudConfig};
+use reqwest::header::{HeaderValue, RANGE};
+use reqwest::StatusCode;
+use tokio::io::AsyncWriteExt;
+
+use crate::models::{DownloadProgress, Game, GameManifest, NextcloudConfig};
 use crate::url_sanitizer::mask_url;
 use crate::{Error, Result};
 
@@ -92,8 +97,107 @@ impl WebDavClient {
             .await
         {
             Ok(resp) => resp.status().is_success(),
-            Err(_) => false, // C#: pusty catch → false
+            Err(_) => false,
         }
+    }
+
+    pub async fn download_file(
+        &self,
+        remote_url: &str,
+        local_path: &Path,
+        task_id: &str,
+        mut on_progress: impl FnMut(DownloadProgress),
+    ) -> Result<()> {
+        tracing::info!(
+            "Downloading {} to {}",
+            mask_url(remote_url),
+            local_path.display()
+        );
+        if let Some(parent) = local_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        let existing = match tokio::fs::metadata(local_path).await {
+            Ok(meta) => meta.len(),
+            Err(_) => 0,
+        };
+        let response = self.get_with_optional_range(remote_url, existing).await?;
+        if response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
+            tracing::warn!(
+                "Server rejected resume for {}; restarting from scratch",
+                local_path.display()
+            );
+            let _ = tokio::fs::remove_file(local_path).await;
+            let retry = self.get_with_optional_range(remote_url, 0).await?;
+            ensure_success(&retry, remote_url)?;
+            self.write_body(retry, local_path, task_id, 0, &mut on_progress)
+                .await?;
+            return Ok(());
+        }
+        ensure_success(&response, remote_url)?;
+        self.write_body(response, local_path, task_id, existing, &mut on_progress)
+            .await?;
+        Ok(())
+    }
+    async fn get_with_optional_range(
+        &self,
+        remote_url: &str,
+        existing: u64,
+    ) -> Result<reqwest::Response> {
+        let mut req = self.client.get(remote_url);
+        if existing > 0 {
+            req = req.header(
+                RANGE,
+                HeaderValue::from_str(&format!("bytes={existing}-")).expect("ascii range"),
+            );
+        }
+        Ok(req.send().await?)
+    }
+    async fn write_body(
+        &self,
+        mut response: reqwest::Response,
+        local_path: &Path,
+        task_id: &str,
+        existing: u64,
+        on_progress: &mut impl FnMut(DownloadProgress),
+    ) -> Result<()> {
+        let remaining = response.content_length().unwrap_or(0);
+        let total = existing + remaining;
+        let mut downloaded = existing;
+        let start = Instant::now();
+        let mut last_report = Instant::now();
+        let mut file = tokio::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(local_path)
+            .await?;
+        while let Some(chunk) = response.chunk().await? {
+            file.write_all(&chunk).await?;
+            downloaded += chunk.len() as u64;
+            if last_report.elapsed() >= Duration::from_millis(100) {
+                let elapsed = start.elapsed().as_secs_f64();
+                let speed = if elapsed > 0.0 {
+                    (downloaded - existing) as f64 / elapsed
+                } else {
+                    0.0
+                };
+                let left = total.saturating_sub(downloaded) as f64;
+                let eta = if speed > 0.0 {
+                    Some(left / speed)
+                } else {
+                    None
+                };
+                on_progress(DownloadProgress {
+                    task_id: task_id.to_string(),
+                    bytes_received: downloaded as i64,
+                    total_bytes: total as i64,
+                    speed_bytes_per_second: speed,
+                    estimated_time_remaining_secs: eta,
+                });
+                last_report = Instant::now();
+            }
+        }
+        file.flush().await?;
+        Ok(())
     }
 }
 
@@ -110,6 +214,9 @@ fn ensure_success(response: &reqwest::Response, url: &str) -> Result<()> {
 mod tests {
     use super::*;
     use reqwest::StatusCode;
+    use std::fs;
+    use tempfile::tempdir;
+    use wiremock::matchers::header;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -191,5 +298,73 @@ mod tests {
         let msg = err.to_string();
         assert!(!msg.contains("SecretTok"), "{msg}");
         assert!(msg.contains("***"), "{msg}");
+    }
+
+    #[tokio::test]
+    async fn download_file_writes_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/file.bin"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("hello"))
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let dest = dir.path().join("file.bin");
+        WebDavClient::new()
+            .unwrap()
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .await
+            .unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"hello");
+    }
+
+    #[tokio::test]
+    async fn download_file_sends_range_when_partial_exists() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/file.bin"))
+            .and(header("range", "bytes=4-"))
+            .respond_with(ResponseTemplate::new(206).set_body_string("world"))
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let dest = dir.path().join("file.bin");
+        fs::write(&dest, b"hell").unwrap();
+
+        WebDavClient::new()
+            .unwrap()
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .await
+            .unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"hellworld");
+    }
+
+    #[tokio::test]
+    async fn download_file_restarts_on_416() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/file.bin"))
+            .and(header("range", "bytes=3-"))
+            .respond_with(ResponseTemplate::new(416))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/file.bin"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("abc"))
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let dest = dir.path().join("file.bin");
+        fs::write(&dest, b"xxx").unwrap();
+
+        WebDavClient::new()
+            .unwrap()
+            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {})
+            .await
+            .unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"abc");
     }
 }
