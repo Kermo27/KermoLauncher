@@ -89,6 +89,16 @@ impl LocalDb {
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS steam_cache (
+                game_id TEXT PRIMARY KEY,
+                steam_app_id INTEGER,
+                tags TEXT,
+                description TEXT,
+                cover_path TEXT,
+                hero_path TEXT,
+                fetched_at INTEGER
+            );
             "#,
         )?;
 
@@ -667,5 +677,23 @@ mod tests {
         assert_eq!(s.theme, "Dark");
         assert_eq!(s.language, "pl");
         assert!(s.onboarding_completed);
+    }
+
+    #[test]
+    fn steam_cache_is_created_for_existing_v2_database() {
+        let file = NamedTempFile::new().unwrap();
+        {
+            let conn = Connection::open(file.path()).unwrap();
+            conn.execute_batch(
+                r#"
+                CREATE TABLE games (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+                CREATE TABLE schema_version (version INTEGER NOT NULL);
+                INSERT INTO schema_version (version) VALUES (2);
+                "#,
+            )
+            .unwrap();
+        }
+        let db = LocalDb::open(file.path());
+        assert!(db.get_all_steam_cache().unwrap().is_empty());
     }
 }

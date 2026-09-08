@@ -1,5 +1,5 @@
 use crate::db::LocalDb;
-use crate::models::LibraryItem;
+use crate::models::{LibraryItem, NextcloudConfig};
 use crate::webdav::WebDavClient;
 use crate::Result;
 
@@ -35,6 +35,20 @@ pub fn library_items(db: &LocalDb) -> Result<Vec<LibraryItem>> {
             }
         })
         .collect())
+}
+
+pub async fn probe_share(
+    webdav: &WebDavClient,
+    share_url: &str,
+) -> Result<(NextcloudConfig, usize)> {
+    let config = NextcloudConfig {
+        share_url: share_url.trim().to_string(),
+        share_token: String::new(),
+        root_folder: String::new(),
+    };
+    let resolved = webdav.resolve_config(&config).await?;
+    let games = webdav.download_metadata(&resolved).await?;
+    Ok((resolved, games.len()))
 }
 
 pub async fn refresh_from_remote(db: &LocalDb, webdav: &WebDavClient) -> Result<usize> {

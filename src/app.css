@@ -4,7 +4,39 @@
   --color-window: #14161b;
   --color-sidebar: #1c1f27;
   --color-card: #21252e;
+  --color-border: #2c3140;
   --color-text: #edeff4;
   --color-muted: #a7aebe;
   --color-accent: #6c8cfb;
+  --color-danger: #e05d6f;
+  --color-ok: #5ec48a;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --color-window: #eef0f5;
+  --color-sidebar: #f7f8fb;
+  --color-card: #ffffff;
+  --color-border: #d5d9e3;
+  --color-text: #1b1e27;
+  --color-muted: #5d6474;
+  --color-accent: #3d63e8;
+  --color-danger: #c43b4e;
+  --color-ok: #2f9e64;
+  color-scheme: light;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+select,
+input,
+textarea,
+button {
+  color-scheme: inherit;
 }

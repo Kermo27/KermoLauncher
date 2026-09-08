@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use kermo_core::{
-    library_items, refresh_from_remote, AppSettings, DownloadService, DownloadTask, FolderValidation,
-    GameService, LaunchResult, LibraryItem, LocalDb, ProtonInstall, SteamClient, WebDavClient,
+    library_items, probe_share, refresh_from_remote, AppSettings, DownloadService, DownloadTask,
+    FolderValidation, GameService, LaunchResult, LibraryItem, LocalDb, ProtonInstall, SteamClient,
+    WebDavClient,
 };
 use tauri::{Manager, State};
 
@@ -29,6 +30,13 @@ fn app_info() -> AppInfo {
 struct AppInfo {
     name: String,
     version: String,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ShareProbe {
+    game_count: usize,
+    root_folder: String,
 }
 
 #[tauri::command]
@@ -139,8 +147,25 @@ fn list_proton_versions() -> Vec<ProtonInstall> {
     kermo_core::find_proton_installs(None)
 }
 
+#[tauri::command]
+async fn test_share(state: State<'_, AppState>, share_url: String) -> Result<ShareProbe, String> {
+    let (config, n) = probe_share(&state.webdav, &share_url)
+        .await
+        .map_err(map_err)?;
+    Ok(ShareProbe {
+        game_count: n,
+        root_folder: config.root_folder,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    {
+        unsafe {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -165,6 +190,7 @@ pub fn run() {
             get_library,
             get_download_tasks,
             refresh_catalog,
+            test_share,
             install_game,
             update_game,
             resume_install,
