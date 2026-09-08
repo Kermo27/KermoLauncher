@@ -1,6 +1,7 @@
 mod catalog;
 mod db;
 mod error;
+mod manifest_diff;
 mod models;
 mod paths;
 mod url_sanitizer;
@@ -9,6 +10,7 @@ mod webdav;
 pub use catalog::refresh_from_remote;
 pub use db::LocalDb;
 pub use error::{Error, Result};
+pub use manifest_diff::{files_to_download, is_same_file, stale_files};
 pub use models::*;
 pub use paths::{data_directory, data_directory_from, db_path};
 pub use url_sanitizer::mask_url;
