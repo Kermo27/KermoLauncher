@@ -91,3 +91,10 @@ export type LaunchResult = {
   processId: number | null;
   error: string | null;
 };
+
+export type ProtonInstall = {
+  name: string;
+  directory: string;
+  protonScript: string;
+  requiredRuntimeAppId: string | null;
+}

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppInfo, AppSettings, FolderValidation, ShareProbe, DownloadTask, LaunchResult, LibraryItem } from "./types";
+import type { AppInfo, AppSettings, FolderValidation, ShareProbe, DownloadTask, LaunchResult, LibraryItem, ProtonInstall } from "./types";
 
 export function appInfo() {
   return invoke<AppInfo>("app_info");
@@ -71,4 +71,12 @@ export function verifyInstall(gameId: string) {
 
 export function openInstallFolder(gameId: string) {
   return invoke<void>("open_install_folder", { gameId });
+}
+
+export function listProtonVersions() {
+  return invoke<ProtonInstall[]>("list_proton_versions");
+}
+
+export function dataDirectory() {
+  return invoke<string>("data_directory");
 }
