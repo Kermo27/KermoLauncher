@@ -24,7 +24,7 @@ jobs:
           workspaces: src-tauri -> target
 
       - name: Test kermo_core
-        run: cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml --offline || cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml
+        run: cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml
 
       - name: Check frontend
         run: |

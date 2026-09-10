@@ -2,13 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, rewrite/tauri ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, rewrite/tauri ]
 
 jobs:
   build:
-    # The launcher ships for Windows and Linux, so both platforms have to build.
     strategy:
       fail-fast: false
       matrix:
