@@ -12,6 +12,7 @@
   import type { AppSettings, ProtonInstall } from "$lib/types";
   import { onMount } from "svelte";
   import { toast } from "$lib/toasts.svelte";
+  import { checkForAppUpdate } from "$lib/updater";
 
   const showWine = !/windows nt/i.test(navigator.userAgent);
 
@@ -22,6 +23,7 @@
   let folderMsg = $state("");
   let protons = $state<ProtonInstall[]>([]);
   let dataDir = $state("");
+  let checkingUpdate = $state(false);
 
   const nextSettings = $derived(buildSettings(draft, shareUrl));
   const dirty = $derived(JSON.stringify(nextSettings) !== JSON.stringify(session.settings));
@@ -79,6 +81,15 @@
     toast("success", t("Settings.SavedTitle"), t("Settings.SavedMessage"));
   }
 
+  async function checkUpdates() {
+    checkingUpdate = true;
+    try {
+      await checkForAppUpdate();
+    } finally {
+      checkingUpdate = false;
+    }
+  }
+
   onMount(async () => {
     if (showWine) {
       protons = await listProtonVersions();
@@ -117,6 +128,9 @@
       <input type="checkbox" bind:checked={draft.AutoUpdate} />
       {t("Settings.General.AutoUpdate")}
     </label>
+    <button class="mt-3 rounded-md border border-border px-3 py-2 text-sm" disabled={checkingUpdate} onclick={checkUpdates}>
+      {t("Settings.General.CheckUpdates")}
+    </button>
     <label class="mt-3 block text-sm text-muted">{t("Settings.General.Theme")}
       <select class="mt-1 w-full rounded-md border border-border bg-window px-3 py-2" bind:value={draft.Theme}>
         <option value="Light">{t("Settings.Theme.Light")}</option>

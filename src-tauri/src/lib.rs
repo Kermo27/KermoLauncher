@@ -182,6 +182,8 @@ pub fn run() {
     }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let db = Arc::new(LocalDb::open(kermo_core::db_path()));
             db.initialize().map_err(|e| e.to_string())?;
