@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KermoLauncher",
+  "version": "2.0.0",
+  "identifier": "dev.kermo.launcher",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "KermoLauncher",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 940,
+        "minHeight": 620
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$HOME/.local/share/KermoLauncher/**", "$APPDATA/KermoLauncher/**", "$LOCALAPPDATA/KermoLauncher/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "appimage"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+      "updater": {
+          "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCRjFGNTRDRTI1MTRENApSV1RVRkNYT1ZCKy9DZTBzYWQyd0pUR2FSdWlEUmNDVFZhQWlGamlvSS9FNjhuSXh4WElCY0ZZcgo=",
+          "endpoints": [
+              "https://github.com/Kermo27/KermoLauncher/releases/download/tauri-latest/latest.json"
+          ],
+          "windows": {
+              "installMode": "passive"
+          }
+      }
+  }
+}

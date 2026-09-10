@@ -1,103 +1,94 @@
 # KermoLauncher
 
-<img src="docs/icon.png" width="72" alt="KermoLauncher">
+<img src="src-tauri/icons/128x128.png" width="72" alt="KermoLauncher">
 
 Personal game launcher. The catalog lives on a **public Nextcloud share**; the app installs, updates, and launches games, and tracks playtime.
 
-**Download:** [kermo.dev](https://kermo.dev) · [GitHub Releases](https://github.com/Kermo27/KermoLauncher/releases/latest)
+**2.0** is Tauri 2 + Svelte. 1.x C# installs do **not** auto-update to 2.0 — install 2.0 separately. Playtime and settings stay: the same `launcher.db` paths as 1.x.
 
-The repo also includes **KermoLauncher Admin Tool** (Windows) — scan a test games folder, generate `manifest.json` / `metadata.json`, then copy only the SHA-256 delta into the Nextcloud-synced `Games` folder. The desktop client uploads it; the launcher’s public share stays as it is.
+**Download:** [GitHub Releases](https://github.com/Kermo27/KermoLauncher/releases)
+
+A second app, **KermoLauncher Admin**, publishes games into the synced Nextcloud folder (SHA-256 delta copy). Screenshots and covers are not uploaded; the launcher fetches them from Steam.
 
 ## Features
 
 - Game library from a public Nextcloud link (`metadata.json`)
-- Game cards with cover art (first image from `screenshots/`), install status, tags and filtering
+- Cover grid, search, tags, and status filters (installed / in progress / failed / updates)
+- Game details: hero, Steam gallery, notes, verify files, open install folder
 - Install with SHA-256 verification, per-file delta updates, parallel downloads, pause and resume
 - Playtime tracking and last-launched date
 - Windows games on Linux through Proton (Wine as a fallback), including Online-Fix
 - Themes: light, dark, system — UI in Polish or English
-- Launcher self-update from GitHub Releases
-- Admin Tool: compare the test folder to the synced library by hash, then copy added/changed files and delete removed ones
+- Launcher self-update from GitHub Releases (2.x → 2.x)
+- Admin: scan a test folder, edit notes/version/launch exe, copy only changed files, remove leftover games, bump patch version when files change
 
 ## Project structure
 
 ```
 KermoLauncher/
-├── GameLauncher.Core/        # WebDAV, download, install, SQLite, Proton, updates
-├── GameLauncher.UI/          # launcher (Avalonia)
-├── GameLauncher.UI.Shared/   # shared Avalonia bits used by the launcher and Admin Tool
-├── GameLauncher.AdminTool/   # publisher (Avalonia, Windows)
-├── GameLauncher.Tests/
-├── docs/                     # kermo.dev (GitHub Pages)
-├── packaging/linux/          # .desktop, icon, install.sh
-└── GameLauncher.sln
+├── src/                 # launcher UI (SvelteKit)
+├── src-tauri/           # launcher shell + kermo_core
+├── admin/               # Admin Tool UI (Svelte + Vite)
+└── admin/src-tauri/     # Admin Tool shell
 ```
 
 ## Requirements
 
-- .NET 8 SDK (to build)
-- Windows 10/11 or Linux x64 (to run)
+- Node.js (LTS) and Rust (stable)
+- Windows 10/11 (WebView2) or Linux x64 (WebKitGTK 4.1)
+
+On Debian/Ubuntu-like systems:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+```
 
 ## Building
 
 ```bash
-dotnet build -c Release
+npm install
+npm run tauri dev
 ```
 
-To produce a single-file self-contained build (`win-x64` or `linux-x64`):
+Admin Tool (separate app):
 
 ```bash
-dotnet publish GameLauncher.UI -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
+npm run tauri:admin
 ```
 
-Single-file publishing bundles the native libraries (Skia, HarfBuzz, SQLite) inside the
-executable, so the result is one file with no loose `.so`/`.dll` next to it. The launcher's
-self-update relies on that: it replaces exactly one file.
+Release installers (NSIS on Windows, AppImage on Linux):
 
-## Website
+```bash
+npm run tauri build
+npm run tauri:admin:build
+```
 
-[kermo.dev](https://kermo.dev) is the static page in [`docs/`](docs/), served by **GitHub Pages**
-(`Settings → Pages → Deploy from a branch → main / docs`, custom domain in `docs/CNAME`).
-Download buttons resolve the latest GitHub Release at load time, so a new tag does not require
-editing the page. The page is Polish by default, with an EN toggle.
+Updater artifacts are signed. For a local launcher release build set `TAURI_SIGNING_PRIVATE_KEY` to the path or contents of your private key (optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). CI uses the same variables as GitHub Actions secrets.
+
+Typecheck and tests:
+
+```bash
+npm run check
+cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml
+```
 
 ## Releases
 
-Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which
-builds both platforms, derives the version from the tag, and publishes:
+Push a `v2.*` tag (or run **Tauri Release**). That builds the launcher:
 
-- `KermoLauncher-<version>-win-x64.exe`
-- `KermoLauncher-<version>-linux-x64.tar.gz` — binary + `.desktop` + icon + `install.sh`
-- `KermoLauncher-<version>-linux-x64` — plain binary for in-app updates (`chmod +x` after a
-  manual download; GitHub release assets carry no file permissions)
-- `KermoLauncher.AdminTool-<version>-win-x64.zip`
-- `SHA256SUMS` — verified by the launcher before it installs an update
+- Windows NSIS installer
+- Linux AppImage
+- `latest.json` for in-app updates (copied to the `tauri-latest` GitHub release)
 
-The workflow can also be run manually (**Run workflow**) to build the assets without creating a
-release. Two constraints keep older installs able to update: the Windows asset must stay a single
-`.exe`, and no other `.exe` may be added to a release, because clients before 1.0.6 pick the first
-matching file they find.
+Admin installers are built locally with `npm run tauri:admin:build`. They are not part of the launcher updater.
 
-### Linux install
+2.x GitHub releases are **prereleases** so GitHub “Latest” stays on 1.x. 2.0 clients read `tauri-latest`, not Latest.
 
-Download `KermoLauncher-<version>-linux-x64.tar.gz`, extract it, then:
+### Linux
 
-```bash
-./install.sh ./KermoLauncher
-```
+Download the AppImage, `chmod +x`, run it.
 
-That places the binary in `~/.local/bin/kermolauncher` (user-writable, so self-update works), a
-desktop entry under `~/.local/share/applications/`, and the icon under
-`~/.local/share/icons/hicolor/256x256/apps/`. You can also run the plain
-`KermoLauncher-<version>-linux-x64` binary directly.
-
-Windows games launch through **Proton** by default on Linux (Settings → Windows games):
-`umu-run` when available, otherwise Steam Runtime + `proton run` (runtime taken from Proton’s
-`toolmanifest.vdf`). Install GE-Proton under Steam’s `compatibilitytools.d`. Wine remains a
-selectable fallback. When `OnlineFix.ini` / `OnlineFix*.dll` is present, the launcher sets the
-usual `WINEDLLOVERRIDES` and SpaceWar (`480`) game id automatically and skips umu (same idea as
-online-fix / SOFL). Steam should be running for online-fix multiplayer. `protontricks` remains
-for prefix tooling (VC++, .NET), not launch.
+Windows games launch through **Proton** by default (Settings → Windows games): `umu-run` when available, otherwise Steam Runtime + `proton run` (runtime taken from Proton’s `toolmanifest.vdf`). Install GE-Proton under Steam’s `compatibilitytools.d`. Wine remains a selectable fallback. When `OnlineFix.ini` / `OnlineFix*.dll` is present, the launcher sets the usual `WINEDLLOVERRIDES` and SpaceWar (`480`) game id automatically and skips umu. Steam should be running for online-fix multiplayer. `protontricks` remains for prefix tooling (VC++, .NET), not launch.
 
 ## Nextcloud library layout
 
@@ -105,19 +96,13 @@ for prefix tooling (VC++, .NET), not launch.
 <shared folder>/
 ├── metadata.json
 └── <Game Name>/
-    ├── game files...           (any files/subfolders)
-    ├── manifest.json           (generated by the Admin Tool)
-    └── screenshots/
-        ├── 1.jpg
-        └── 2.png
+    ├── game files...
+    └── manifest.json
 ```
 
-Each game is a subfolder containing the raw game files. The Admin Tool generates a `manifest.json`
-per game (list of files with sizes and SHA-256 hashes, total size, version) and a catalog
-`metadata.json` that references it. Everything except `screenshots/` and `manifest.json` counts as
-game content.
+Each game is a subfolder of raw game files. Admin generates a per-game `manifest.json` (paths, sizes, SHA-256, version) and a catalog `metadata.json`. `screenshots/` and `manifest.json` are excluded from the install. Covers and the gallery come from Steam in the launcher.
 
-`metadata.json` format (generated by the Admin Tool):
+`metadata.json`:
 
 ```json
 [
@@ -125,10 +110,11 @@ game content.
     "id": "shift-at-midnight",
     "name": "Shift At Midnight",
     "version": "1.1.0",
-    "description": "...",
+    "description": "",
+    "notes": "Online-Fix, 4 GB patch",
     "tags": ["adventure", "pixel art"],
     "dependencies": [],
-    "screenshotUrls": ["Shift At Midnight/screenshots/1.jpg"],
+    "screenshotUrls": [],
     "manifestUrl": "Shift At Midnight/manifest.json",
     "sizeBytes": 123456789,
     "launchConfig": {
@@ -153,27 +139,28 @@ Per-game `manifest.json`:
 }
 ```
 
-When installing, the launcher downloads only files that changed since the last installed manifest
-(delta update) and verifies every downloaded file against its SHA-256 checksum. The Admin Tool
-skips copying files that already match in the destination folder (same SHA-256).
+The launcher downloads only files that changed since the last installed manifest and verifies each SHA-256. Admin skips copying files that already match in the destination folder.
 
 ## Setup from a share link
 
-1. In the Admin Tool **Game editor**, scan the folder where you test games (not the Nextcloud copy)
-   and generate `manifest.json` / `metadata.json`.
-2. On the **Publish** tab, pick the synced library folder (usually `~/Nextcloud/Games`), **Compare**,
-   then copy the delta. Nextcloud desktop uploads it; keep an existing **public link** on that folder.
+1. In **KermoLauncher Admin**, scan the folder where you test games (not the Nextcloud copy). Edit notes, version, and launch exe as needed.
+2. Pick the synced library folder (usually `~/Nextcloud/Games`), **Compare**, then **Publish**. Nextcloud desktop uploads the delta; keep an existing **public link** on that folder.
 3. In the launcher: **Settings → Game source (Nextcloud)** — paste the share link and save.
 4. Go back to **Library** and click **Refresh**.
 
 ## App data
 
-Settings, library and install state are stored in SQLite:
+Launcher settings and install state are in SQLite:
 
-- Windows: `%LOCALAPPDATA%\KermoLauncher\launcher.db` (migration from the legacy `GameLauncher` path happens automatically)
+- Windows: `%LOCALAPPDATA%\KermoLauncher\launcher.db` (migrated from the old `GameLauncher` folder if that is all you had)
 - Linux: `~/.local/share/KermoLauncher/launcher.db`
 
-The Nextcloud share link lives only in that database — it is never part of the repo or a build.
+Admin state (scan/dest folders and edited metadata):
+
+- Windows: `%LOCALAPPDATA%\KermoLauncherAdmin\admin-state.json`
+- Linux: `~/.local/share/KermoLauncherAdmin/admin-state.json`
+
+The Nextcloud share link lives only in `launcher.db` — never in the repo or a build.
 
 ## License
 

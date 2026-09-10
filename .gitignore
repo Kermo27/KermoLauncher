@@ -1,12 +1,5 @@
-## .NET build output
-bin/
-obj/
-
 ## IDE
-.vs/
 .vscode/
-*.user
-*.suo
 .idea/
 
 ## OS
@@ -17,5 +10,20 @@ Thumbs.db
 *.log
 logs/
 
-## Published output
-publish/
+## Node / SvelteKit / Vite
+node_modules
+/build
+/.svelte-kit
+/package
+/admin/dist
+/admin/.svelte-kit
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+## Rust / Tauri
+target/
+src-tauri/gen/schemas
+admin/src-tauri/gen/schemas

@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-window: #14161b;
+  --color-sidebar: #1c1f27;
+  --color-card: #21252e;
+  --color-border: #2c3140;
+  --color-text: #edeff4;
+  --color-muted: #a7aebe;
+  --color-accent: #6c8cfb;
+  --color-danger: #e05d6f;
+  --color-ok: #5ec48a;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+input,
+textarea,
+button,
+select {
+  color-scheme: inherit;
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-sidebar);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.875rem;
+}
