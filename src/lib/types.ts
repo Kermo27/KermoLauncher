@@ -62,7 +62,7 @@ export type Game = {
 
 export type GameLocalState = {
   game_id: string;
-  status: InstallStatus,
+  status: InstallStatus;
   installed_path: string | null;
   play_time_seconds: number;
   last_played: number | null;
@@ -81,6 +81,7 @@ export type LibraryItem = {
   game: Game;
   local: GameLocalState | null;
   coverPath: string | null;
+  heroPath: string | null;
   extraTags: string[];
   extraDescription: string | null;
 };

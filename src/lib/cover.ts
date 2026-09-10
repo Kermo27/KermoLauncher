@@ -1,10 +1,24 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { shareFileUrl } from "./share";
 import type { LibraryItem } from "./types";
 
 export function coverSrc(item: LibraryItem) {
   if (item.coverPath) return convertFileSrc(item.coverPath);
   const shot = item.game.screenshotUrls?.[0];
   return shot || null;
+}
+
+export function heroSrc(item: LibraryItem, shareUrl = "", rootFolder = "") {
+  if (item.heroPath) return convertFileSrc(item.heroPath);
+  const shots = screenshotSrcs(item, shareUrl, rootFolder);
+  if (shots[0]) return shots[0];
+  return coverSrc(item);
+}
+
+export function screenshotSrcs(item: LibraryItem, shareUrl = "", rootFolder = "") {
+  return (item.game.screenshotUrls ?? [])
+    .map((u) => shareFileUrl(shareUrl, rootFolder, u))
+    .filter(Boolean);
 }
 
 export function tagsOf(item: LibraryItem) {

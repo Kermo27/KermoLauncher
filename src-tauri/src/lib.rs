@@ -126,6 +126,20 @@ fn verify_install(state: State<AppState>, game_id: String) -> Result<(), String>
 }
 
 #[tauri::command]
+fn open_install_folder(state: State<AppState>, game_id: String) -> Result<(), String> {
+    let local = state
+        .db
+        .get_local_state(&game_id)
+        .map_err(map_err)?
+        .ok_or_else(|| "Not installed".to_string())?;
+    let path = local
+        .installed_path
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| "Not installed".to_string())?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn validate_install_folder(path: String) -> FolderValidation {
     kermo_core::validate_install_folder(&path)
 }
@@ -199,6 +213,7 @@ pub fn run() {
             uninstall_game,
             launch_game,
             verify_install,
+            open_install_folder,
             validate_install_folder,
             default_install_folder,
             data_directory,

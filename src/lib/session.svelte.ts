@@ -7,6 +7,7 @@ export const session = $state({
   ready: false,
   settings: null as AppSettings | null,
   view: "library" as "library" | "settings",
+  gameId: null as string | null
 });
 
 export async function boot() {

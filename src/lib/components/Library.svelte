@@ -4,7 +4,7 @@
   import { format } from "$lib/format";
   import { t } from "$lib/i18n";
   import type { DownloadTask, LibraryItem } from "$lib/types";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import GameCard from "./GameCard.svelte";
 
   const ALL = "__all__";
@@ -43,7 +43,7 @@
   }
 
   function taskFor(id: string) {
-    return tasks.find((t) => t.game_id === id) ?? null;
+    return tasks.find((x) => x.game_id === id) ?? null;
   }
 
   async function load() {
@@ -70,12 +70,11 @@
     }
   }
 
-  let timer: ReturnType<typeof setInterval>;
-  onMount(async () => {
-    await refresh();
-    timer = setInterval(load, 1000);
+  onMount(() => {
+    void load();
+    const timer = setInterval(load, 1000);
+    return () => clearInterval(timer);
   });
-  onDestroy(() => clearInterval(timer));
 </script>
 
 <div class="flex h-full flex-col p-5">
@@ -100,7 +99,7 @@
   </header>
 
   <div class="mb-4 flex flex-wrap gap-1.5">
-    {#each tags as name}
+    {#each tags as name (name)}
       <button
         class="rounded-full px-2.5 py-1 text-[11px] {tag === name ? 'bg-accent text-white' : 'bg-sidebar text-muted'}"
         onclick={() => (tag = name)}

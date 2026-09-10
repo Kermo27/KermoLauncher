@@ -198,6 +198,7 @@ pub struct LibraryItem {
     pub game: Game,
     pub local: Option<GameLocalState>,
     pub cover_path: Option<String>,
+    pub hero_path: Option<String>,
     pub extra_tags: Vec<String>,
     pub extra_description: Option<String>,
 }

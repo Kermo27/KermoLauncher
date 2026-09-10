@@ -64,3 +64,11 @@ export function uninstallGame(gameId: string) {
 export function launchGame(gameId: string) {
   return invoke<LaunchResult>("launch_game", { gameId });
 }
+
+export function verifyInstall(gameId: string) {
+  return invoke<void>("verify_install", { gameId });
+}
+
+export function openInstallFolder(gameId: string) {
+  return invoke<void>("open_install_folder", { gameId });
+}

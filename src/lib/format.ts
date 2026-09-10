@@ -22,3 +22,10 @@ export function formatPlayDuration(seconds: number) {
   if (m >= 1) return `${m}m`;
   return `${s}s`;
 }
+
+export function formatLastPlayed(unix: number | null) {
+  if (!unix) return "";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(unix * 1000),
+  );
+}

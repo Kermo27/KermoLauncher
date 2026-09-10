@@ -22,6 +22,7 @@ pub fn library_items(db: &LocalDb) -> Result<Vec<LibraryItem>> {
             LibraryItem {
                 local: states.get(&game.id).cloned(),
                 cover_path: cached.and_then(|s| s.cover_path.clone()),
+                hero_path: cached.and_then(|s| s.hero_path.clone()),
                 extra_tags: cached.map(|s| s.tags.clone()).unwrap_or_default(),
                 extra_description: cached.and_then(|s| {
                     let d = s.description.trim();
