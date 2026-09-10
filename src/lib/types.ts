@@ -51,6 +51,7 @@ export type Game = {
   tags: string[];
   dependencies: string[];
   screenshotUrls: string[];
+  notes?: string;
   manifestUrl: string;
   sizeBytes: number;
   launchConfig: {
@@ -84,6 +85,7 @@ export type LibraryItem = {
   heroPath: string | null;
   extraTags: string[];
   extraDescription: string | null;
+  extraScreenshotPaths?: string[];
 };
 
 export type LaunchResult = {

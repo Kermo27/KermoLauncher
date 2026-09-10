@@ -1,0 +1,81 @@
+const en: Record<string, string> = {
+  "Title": "Library publisher",
+  "Subtitle": "Scan the test folder, edit notes and version, then copy the SHA-256 delta into Nextcloud/Games.",
+  "ScanFolder": "Test folder",
+  "DestFolder": "Nextcloud/Games",
+  "Browse": "Browse",
+  "Scan": "Scan",
+  "Compare": "Compare",
+  "Publish": "Publish",
+  "Games": "{0} games",
+  "Name": "Name",
+  "Version": "Version",
+  "Tags": "Tags",
+  "Notes": "Notes",
+  "NotesHint": "Mods, Online-Fix, patches — shown in the launcher under the Steam description.",
+  "Description": "Description override",
+  "DescriptionHint": "Optional. Leave empty and the launcher fills this from Steam.",
+  "Launch": "Launch executable",
+  "WorkingDir": "Working directory",
+  "Args": "Launch args",
+  "SteamHint": "Screenshots and covers are fetched from Steam in the launcher. They are not uploaded to Nextcloud.",
+  "InSync": "Up to date",
+  "Summary": "+{0}  ~{1}  −{2}",
+  "Orphans": "Only in the library folder",
+  "Remove": "Remove",
+  "Busy": "Working…",
+  "ScanDone": "Found {0} games.",
+  "Published": "Copied {0} file changes. Nextcloud will sync them.",
+  "CatalogOnly": "Catalog updated (notes / metadata). No game files changed.",
+  "Bumped": "Version bumped: {0}",
+  "Removed": "Removed {0} from the library folder.",
+  "ErrScan": "Scan failed: {0}",
+  "ErrPublish": "Publish failed: {0}",
+  "ConfirmOrphan": "Delete {0} from the Nextcloud Games folder and drop it from metadata.json?",
+};
+
+const pl: Record<string, string> = {
+  "Title": "Publikacja biblioteki",
+  "Subtitle": "Skanuj folder testowy, uzupełnij notatki i wersję, potem skopiuj deltę SHA-256 do Nextcloud/Games.",
+  "ScanFolder": "Folder testowy",
+  "DestFolder": "Nextcloud/Games",
+  "Browse": "Przeglądaj",
+  "Scan": "Skanuj",
+  "Compare": "Porównaj",
+  "Publish": "Publikuj",
+  "Games": "{0} gier",
+  "Name": "Nazwa",
+  "Version": "Wersja",
+  "Tags": "Tagi",
+  "Notes": "Notatki",
+  "NotesHint": "Mody, Online-Fix, patche — w launcherze pod opisem ze Steam.",
+  "Description": "Własny opis",
+  "DescriptionHint": "Opcjonalnie. Puste pole uzupełni Steam w launcherze.",
+  "Launch": "Plik .exe",
+  "WorkingDir": "Katalog roboczy",
+  "Args": "Argumenty",
+  "SteamHint": "Zrzuty i okładki launcher pobiera ze Steam. Nie wrzucamy ich na Nextcloud.",
+  "InSync": "Aktualne",
+  "Summary": "+{0}  ~{1}  −{2}",
+  "Orphans": "Tylko w folderze biblioteki",
+  "Remove": "Usuń",
+  "Busy": "Praca…",
+  "ScanDone": "Znaleziono {0} gier.",
+  "Published": "Skopiowano {0} zmian. Nextcloud je zsynchronizuje.",
+  "CatalogOnly": "Zaktualizowano katalog (notatki / metadane). Pliki gier bez zmian.",
+  "Bumped": "Podbita wersja: {0}",
+  "Removed": "Usunięto {0} z folderu biblioteki.",
+  "ErrScan": "Skan nieudany: {0}",
+  "ErrPublish": "Publikacja nieudana: {0}",
+  "ConfirmOrphan": "Usunąć {0} z folderu Nextcloud/Games i z metadata.json?",
+};
+
+const dict = navigator.language.toLowerCase().startsWith("pl") ? pl : en;
+
+export function t(key: string, ...args: Array<string | number>) {
+  let s = dict[key] ?? en[key] ?? key;
+  args.forEach((a, i) => {
+    s = s.replace(`{${i}}`, String(a));
+  });
+  return s;
+}

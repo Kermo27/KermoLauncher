@@ -86,6 +86,7 @@ export const en: Record<string, string> = {
   "Library.OpenFolder": "Open folder",
   "Library.OpenFolderError": "Could not open folder: {0}",
   "Library.Gallery": "Screenshots",
+  "Library.Notes": "Notes",
   "Library.InstalledPath": "Install path",
   "Library.MissingGame": "This game is no longer in the library.",
   "Settings.Unsaved": "You have unsaved changes.",

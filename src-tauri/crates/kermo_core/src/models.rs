@@ -31,6 +31,8 @@ pub struct Game {
     pub size_bytes: i64,
     #[serde(default, alias = "LaunchConfig")]
     pub launch_config: Option<LaunchConfig>,
+    #[serde(default, alias = "Notes")]
+    pub notes: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,7 +46,7 @@ pub struct LaunchConfig {
     pub launch_args: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameFile {
     #[serde(alias = "Path")]
@@ -189,6 +191,8 @@ pub struct SteamCache {
     pub description: String,
     pub cover_path: Option<String>,
     pub hero_path: Option<String>,
+    #[serde(default)]
+    pub screenshot_paths: Vec<String>,
     pub fetched_at: i64,
 }
 
@@ -201,6 +205,8 @@ pub struct LibraryItem {
     pub hero_path: Option<String>,
     pub extra_tags: Vec<String>,
     pub extra_description: Option<String>,
+    #[serde(default)]
+    pub extra_screenshot_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -463,5 +469,15 @@ mod tests {
         assert_eq!(g.id, "x");
         assert_eq!(g.manifest_url, "x/manifest.json");
         assert_eq!(g.size_bytes, 1);
+        assert!(g.notes.is_empty());
+    }
+
+    #[test]
+    fn game_deserializes_notes() {
+        let g: Game = serde_json::from_str(
+            r#"{"id":"x","name":"X","notes":"Online-Fix","manifestUrl":"x/manifest.json"}"#,
+        )
+        .unwrap();
+        assert_eq!(g.notes, "Online-Fix");
     }
 }

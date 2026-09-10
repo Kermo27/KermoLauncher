@@ -31,11 +31,6 @@ jobs:
           node-version: lts/*
           cache: npm
 
-      - uses: actions/setup-dotnet@v4
-        if: runner.os == 'Windows'
-        with:
-          dotnet-version: 8.0.x
-
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: swatinem/rust-cache@v2
@@ -56,18 +51,6 @@ jobs:
           prerelease: true
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
-
-      - name: Publish Admin Tool
-        if: runner.os == 'Windows'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
-          dotnet publish GameLauncher.AdminTool -c Release -r win-x64 --self-contained \
-            -p:PublishSingleFile=true -p:Version="$VERSION" -o publish/admin
-          7z a "KermoLauncher.AdminTool-$VERSION-win-x64.zip" ./publish/admin/*
-          gh release upload "v$VERSION" "KermoLauncher.AdminTool-$VERSION-win-x64.zip" --clobber
 
   pin-updater:
     needs: publish-tauri

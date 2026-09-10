@@ -32,6 +32,9 @@ pub fn library_items(db: &LocalDb) -> Result<Vec<LibraryItem>> {
                         Some(s.description.clone())
                     }
                 }),
+                extra_screenshot_paths: cached
+                    .map(|s| s.screenshot_paths.clone())
+                    .unwrap_or_default(),
                 game,
             }
         })
@@ -111,6 +114,7 @@ mod tests {
             manifest_url: "gone/manifest.json".into(),
             size_bytes: 0,
             launch_config: None,
+            notes: String::new(),
         }])
         .unwrap();
         db.save_settings(&AppSettings {

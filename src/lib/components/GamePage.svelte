@@ -44,6 +44,7 @@
   const cover = $derived(item ? coverSrc(item) : null);
   const tags = $derived(item ? tagsOf(item) : []);
   const description = $derived(item ? descriptionOf(item) || t("Library.NoDescription") : "");
+  const notes = $derived(item?.game.notes?.trim() || "");
   const played = $derived(item ? formatPlayDuration(item.local?.play_time_seconds ?? 0) : "");
   const lastPlayed = $derived(item ? formatLastPlayed(item.local?.last_played ?? null) : "");
   const pct = $derived(taskPct(task));
@@ -214,6 +215,11 @@
 
         <h2 class="text-sm font-semibold">{t("Library.Details")}</h2>
         <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{description}</p>
+
+        {#if notes}
+          <h2 class="mt-8 text-sm font-semibold">{t("Library.Notes")}</h2>
+          <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{notes}</p>
+        {/if}
 
         {#if shots.length}
           <h2 class="mt-8 text-sm font-semibold">{t("Library.Gallery")}</h2>

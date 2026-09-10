@@ -1,11 +1,3 @@
-## .NET
-bin/
-obj/
-.vs/
-*.user
-*.suo
-publish/
-
 ## IDE
 .vscode/
 .idea/
@@ -18,13 +10,20 @@ Thumbs.db
 *.log
 logs/
 
-## Node / SvelteKit
+## Node / SvelteKit / Vite
 node_modules
 /build
 /.svelte-kit
 /package
+/admin/dist
+/admin/.svelte-kit
 .env
 .env.*
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+## Rust / Tauri
+target/
+src-tauri/gen/schemas
+admin/src-tauri/gen/schemas

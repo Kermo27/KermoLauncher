@@ -174,6 +174,7 @@ mod tests {
             manifest_url: "g1/manifest.json".into(),
             size_bytes: 0,
             launch_config: None,
+            notes: String::new(),
         }])
         .unwrap();
     }

@@ -18,6 +18,11 @@ pub fn db_path() -> PathBuf {
     data_directory().join("launcher.db")
 }
 
+pub fn admin_data_directory() -> PathBuf {
+    let base = dirs::data_local_dir().expect("LocalAppData / XDG_DATA_HOME");
+    base.join("KermoLauncherAdmin")
+}
+
 fn migrate_legacy(new_dir: &Path, old_dir: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(new_dir)?;
 

@@ -50,39 +50,77 @@ impl SteamClient {
     ) -> Result<()> {
         std::fs::create_dir_all(cover_dir)?;
         for game in games {
-            if db.get_steam_cache(&game.id)?.is_some() {
-                continue;
-            }
-            if !game.screenshot_urls.is_empty()
+            let cache = db.get_steam_cache(&game.id)?;
+            if let Some(ref cache) = cache {
+                let has_gallery = !cache.screenshot_paths.is_empty() || !game.screenshot_urls.is_empty();
+                if cache.cover_path.is_some() && has_gallery {
+                    continue;
+                }
+            } else if !game.screenshot_urls.is_empty()
                 && !game.tags.is_empty()
                 && !game.description.trim().is_empty()
             {
                 continue;
             }
-            if let Err(e) = self.enrich_one(db, game, cover_dir).await {
+            if let Err(e) = self.enrich_one(db, game, cover_dir, cache.as_ref()).await {
                 tracing::debug!("Steam enrich skipped for {}: {e}", game.id);
             }
         }
         Ok(())
     }
 
-    async fn enrich_one(&self, db: &LocalDb, game: &Game, cover_dir: &Path) -> Result<()> {
-        let Some(app_id) = self.search_app_id(&game.name).await? else {
-            return Ok(());
+    async fn enrich_one(
+        &self,
+        db: &LocalDb,
+        game: &Game,
+        cover_dir: &Path,
+        existing: Option<&SteamCache>,
+    ) -> Result<()> {
+        let app_id = if let Some(id) = existing.and_then(|c| c.steam_app_id) {
+            id as u32
+        } else {
+            let Some(id) = self.search_app_id(&game.name).await? else {
+                return Ok(());
+            };
+            id
         };
         let details = self.app_details(app_id).await?;
-        let cover_path = self
-            .download_image(
-                &format!("{}/steam/apps/{app_id}/library_600x900.jpg", self.cdn_base),
-                &cover_dir.join(format!("{}.jpg", game.id)),
-            )
-            .await?;
-        let hero_path = self
-            .download_image(
-                &format!("{}/steam/apps/{app_id}/library_hero.jpg", self.cdn_base),
-                &cover_dir.join(format!("{}-hero.jpg", game.id)),
-            )
-            .await?;
+        let cover_path = match existing.and_then(|c| c.cover_path.clone()) {
+            Some(path) if Path::new(&path).is_file() => Some(path),
+            _ => {
+                self.download_image(
+                    &format!("{}/steam/apps/{app_id}/library_600x900.jpg", self.cdn_base),
+                    &cover_dir.join(format!("{}.jpg", game.id)),
+                )
+                .await?
+            }
+        };
+        let hero_path = match existing.and_then(|c| c.hero_path.clone()) {
+            Some(path) if Path::new(&path).is_file() => Some(path),
+            _ => {
+                self.download_image(
+                    &format!("{}/steam/apps/{app_id}/library_hero.jpg", self.cdn_base),
+                    &cover_dir.join(format!("{}-hero.jpg", game.id)),
+                )
+                .await?
+            }
+        };
+        let mut screenshot_paths = existing
+            .map(|c| c.screenshot_paths.clone())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|p| Path::new(p).is_file())
+            .collect::<Vec<_>>();
+        if screenshot_paths.is_empty() && game.screenshot_urls.is_empty() {
+            for (i, url) in details.screenshot_urls.iter().take(8).enumerate() {
+                if let Some(path) = self
+                    .download_image(url, &cover_dir.join(format!("{}-shot-{i}.jpg", game.id)))
+                    .await?
+                {
+                    screenshot_paths.push(path);
+                }
+            }
+        }
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
@@ -90,10 +128,19 @@ impl SteamClient {
         db.upsert_steam_cache(&SteamCache {
             game_id: game.id.clone(),
             steam_app_id: Some(app_id as i64),
-            tags: details.tags,
-            description: details.description,
+            tags: if details.tags.is_empty() {
+                existing.map(|c| c.tags.clone()).unwrap_or_default()
+            } else {
+                details.tags
+            },
+            description: if details.description.is_empty() {
+                existing.map(|c| c.description.clone()).unwrap_or_default()
+            } else {
+                details.description
+            },
             cover_path,
             hero_path,
+            screenshot_paths,
             fetched_at: now,
         })?;
         Ok(())
@@ -141,6 +188,12 @@ impl SteamClient {
                 .into_iter()
                 .map(|g| g.description)
                 .collect(),
+            screenshot_urls: data
+                .screenshots
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|s| s.path_full.or(s.path_thumbnail))
+                .collect(),
         })
     }
 
@@ -165,6 +218,7 @@ impl SteamClient {
 struct SteamDetails {
     description: String,
     tags: Vec<String>,
+    screenshot_urls: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -189,6 +243,13 @@ struct AppDetailsEnvelope {
 struct AppData {
     short_description: Option<String>,
     genres: Option<Vec<Genre>>,
+    screenshots: Option<Vec<SteamScreenshot>>,
+}
+
+#[derive(Deserialize, Default)]
+struct SteamScreenshot {
+    path_full: Option<String>,
+    path_thumbnail: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -217,6 +278,7 @@ mod tests {
             manifest_url: "g1/manifest.json".into(),
             size_bytes: 0,
             launch_config: None,
+            notes: String::new(),
         }
     }
 
@@ -232,9 +294,10 @@ mod tests {
             .await;
         Mock::given(method("GET"))
             .and(path("/api/appdetails"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(
-                r#"{"480":{"success":true,"data":{"name":"Demo Game","short_description":"A demo.","genres":[{"description":"Action"}]}}}"#,
-            ))
+            .respond_with(ResponseTemplate::new(200).set_body_string(format!(
+                r#"{{"480":{{"success":true,"data":{{"name":"Demo Game","short_description":"A demo.","genres":[{{"description":"Action"}}],"screenshots":[{{"path_full":"{}/ss/full.jpg"}}]}}}}}}"#,
+                server.uri()
+            )))
             .mount(&server)
             .await;
         Mock::given(method("GET"))
@@ -245,6 +308,11 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/steam/apps/480/library_hero.jpg"))
             .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xEEu8; 64]))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/ss/full.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xDDu8; 64]))
             .mount(&server)
             .await;
 
@@ -265,6 +333,57 @@ mod tests {
         assert!(cache.cover_path.is_some());
         let cover = PathBuf::from(cache.cover_path.unwrap());
         assert_eq!(std::fs::read(&cover).unwrap().len(), 64);
+        assert_eq!(cache.screenshot_paths.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn enrich_runs_when_catalog_has_tags_but_no_screenshots() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/storesearch/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"total":1,"items":[{"type":"app","name":"Demo Game","id":480}]}"#,
+            ))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/appdetails"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(format!(
+                r#"{{"480":{{"success":true,"data":{{"short_description":"A demo.","genres":[{{"description":"Action"}}],"screenshots":[{{"path_full":"{}/ss/full.jpg"}}]}}}}}}"#,
+                server.uri()
+            )))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/library_600x900.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xFFu8; 64]))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/library_hero.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xEEu8; 64]))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/ss/full.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xDDu8; 64]))
+            .mount(&server)
+            .await;
+
+        let file = NamedTempFile::new().unwrap();
+        let db = LocalDb::open(file.path());
+        let mut g = game("Demo Game");
+        g.description = "from catalog".into();
+        g.tags = vec!["Indie".into()];
+        db.upsert_games(&[g.clone()]).unwrap();
+        let covers = tempfile::tempdir().unwrap();
+        let client = SteamClient::with_bases(server.uri(), server.uri()).unwrap();
+        client
+            .enrich_missing_into(&db, &[g], covers.path())
+            .await
+            .unwrap();
+        let cache = db.get_steam_cache("g1").unwrap().unwrap();
+        assert_eq!(cache.screenshot_paths.len(), 1);
     }
 
     #[tokio::test]

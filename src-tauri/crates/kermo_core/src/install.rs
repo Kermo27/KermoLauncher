@@ -651,6 +651,7 @@ mod tests {
             manifest_url: manifest_url.into(),
             size_bytes: size,
             launch_config: None,
+            notes: String::new(),
         }
     }
 

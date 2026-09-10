@@ -10,11 +10,16 @@
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "admin:dev": "vite --config admin/vite.config.ts",
+    "admin:build": "vite build --config admin/vite.config.ts",
+    "tauri:admin": "cd admin && tauri dev",
+    "tauri:admin:build": "cd admin && tauri build"
   },
   "license": "Unlicense",
   "dependencies": {
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.11.0"

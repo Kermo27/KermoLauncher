@@ -87,6 +87,7 @@ export const pl: Record<string, string> = {
   "Library.OpenFolder": "Otwórz folder",
   "Library.OpenFolderError": "Nie udało się otworzyć folderu: {0}",
   "Library.Gallery": "Zrzuty ekranu",
+  "Library.Notes": "Notatki",
   "Library.InstalledPath": "Ścieżka instalacji",
   "Library.MissingGame": "Tej gry nie ma już w bibliotece.",
   "Settings.Unsaved": "Masz niezapisane zmiany.",

@@ -16,9 +16,11 @@ export function heroSrc(item: LibraryItem, shareUrl = "", rootFolder = "") {
 }
 
 export function screenshotSrcs(item: LibraryItem, shareUrl = "", rootFolder = "") {
-  return (item.game.screenshotUrls ?? [])
+  const catalog = (item.game.screenshotUrls ?? [])
     .map((u) => shareFileUrl(shareUrl, rootFolder, u))
     .filter(Boolean);
+  if (catalog.length) return catalog;
+  return (item.extraScreenshotPaths ?? []).map((p) => convertFileSrc(p));
 }
 
 export function tagsOf(item: LibraryItem) {

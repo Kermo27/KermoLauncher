@@ -59,7 +59,8 @@ impl LocalDb {
                 remote_zip_url TEXT,
                 size_bytes INTEGER,
                 sha256 TEXT,
-                launch_config TEXT
+                launch_config TEXT,
+                notes TEXT
             );
 
             CREATE TABLE IF NOT EXISTS game_local_state (
@@ -97,6 +98,7 @@ impl LocalDb {
                 description TEXT,
                 cover_path TEXT,
                 hero_path TEXT,
+                screenshot_paths TEXT,
                 fetched_at INTEGER
             );
             "#,
@@ -115,11 +117,12 @@ impl LocalDb {
             tx.execute(
                 r#"
                 INSERT INTO games (id, name, version, description, tags, dependencies,
-                    screenshot_urls, manifest_url, size_bytes, launch_config)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                    screenshot_urls, manifest_url, size_bytes, launch_config, notes)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
                 ON CONFLICT(id) DO UPDATE SET
                     name=?2, version=?3, description=?4, tags=?5, dependencies=?6,
-                    screenshot_urls=?7, manifest_url=?8, size_bytes=?9, launch_config=?10
+                    screenshot_urls=?7, manifest_url=?8, size_bytes=?9, launch_config=?10,
+                    notes=?11
                 "#,
                 params![
                     game.id,
@@ -135,6 +138,7 @@ impl LocalDb {
                         .as_ref()
                         .map(serde_json::to_string)
                         .transpose()?,
+                    game.notes,
                 ],
             )?;
         }
@@ -165,7 +169,7 @@ impl LocalDb {
         let mut stmt = conn.prepare(
             r#"
             SELECT id, name, version, description, tags, dependencies, screenshot_urls,
-                   manifest_url, size_bytes, launch_config
+                   manifest_url, size_bytes, launch_config, notes
             FROM games WHERE id = ?1
             "#,
         )?;
@@ -346,10 +350,11 @@ impl LocalDb {
         let conn = self.connect()?;
         conn.execute(
             r#"
-            INSERT INTO steam_cache (game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            INSERT INTO steam_cache (game_id, steam_app_id, tags, description, cover_path, hero_path, screenshot_paths, fetched_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             ON CONFLICT(game_id) DO UPDATE SET
-                steam_app_id=?2, tags=?3, description=?4, cover_path=?5, hero_path=?6, fetched_at=?7
+                steam_app_id=?2, tags=?3, description=?4, cover_path=?5, hero_path=?6,
+                screenshot_paths=?7, fetched_at=?8
             "#,
             params![
                 cache.game_id,
@@ -358,6 +363,7 @@ impl LocalDb {
                 cache.description,
                 cache.cover_path,
                 cache.hero_path,
+                serde_json::to_string(&cache.screenshot_paths)?,
                 cache.fetched_at,
             ],
         )?;
@@ -369,7 +375,7 @@ impl LocalDb {
         let conn = self.connect()?;
         let mut stmt = conn.prepare(
             r#"
-            SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at
+            SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, screenshot_paths, fetched_at
             FROM steam_cache WHERE game_id = ?1
             "#,
         )?;
@@ -381,7 +387,7 @@ impl LocalDb {
     pub fn get_all_steam_cache(&self) -> Result<Vec<SteamCache>> {
         self.initialize()?;
         let conn = self.connect()?;
-        let mut stmt = conn.prepare("SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, fetched_at FROM steam_cache")?;
+        let mut stmt = conn.prepare("SELECT game_id, steam_app_id, tags, description, cover_path, hero_path, screenshot_paths, fetched_at FROM steam_cache")?;
         let rows = stmt.query_map([], map_steam_cache)?;
         Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
     }
@@ -422,6 +428,11 @@ fn migrate_schema(conn: &Connection) -> Result<()> {
         )?;
         conn.execute("INSERT INTO schema_version (version) VALUES (3)", [])?;
     }
+    if version < 4 {
+        add_column_if_missing(conn, "games", "notes", "TEXT")?;
+        add_column_if_missing(conn, "steam_cache", "screenshot_paths", "TEXT")?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (4)", [])?;
+    }
     Ok(())
 }
 
@@ -460,6 +471,11 @@ fn map_game(row: &Row<'_>) -> rusqlite::Result<Game> {
         manifest_url: manifest_url.unwrap_or_default(),
         size_bytes: size.unwrap_or(0),
         launch_config,
+        notes: row
+            .get::<_, Option<String>>("notes")
+            .ok()
+            .flatten()
+            .unwrap_or_default(),
     })
 }
 
@@ -478,6 +494,7 @@ fn map_steam_cache(row: &Row<'_>) -> rusqlite::Result<SteamCache> {
         description: row.get::<_, Option<String>>("description")?.unwrap_or_default(),
         cover_path: row.get("cover_path")?,
         hero_path: row.get("hero_path")?,
+        screenshot_paths: parse_json_vec(row.get("screenshot_paths").ok().flatten()),
         fetched_at: row.get::<_, Option<i64>>("fetched_at")?.unwrap_or(0),
     })
 }
@@ -580,6 +597,7 @@ mod tests {
             manifest_url: format!("{id}/manifest.json"),
             size_bytes: 0,
             launch_config: None,
+            notes: String::new(),
         }
     }
 
