@@ -1,10 +1,10 @@
 # KermoLauncher
 
-<img src="docs/icon.png" width="72" alt="KermoLauncher">
+<img src="src-tauri/icons/128x128.png" width="72" alt="KermoLauncher">
 
 Personal game launcher. The catalog lives on a **public Nextcloud share**; the app installs, updates, and launches games, and tracks playtime.
 
-**Download:** [kermo.dev](https://kermo.dev) · [GitHub Releases](https://github.com/Kermo27/KermoLauncher/releases/latest)
+**Download:** [GitHub Releases](https://github.com/Kermo27/KermoLauncher/releases/latest)
 
 The repo also includes **KermoLauncher Admin Tool** (Windows) — scan a test games folder, generate `manifest.json` / `metadata.json`, then copy only the SHA-256 delta into the Nextcloud-synced `Games` folder. The desktop client uploads it; the launcher’s public share stays as it is.
 
@@ -28,7 +28,6 @@ KermoLauncher/
 ├── GameLauncher.UI.Shared/   # shared Avalonia bits used by the launcher and Admin Tool
 ├── GameLauncher.AdminTool/   # publisher (Avalonia, Windows)
 ├── GameLauncher.Tests/
-├── docs/                     # kermo.dev (GitHub Pages)
 ├── packaging/linux/          # .desktop, icon, install.sh
 └── GameLauncher.sln
 ```
@@ -53,13 +52,6 @@ dotnet publish GameLauncher.UI -c Release -r linux-x64 --self-contained -p:Publi
 Single-file publishing bundles the native libraries (Skia, HarfBuzz, SQLite) inside the
 executable, so the result is one file with no loose `.so`/`.dll` next to it. The launcher's
 self-update relies on that: it replaces exactly one file.
-
-## Website
-
-[kermo.dev](https://kermo.dev) is the static page in [`docs/`](docs/), served by **GitHub Pages**
-(`Settings → Pages → Deploy from a branch → main / docs`, custom domain in `docs/CNAME`).
-Download buttons resolve the latest GitHub Release at load time, so a new tag does not require
-editing the page. The page is Polish by default, with an EN toggle.
 
 ## Releases
 
