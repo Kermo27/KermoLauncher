@@ -19,12 +19,13 @@
   import { session } from "$lib/session.svelte";
   import type { DownloadTask, LibraryItem } from "$lib/types";
   import { onMount } from "svelte";
+  import { ask, dialog } from "$lib/confirm.svelte";
+  import { toast } from "$lib/toasts.svelte";
+  import { runGameAction } from "$lib/game-notify";
 
   let items = $state<LibraryItem[]>([]);
   let tasks = $state<DownloadTask[]>([]);
   let loading = $state(true);
-  let err = $state("");
-  let note = $state("");
   let verifying = $state(false);
   let lightbox = $state<string | null>(null);
   let failedShots = $state<string[]>([]);
@@ -52,41 +53,35 @@
       items = await getLibrary();
       tasks = await getDownloadTasks();
     } catch (e) {
-      err = format(t("Library.LoadError"), String(e));
+      toast("error", t("Library.Title"), format(t("Library.LoadError"), String(e)));
     } finally {
       loading = false;
     }
   }
 
-  async function run(fn: () => Promise<unknown>) {
-    err = "";
-    note = "";
-    try {
-      await fn();
-      await load();
-    } catch (e) {
-      err = String(e);
-    }
+  async function run(action: "install" | "update" | "pause" | "resume" | "cancel" | "uninstall", fn: () => Promise<unknown>) {
+    if (!item) return;
+    await runGameAction(action, item.game.name, fn, item.game.version);
+    await load();
   }
 
   async function launch() {
     if (!item) return;
-    err = "";
     const result = await launchGame(item.game.id);
-    if (!result.success) err = result.error || t("Library.LaunchErrorTitle");
+    if (!result.success) {
+      toast("error", t("Library.LaunchErrorTitle"), result.error || t("Library.UnknownError"));
+    }
   }
 
   async function verify() {
     if (!item) return;
-    err = "";
-    note = "";
     verifying = true;
     try {
       await verifyInstall(item.game.id);
-      note = t("Library.VerifyOk");
+      toast("success", t("Library.VerifyTitle"), t("Library.VerifyOk"));
       await load();
     } catch (e) {
-      err = format(t("Library.VerifyError"), String(e));
+      toast("error", t("Library.VerifyTitle"), format(t("Library.VerifyError"), String(e)));
       await load();
     } finally {
       verifying = false;
@@ -95,12 +90,21 @@
 
   async function openFolder() {
     if (!item) return;
-    err = "";
     try {
       await openInstallFolder(item.game.id);
     } catch (e) {
-      err = format(t("Library.OpenFolderError"), String(e));
+      toast("error", t("Library.OpenFolder"), format(t("Library.OpenFolderError"), String(e)));
     }
+  }
+
+  async function uninstall() {
+    if (!item) return;
+    const ok = await ask(
+      t("Library.UninstallTitle"),
+      format(t("Library.UninstallConfirm"), item.game.name),
+      t("Library.Uninstall"),
+    );
+    if (ok) await run("uninstall", () => uninstallGame(item.game.id));
   }
 
   function back() {
@@ -109,6 +113,7 @@
 
   function onKey(e: KeyboardEvent) {
     if (e.key !== "Escape") return;
+    if (dialog.open) return;
     if (lightbox) {
       lightbox = null;
       return;
@@ -231,51 +236,37 @@
       </div>
 
       <aside class="space-y-3">
-        {#if err}
-          <p class="rounded-lg bg-danger/90 px-3 py-2 text-xs text-white">{err}</p>
-        {/if}
-        {#if note}
-          <p class="rounded-lg bg-ok/20 px-3 py-2 text-xs text-ok">{note}</p>
-        {/if}
-
-        <div class="flex flex-col gap-2">
-          {#if flags.canInstall}
-            <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run(() => installGame(item.game.id))}>{t("Library.Install")}</button>
-          {/if}
-          {#if flags.canPause}
-            <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run(() => pauseInstall(item.game.id))}>{t("Library.PauseDownload")}</button>
-          {/if}
-          {#if flags.canResume}
-            <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run(() => resumeInstall(item.game.id))}>{t("Library.ResumeDownload")}</button>
-          {/if}
-          {#if flags.updateAvailable}
-            <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run(() => updateGame(item.game.id))}>{t("Library.Update")}</button>
-          {/if}
-          {#if flags.canLaunch}
-            <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={launch}>{t("Library.Launch")}</button>
-          {/if}
-          {#if flags.canCancel}
-            <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run(() => cancelInstall(item.game.id))}>{t("Library.CancelDownload")}</button>
-          {/if}
-          {#if flags.canVerify}
-            <button class="rounded-lg border border-border px-3 py-2.5 text-sm" disabled={verifying} onclick={verify}>
-              {verifying ? t("Library.Verifying") : t("Library.Verify")}
-            </button>
-          {/if}
-          {#if flags.canOpenFolder}
-            <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={openFolder}>{t("Library.OpenFolder")}</button>
-          {/if}
-          {#if flags.canUninstall}
-            <button
-              class="rounded-lg border border-border px-3 py-2.5 text-sm"
-              onclick={() => {
-                if (confirm(format(t("Library.UninstallConfirm"), item.game.name))) {
-                  run(() => uninstallGame(item.game.id));
-                }
-              }}
-            >{t("Library.Uninstall")}</button>
-          {/if}
-        </div>
+          <div class="flex flex-col gap-2">
+            {#if flags.canInstall}
+              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("install", () => installGame(item.game.id))}>{t("Library.Install")}</button>
+            {/if}
+            {#if flags.canPause}
+              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run("pause", () => pauseInstall(item.game.id))}>{t("Library.PauseDownload")}</button>
+            {/if}
+            {#if flags.canResume}
+              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("resume", () => resumeInstall(item.game.id))}>{t("Library.ResumeDownload")}</button>
+            {/if}
+            {#if flags.updateAvailable}
+              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("update", () => updateGame(item.game.id))}>{t("Library.Update")}</button>
+            {/if}
+            {#if flags.canLaunch}
+              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={launch}>{t("Library.Launch")}</button>
+            {/if}
+            {#if flags.canCancel}
+              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run("cancel", () => cancelInstall(item.game.id))}>{t("Library.CancelDownload")}</button>
+            {/if}
+            {#if flags.canVerify}
+              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" disabled={verifying} onclick={verify}>
+                {verifying ? t("Library.Verifying") : t("Library.Verify")}
+              </button>
+            {/if}
+            {#if flags.canOpenFolder}
+              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={openFolder}>{t("Library.OpenFolder")}</button>
+            {/if}
+            {#if flags.canUninstall}
+              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={uninstall}>{t("Library.Uninstall")}</button>
+            {/if}
+          </div>
 
         <dl class="space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
           <div>

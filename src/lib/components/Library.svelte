@@ -6,6 +6,7 @@
   import type { DownloadTask, LibraryItem } from "$lib/types";
   import { onMount } from "svelte";
   import GameCard from "./GameCard.svelte";
+  import { toast } from "$lib/toasts.svelte";
 
   const ALL = "__all__";
 
@@ -16,7 +17,6 @@
   let sort = $state<"name" | "play" | "size">("name");
   let loading = $state(true);
   let refreshing = $state(false);
-  let error = $state("");
 
   const tags = $derived(
     [ALL, ...[...new Set(items.flatMap((i) => tagsOf(i)))].sort((a, b) => a.localeCompare(b))],
@@ -50,9 +50,8 @@
     try {
       items = await getLibrary();
       tasks = await getDownloadTasks();
-      error = "";
     } catch (e) {
-      error = format(t("Library.LoadError"), String(e));
+      /* polling */
     } finally {
       loading = false;
     }
@@ -61,10 +60,15 @@
   async function refresh() {
     refreshing = true;
     try {
-      await refreshCatalog();
+      const n = await refreshCatalog();
       await load();
+      toast(
+        "info",
+        t("Library.SyncTitle"),
+        n > 0 ? format(t("Library.SyncDone"), n) : t("Library.SyncEmpty"),
+      );
     } catch (e) {
-      error = format(t("Library.RefreshError"), String(e));
+      toast("error", t("Library.SyncErrorTitle"), format(t("Library.RefreshError"), String(e)));
     } finally {
       refreshing = false;
     }
@@ -108,10 +112,6 @@
       </button>
     {/each}
   </div>
-
-  {#if error}
-    <p class="mb-3 rounded-lg bg-danger/90 px-3 py-2 text-xs text-white">{error}</p>
-  {/if}
 
   {#if loading}
     <p class="text-muted">…</p>

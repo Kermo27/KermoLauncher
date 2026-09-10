@@ -11,6 +11,7 @@
   import { applySession, session } from "$lib/session.svelte";
   import type { AppSettings, ProtonInstall } from "$lib/types";
   import { onMount } from "svelte";
+  import { toast } from "$lib/toasts.svelte";
 
   const showWine = !/windows nt/i.test(navigator.userAgent);
 
@@ -18,7 +19,6 @@
   let shareUrl = $state(session.settings?.Nextcloud?.ShareUrl ?? "");
   let status = $state("");
   let ok = $state(false);
-  let saved = $state("");
   let folderMsg = $state("");
   let protons = $state<ProtonInstall[]>([]);
   let dataDir = $state("");
@@ -42,7 +42,6 @@
   }
 
   async function test() {
-    saved = "";
     try {
       const probe = await testShare(shareUrl);
       ok = true;
@@ -70,7 +69,6 @@
   }
 
   async function save() {
-    saved = "";
     await checkFolder();
     if (folderMsg) return;
     const next = buildSettings(draft, shareUrl);
@@ -78,7 +76,7 @@
     applySession(next);
     draft = $state.snapshot(next);
     shareUrl = next.Nextcloud?.ShareUrl ?? "";
-    saved = t("Settings.SavedMessage");
+    toast("success", t("Settings.SavedTitle"), t("Settings.SavedMessage"));
   }
 
   onMount(async () => {
@@ -178,5 +176,4 @@
   {/if}
 
   <button class="mt-6 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white" onclick={save}>{t("Settings.Save")}</button>
-  {#if saved && !dirty}<p class="mt-2 text-sm text-ok">{saved}</p>{/if}
 </div>
