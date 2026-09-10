@@ -1,0 +1,90 @@
+name: Tauri Release
+
+on:
+  push:
+    tags: [ 'v2.*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: ubuntu-22.04
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: actions/setup-dotnet@v4
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: KermoLauncher v__VERSION__
+          releaseBody: Install 2.0 separately. The 1.x C# launcher does not auto-update to this release. Library data stays in the same folder.
+          prerelease: true
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+
+      - name: Publish Admin Tool
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          dotnet publish GameLauncher.AdminTool -c Release -r win-x64 --self-contained \
+            -p:PublishSingleFile=true -p:Version="$VERSION" -o publish/admin
+          7z a "KermoLauncher.AdminTool-$VERSION-win-x64.zip" ./publish/admin/*
+          gh release upload "v$VERSION" "KermoLauncher.AdminTool-$VERSION-win-x64.zip" --clobber
+
+  pin-updater:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirror latest.json to tauri-latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          gh release download "v$VERSION" --pattern latest.json --dir /tmp
+          if gh release view tauri-latest >/dev/null 2>&1; then
+            gh release upload tauri-latest /tmp/latest.json --clobber
+          else
+            gh release create tauri-latest /tmp/latest.json \
+              --title "Tauri updater pointer" \
+              --notes "Rolling latest.json for 2.x clients. Not a launcher download." \
+              --prerelease
+          fi

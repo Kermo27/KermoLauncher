@@ -1,0 +1,32 @@
+name: Tauri CI
+
+on:
+  push:
+    branches: [ rewrite/tauri ]
+  pull_request:
+    branches: [ rewrite/tauri ]
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Test kermo_core
+        run: cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml --offline || cargo test -p kermo_core --manifest-path src-tauri/Cargo.toml
+
+      - name: Check frontend
+        run: |
+          npm ci
+          npm run check
