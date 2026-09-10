@@ -2,6 +2,7 @@
   import { getDownloadTasks, getLibrary, refreshCatalog } from "$lib/api";
   import { tagsOf } from "$lib/cover";
   import { format } from "$lib/format";
+  import { gameFlags } from "$lib/game";
   import { t } from "$lib/i18n";
   import type { DownloadTask, LibraryItem } from "$lib/types";
   import { onMount } from "svelte";
@@ -10,10 +11,22 @@
 
   const ALL = "__all__";
 
+  type StatusFilter = "all" | "installed" | "notInstalled" | "progress" | "failed" | "updates";
+
+  const statusFilters: { id: StatusFilter; key: string }[] = [
+    { id: "all", key: "Library.FilterAll" },
+    { id: "installed", key: "Library.FilterInstalled" },
+    { id: "notInstalled", key: "Library.FilterNotInstalled" },
+    { id: "progress", key: "Library.FilterProgress" },
+    { id: "failed", key: "Library.FilterFailed" },
+    { id: "updates", key: "Library.FilterUpdates" },
+  ];
+
   let items = $state<LibraryItem[]>([]);
   let tasks = $state<DownloadTask[]>([]);
   let search = $state("");
   let tag = $state(ALL);
+  let statusFilter = $state<StatusFilter>("all");
   let sort = $state<"name" | "play" | "size">("name");
   let loading = $state(true);
   let refreshing = $state(false);
@@ -25,6 +38,7 @@
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
     let list = items.filter((i) => {
+      if (!matchesStatus(i, statusFilter)) return false;
       if (tag !== ALL && !tagsOf(i).includes(tag)) return false;
       if (!q) return true;
       const blob = `${i.game.name} ${description(i)} ${tagsOf(i).join(" ")}`.toLowerCase();
@@ -38,6 +52,22 @@
     return list;
   });
 
+  function matchesStatus(item: LibraryItem, filter: StatusFilter) {
+    if (filter === "all") return true;
+    const flags = gameFlags(item);
+    if (filter === "installed") return flags.status === "Installed";
+    if (filter === "notInstalled") return flags.status === "NotInstalled";
+    if (filter === "progress") return flags.busy || flags.status === "Paused";
+    if (filter === "failed") return flags.status === "Failed";
+    return flags.updateAvailable;
+  }
+
+  function clearFilters() {
+    search = "";
+    tag = ALL;
+    statusFilter = "all";
+  }
+
   function description(i: LibraryItem) {
     return i.game.description || i.extraDescription || "";
   }
@@ -50,7 +80,7 @@
     try {
       items = await getLibrary();
       tasks = await getDownloadTasks();
-    } catch (e) {
+    } catch {
       /* polling */
     } finally {
       loading = false;
@@ -102,6 +132,17 @@
     </button>
   </header>
 
+  <div class="mb-2 flex flex-wrap gap-1.5">
+    {#each statusFilters as filter (filter.id)}
+      <button
+        class="rounded-full px-2.5 py-1 text-[11px] {statusFilter === filter.id ? 'bg-accent text-white' : 'bg-sidebar text-muted'}"
+        onclick={() => (statusFilter = filter.id)}
+      >
+        {t(filter.key)}
+      </button>
+    {/each}
+  </div>
+
   <div class="mb-4 flex flex-wrap gap-1.5">
     {#each tags as name (name)}
       <button
@@ -124,7 +165,7 @@
     <div class="rounded-xl border border-border bg-card p-10 text-center">
       <h2 class="text-base font-semibold">{t("Library.NoResultsTitle")}</h2>
       <p class="mt-2 text-sm text-muted">{t("Library.NoResultsMessage")}</p>
-      <button class="mt-3 text-sm text-accent" onclick={() => { search = ""; tag = ALL; }}>{t("Library.ClearFilters")}</button>
+      <button class="mt-3 text-sm text-accent" onclick={clearFilters}>{t("Library.ClearFilters")}</button>
     </div>
   {:else}
     <div class="flex flex-wrap gap-2 overflow-auto pb-8">

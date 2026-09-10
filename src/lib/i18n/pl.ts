@@ -59,7 +59,7 @@ export const pl: Record<string, string> = {
   "Library.SortPlayTime": "Czas gry",
   "Library.SortSize": "Rozmiar",
   "Library.NoResultsTitle": "Żadne gry nie pasują do filtrów",
-  "Library.NoResultsMessage": "Zmień frazę albo wybierz inny tag.",
+  "Library.NoResultsMessage": "Zmień frazę, status albo tag.",
   "Library.ClearFilters": "Wyczyść filtry",
   "Library.NoDescription": "Brak opisu tej gry.",
   "Library.LoadError": "Nie udało się wczytać biblioteki: {0}",
@@ -135,4 +135,9 @@ export const pl: Record<string, string> = {
   "Library.UninstallErrorTitle": "Błąd odinstalowania",
   "Library.VerifyTitle": "Weryfikacja",
   "Settings.SavedTitle": "Zapisano ustawienia",
+  "Library.FilterInstalled": "Zainstalowane",
+  "Library.FilterNotInstalled": "Niezainstalowane",
+  "Library.FilterProgress": "W trakcie",
+  "Library.FilterFailed": "Błąd",
+  "Library.FilterUpdates": "Aktualizacje",
 };

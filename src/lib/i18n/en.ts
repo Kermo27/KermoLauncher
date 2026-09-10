@@ -58,7 +58,7 @@ export const en: Record<string, string> = {
   "Library.SortPlayTime": "Play time",
   "Library.SortSize": "Size",
   "Library.NoResultsTitle": "No games match your filters",
-  "Library.NoResultsMessage": "Try a different search phrase or select another tag.",
+  "Library.NoResultsMessage": "Try a different search, status, or tag.",
   "Library.ClearFilters": "Clear filters",
   "Library.NoDescription": "No description for this game.",
   "Library.LoadError": "Failed to load library: {0}",
@@ -134,4 +134,9 @@ export const en: Record<string, string> = {
   "Library.UninstallErrorTitle": "Uninstall error",
   "Library.VerifyTitle": "Verification",
   "Settings.SavedTitle": "Settings saved",
+  "Library.FilterInstalled": "Installed",
+  "Library.FilterNotInstalled": "Not installed",
+  "Library.FilterProgress": "In progress",
+  "Library.FilterFailed": "Error",
+  "Library.FilterUpdates": "Updates",
 };
