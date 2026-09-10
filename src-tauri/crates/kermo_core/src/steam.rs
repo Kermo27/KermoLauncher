@@ -14,26 +14,40 @@ pub struct SteamClient {
     client: reqwest::Client,
     store_base: String,
     cdn_base: String,
+    api_base: String,
+    assets_cdn: String,
 }
 
 impl SteamClient {
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            client: reqwest::Client::builder()
-                .user_agent("Mozilla/5.0 (compatible; KermoLauncher/2.0)")
-                .build()?,
-            store_base: "https://store.steampowered.com".into(),
-            cdn_base: "https://cdn.cloudflare.steamstatic.com".into(),
-        })
+        Self::with_endpoints(
+            "https://store.steampowered.com",
+            "https://cdn.cloudflare.steamstatic.com",
+            "https://api.steampowered.com",
+            "https://shared.akamai.steamstatic.com/store_item_assets",
+        )
     }
 
     pub fn with_bases(store_base: impl Into<String>, cdn_base: impl Into<String>) -> Result<Self> {
+        let store = store_base.into();
+        let cdn = cdn_base.into();
+        Self::with_endpoints(&store, &cdn, &store, &cdn)
+    }
+
+    fn with_endpoints(
+        store_base: impl Into<String>,
+        cdn_base: impl Into<String>,
+        api_base: impl Into<String>,
+        assets_cdn: impl Into<String>,
+    ) -> Result<Self> {
         Ok(Self {
             client: reqwest::Client::builder()
                 .user_agent("Mozilla/5.0 (compatible; KermoLauncher/2.0)")
                 .build()?,
             store_base: store_base.into(),
             cdn_base: cdn_base.into(),
+            api_base: api_base.into(),
+            assets_cdn: assets_cdn.into(),
         })
     }
 
@@ -51,15 +65,7 @@ impl SteamClient {
         std::fs::create_dir_all(cover_dir)?;
         for game in games {
             let cache = db.get_steam_cache(&game.id)?;
-            if let Some(ref cache) = cache {
-                let has_gallery = !cache.screenshot_paths.is_empty() || !game.screenshot_urls.is_empty();
-                if cache.cover_path.is_some() && has_gallery {
-                    continue;
-                }
-            } else if !game.screenshot_urls.is_empty()
-                && !game.tags.is_empty()
-                && !game.description.trim().is_empty()
-            {
+            if !needs_steam_enrich(cache.as_ref()) {
                 continue;
             }
             if let Err(e) = self.enrich_one(db, game, cover_dir, cache.as_ref()).await {
@@ -85,11 +91,18 @@ impl SteamClient {
             id
         };
         let details = self.app_details(app_id).await?;
+        let assets = self.library_assets(app_id).await;
         let cover_path = match existing.and_then(|c| c.cover_path.clone()) {
             Some(path) if Path::new(&path).is_file() => Some(path),
             _ => {
-                self.download_image(
-                    &format!("{}/steam/apps/{app_id}/library_600x900.jpg", self.cdn_base),
+                self.download_first(
+                    &[
+                        assets.capsule.clone(),
+                        Some(format!(
+                            "{}/steam/apps/{app_id}/library_600x900.jpg",
+                            self.cdn_base
+                        )),
+                    ],
                     &cover_dir.join(format!("{}.jpg", game.id)),
                 )
                 .await?
@@ -98,8 +111,14 @@ impl SteamClient {
         let hero_path = match existing.and_then(|c| c.hero_path.clone()) {
             Some(path) if Path::new(&path).is_file() => Some(path),
             _ => {
-                self.download_image(
-                    &format!("{}/steam/apps/{app_id}/library_hero.jpg", self.cdn_base),
+                self.download_first(
+                    &[
+                        assets.hero.clone(),
+                        Some(format!(
+                            "{}/steam/apps/{app_id}/library_hero.jpg",
+                            self.cdn_base
+                        )),
+                    ],
                     &cover_dir.join(format!("{}-hero.jpg", game.id)),
                 )
                 .await?
@@ -111,7 +130,7 @@ impl SteamClient {
             .into_iter()
             .filter(|p| Path::new(p).is_file())
             .collect::<Vec<_>>();
-        if screenshot_paths.is_empty() && game.screenshot_urls.is_empty() {
+        if screenshot_paths.is_empty() {
             for (i, url) in details.screenshot_urls.iter().take(8).enumerate() {
                 if let Some(path) = self
                     .download_image(url, &cover_dir.join(format!("{}-shot-{i}.jpg", game.id)))
@@ -197,6 +216,86 @@ impl SteamClient {
         })
     }
 
+    async fn library_assets(&self, app_id: u32) -> LibraryAssets {
+        let input = serde_json::json!({
+            "ids": [{ "appid": app_id }],
+            "context": { "language": "english", "country_code": "US", "steam_realm": 1 },
+            "data_request": { "include_assets": true }
+        });
+        let url = format!(
+            "{}/IStoreBrowseService/GetItems/v1/",
+            self.api_base.trim_end_matches('/')
+        );
+        let Ok(resp) = self
+            .client
+            .get(url)
+            .query(&[("input_json", input.to_string())])
+            .send()
+            .await
+        else {
+            return LibraryAssets::default();
+        };
+        if !resp.status().is_success() {
+            return LibraryAssets::default();
+        }
+        let Ok(parsed) = resp.json::<GetItemsEnvelope>().await else {
+            return LibraryAssets::default();
+        };
+        let Some(assets) = parsed
+            .response
+            .store_items
+            .into_iter()
+            .next()
+            .and_then(|item| item.assets)
+        else {
+            return LibraryAssets::default();
+        };
+        let format = assets.asset_url_format.unwrap_or_default();
+        LibraryAssets {
+            capsule: [
+                assets.library_capsule,
+                assets.library_capsule_2x,
+                assets.hero_capsule,
+            ]
+            .into_iter()
+            .flatten()
+            .find_map(|name| self.asset_url(&format, &name)),
+            hero: assets
+                .library_hero
+                .or(assets.library_hero_2x)
+                .and_then(|name| self.asset_url(&format, &name)),
+        }
+    }
+
+    fn asset_url(&self, format: &str, filename: &str) -> Option<String> {
+        if format.is_empty() || filename.is_empty() {
+            return None;
+        }
+        let path = format.replace("${FILENAME}", filename);
+        let path = path
+            .split('?')
+            .next()
+            .unwrap_or(&path)
+            .trim_start_matches('/');
+        if path.is_empty() {
+            return None;
+        }
+        Some(format!(
+            "{}/{}",
+            self.assets_cdn.trim_end_matches('/'),
+            path
+        ))
+    }
+
+    async fn download_first(&self, urls: &[Option<String>], dest: &Path) -> Result<Option<String>> {
+        for url in urls.iter().flatten() {
+            if let Some(path) = self.download_image(url, dest).await? {
+                return Ok(Some(path));
+            }
+        }
+        Ok(None)
+    }
+
     async fn download_image(&self, url: &str, dest: &Path) -> Result<Option<String>> {
         let resp = self.client.get(url).send().await?;
         if !resp.status().is_success() {
@@ -212,6 +311,22 @@ impl SteamClient {
         std::fs::write(dest, bytes)?;
         Ok(Some(dest.to_string_lossy().into_owned()))
     }
+}
+
+fn local_file(path: Option<&String>) -> bool {
+    path.map(|p| Path::new(p).is_file()).unwrap_or(false)
+}
+
+fn needs_steam_enrich(cache: Option<&SteamCache>) -> bool {
+    let Some(cache) = cache else {
+        return true;
+    };
+    let cover_ok = local_file(cache.cover_path.as_ref());
+    let gallery_ok = cache
+        .screenshot_paths
+        .iter()
+        .any(|p| Path::new(p).is_file());
+    !cover_ok || !gallery_ok
 }
 
 #[derive(Default)]
@@ -257,10 +372,44 @@ struct Genre {
     description: String,
 }
 
+#[derive(Default)]
+struct LibraryAssets {
+    capsule: Option<String>,
+    hero: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+struct GetItemsEnvelope {
+    #[serde(default)]
+    response: GetItemsResponse,
+}
+
+#[derive(Deserialize, Default)]
+struct GetItemsResponse {
+    #[serde(default)]
+    store_items: Vec<GetItemsStoreItem>,
+}
+
+#[derive(Deserialize, Default)]
+struct GetItemsStoreItem {
+    #[serde(default)]
+    assets: Option<StoreAssets>,
+}
+
+#[derive(Deserialize, Default)]
+struct StoreAssets {
+    asset_url_format: Option<String>,
+    library_capsule: Option<String>,
+    library_capsule_2x: Option<String>,
+    hero_capsule: Option<String>,
+    library_hero: Option<String>,
+    library_hero_2x: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::Game;
+    use crate::models::{Game, SteamCache};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use wiremock::matchers::{method, path};
@@ -387,14 +536,45 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn enrich_skips_when_catalog_already_complete() {
+    async fn enrich_fetches_cover_even_when_catalog_has_screenshot_urls() {
         let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/storesearch/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"total":1,"items":[{"type":"app","name":"Demo Game","id":480}]}"#,
+            ))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/appdetails"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(format!(
+                r#"{{"480":{{"success":true,"data":{{"short_description":"A demo.","genres":[{{"description":"Action"}}],"screenshots":[{{"path_full":"{}/ss/full.jpg"}}]}}}}}}"#,
+                server.uri()
+            )))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/library_600x900.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xFFu8; 64]))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/library_hero.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xEEu8; 64]))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/ss/full.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xDDu8; 64]))
+            .mount(&server)
+            .await;
+
         let file = NamedTempFile::new().unwrap();
         let db = LocalDb::open(file.path());
         let mut g = game("Demo Game");
         g.description = "from nextcloud".into();
         g.tags = vec!["Indie".into()];
-        g.screenshot_urls = vec!["https://cloud/shot.png".into()];
+        g.screenshot_urls = vec!["Shift At Midnight/screenshots/1.jpg".into()];
         db.upsert_games(&[g.clone()]).unwrap();
         let covers = tempfile::tempdir().unwrap();
         let client = SteamClient::with_bases(server.uri(), server.uri()).unwrap();
@@ -402,6 +582,118 @@ mod tests {
             .enrich_missing_into(&db, &[g], covers.path())
             .await
             .unwrap();
-        assert!(db.get_steam_cache("g1").unwrap().is_none());
+        let cache = db.get_steam_cache("g1").unwrap().unwrap();
+        assert!(cache.cover_path.is_some());
+        assert_eq!(cache.screenshot_paths.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn enrich_skips_when_cover_and_gallery_files_exist() {
+        let server = MockServer::start().await;
+        let file = NamedTempFile::new().unwrap();
+        let db = LocalDb::open(file.path());
+        let covers = tempfile::tempdir().unwrap();
+        let cover = covers.path().join("g1.jpg");
+        let shot = covers.path().join("g1-shot-0.jpg");
+        std::fs::write(&cover, [0xFFu8; 64]).unwrap();
+        std::fs::write(&shot, [0xDDu8; 64]).unwrap();
+        db.upsert_games(&[game("Demo Game")]).unwrap();
+        db.upsert_steam_cache(&SteamCache {
+            game_id: "g1".into(),
+            steam_app_id: Some(480),
+            tags: vec!["Action".into()],
+            description: "cached".into(),
+            cover_path: Some(cover.to_string_lossy().into_owned()),
+            hero_path: None,
+            screenshot_paths: vec![shot.to_string_lossy().into_owned()],
+            fetched_at: 1,
+        })
+        .unwrap();
+        let client = SteamClient::with_bases(server.uri(), server.uri()).unwrap();
+        client
+            .enrich_missing_into(&db, &[game("Demo Game")], covers.path())
+            .await
+            .unwrap();
+        assert_eq!(
+            db.get_steam_cache("g1").unwrap().unwrap().description,
+            "cached"
+        );
+    }
+
+    #[test]
+    fn asset_url_joins_hashed_filename() {
+        let client = SteamClient::with_endpoints(
+            "https://store.example",
+            "https://cdn.example",
+            "https://api.example",
+            "https://shared.akamai.steamstatic.com/store_item_assets",
+        )
+        .unwrap();
+        assert_eq!(
+            client
+                .asset_url(
+                    "steam/apps/3527290/${FILENAME}?t=1",
+                    "480bd879ac737921bfa2529a6fea15961267ad21/library_600x900.jpg",
+                )
+                .as_deref(),
+            Some(
+                "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3527290/480bd879ac737921bfa2529a6fea15961267ad21/library_600x900.jpg"
+            )
+        );
+    }
+
+    #[tokio::test]
+    async fn enrich_downloads_hashed_capsule_when_legacy_cdn_404s() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/appdetails"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"480":{"success":true,"data":{"short_description":"A demo.","genres":[{"description":"Action"}]}}}"#,
+            ))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/IStoreBrowseService/GetItems/v1/"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"response":{"store_items":[{"assets":{"asset_url_format":"steam/apps/480/${FILENAME}?t=1","library_capsule":"abc123/library_600x900.jpg"}}]}}"#,
+            ))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/library_600x900.jpg"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/steam/apps/480/abc123/library_600x900.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0xAAu8; 64]))
+            .mount(&server)
+            .await;
+
+        let file = NamedTempFile::new().unwrap();
+        let db = LocalDb::open(file.path());
+        let covers = tempfile::tempdir().unwrap();
+        let shot = covers.path().join("g1-shot-0.jpg");
+        std::fs::write(&shot, [0xDDu8; 64]).unwrap();
+        db.upsert_games(&[game("PEAK")]).unwrap();
+        db.upsert_steam_cache(&SteamCache {
+            game_id: "g1".into(),
+            steam_app_id: Some(480),
+            tags: vec!["Action".into()],
+            description: "cached".into(),
+            cover_path: None,
+            hero_path: None,
+            screenshot_paths: vec![shot.to_string_lossy().into_owned()],
+            fetched_at: 1,
+        })
+        .unwrap();
+        let client = SteamClient::with_bases(server.uri(), server.uri()).unwrap();
+        client
+            .enrich_missing_into(&db, &[game("PEAK")], covers.path())
+            .await
+            .unwrap();
+        let cache = db.get_steam_cache("g1").unwrap().unwrap();
+        let cover = PathBuf::from(cache.cover_path.expect("hashed capsule"));
+        assert_eq!(std::fs::read(&cover).unwrap(), vec![0xAAu8; 64]);
     }
 }

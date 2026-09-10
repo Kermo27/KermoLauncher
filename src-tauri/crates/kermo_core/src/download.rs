@@ -56,10 +56,7 @@ impl DownloadService {
                 let first_err = first_err.clone();
                 let cancel = cancel.clone();
                 async move {
-                    if cancel
-                        .as_ref()
-                        .is_some_and(|c| c.load(Ordering::Relaxed))
-                    {
+                    if cancel.as_ref().is_some_and(|c| c.load(Ordering::Relaxed)) {
                         let mut slot = first_err.lock().expect("err");
                         if slot.is_none() {
                             *slot = Some(crate::Error::Cancelled);

@@ -75,7 +75,8 @@ pub fn looks_like_online_fix(work_dir: &Path, exe_path: &Path) -> bool {
                 return true;
             }
             let lower = name.to_ascii_lowercase();
-            if lower.starts_with("onlinefix") && (lower.ends_with(".dll") || lower.ends_with(".ini"))
+            if lower.starts_with("onlinefix")
+                && (lower.ends_with(".dll") || lower.ends_with(".ini"))
             {
                 return true;
             }
@@ -137,7 +138,10 @@ pub fn ensure_steam_client_dlls(work_dir: &Path, steam_root: Option<&Path>) {
         if dest.exists() {
             continue;
         }
-        for src in [steam_root.join("legacycompat").join(name), steam_root.join(name)] {
+        for src in [
+            steam_root.join("legacycompat").join(name),
+            steam_root.join(name),
+        ] {
             if !src.is_file() {
                 continue;
             }
@@ -155,9 +159,7 @@ pub fn ensure_steam_client_dlls(work_dir: &Path, steam_root: Option<&Path>) {
 }
 
 pub fn is_steam_running() -> bool {
-    let output = std::process::Command::new("pidof")
-        .arg("steam")
-        .output();
+    let output = std::process::Command::new("pidof").arg("steam").output();
     match output {
         Ok(out) => out.status.success() && !out.stdout.is_empty(),
         Err(_) => false,
@@ -511,8 +513,11 @@ mod tests {
             Some(tmp.path()),
         )
         .unwrap();
-        let expected_prefix =
-            resolve_proton_prefix(Path::new("/games/Demo"), Path::new("/games/Demo/game.exe"), false);
+        let expected_prefix = resolve_proton_prefix(
+            Path::new("/games/Demo"),
+            Path::new("/games/Demo/game.exe"),
+            false,
+        );
         let umu = find_umu_run();
         if let Some(umu) = umu {
             assert_eq!(spec.program, umu);
@@ -553,8 +558,16 @@ mod tests {
         std::fs::create_dir_all(steam_root.join("ubuntu12_64")).unwrap();
         std::fs::create_dir_all(steam_root.join("ubuntu12_32")).unwrap();
         std::fs::write(proton_dir.join("proton"), "#!/bin/sh\n").unwrap();
-        std::fs::write(steam_root.join("ubuntu12_64/gameoverlayrenderer.so"), "so64").unwrap();
-        std::fs::write(steam_root.join("ubuntu12_32/gameoverlayrenderer.so"), "so32").unwrap();
+        std::fs::write(
+            steam_root.join("ubuntu12_64/gameoverlayrenderer.so"),
+            "so64",
+        )
+        .unwrap();
+        std::fs::write(
+            steam_root.join("ubuntu12_32/gameoverlayrenderer.so"),
+            "so32",
+        )
+        .unwrap();
         std::fs::write(game_dir.path().join("OnlineFix.ini"), "[Main]\n").unwrap();
         std::fs::write(game_dir.path().join("OnlineFix64.dll"), "x").unwrap();
         std::fs::write(game_dir.path().join("game.exe"), "MZ").unwrap();
@@ -568,7 +581,10 @@ mod tests {
         let exe = game_dir.path().join("game.exe");
         assert!(looks_like_online_fix(game_dir.path(), &exe));
         let spec = build(&exe, game_dir.path(), None, &settings, Some(home.path())).unwrap();
-        assert_eq!(spec.env_get("WINEDLLOVERRIDES"), Some(ONLINE_FIX_DLL_OVERRIDES));
+        assert_eq!(
+            spec.env_get("WINEDLLOVERRIDES"),
+            Some(ONLINE_FIX_DLL_OVERRIDES)
+        );
         assert_eq!(spec.env_get("SteamAppId"), Some(ONLINE_FIX_GAME_ID));
         let expected_compat = data_directory().join("prefixes").join("game");
         assert_eq!(
@@ -648,8 +664,11 @@ mod tests {
             Some(home.path()),
         )
         .unwrap();
-        let expected_prefix =
-            resolve_proton_prefix(Path::new("/games/Demo"), Path::new("/games/Demo/game.exe"), false);
+        let expected_prefix = resolve_proton_prefix(
+            Path::new("/games/Demo"),
+            Path::new("/games/Demo/game.exe"),
+            false,
+        );
         assert!(spec.program.to_string_lossy().contains("umu-run"));
         assert_eq!(
             spec.env_get("WINEPREFIX"),

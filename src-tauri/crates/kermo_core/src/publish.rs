@@ -299,11 +299,15 @@ pub fn remove_orphan(dest_root: &Path, remote_folder: &str) -> Result<()> {
         return Err(Error::message("Invalid folder name"));
     }
     let dir = dest_root.join(name);
-    let dest_root = dest_root.canonicalize().unwrap_or_else(|_| dest_root.to_path_buf());
+    let dest_root = dest_root
+        .canonicalize()
+        .unwrap_or_else(|_| dest_root.to_path_buf());
     if dir.exists() {
         let canon = dir.canonicalize()?;
         if !canon.starts_with(&dest_root) {
-            return Err(Error::message("Refusing to delete outside the library folder"));
+            return Err(Error::message(
+                "Refusing to delete outside the library folder",
+            ));
         }
         fs::remove_dir_all(&canon)?;
     }
@@ -347,7 +351,13 @@ pub fn guess_launch_config(dir_name: &str, files: &[GameFile]) -> Option<LaunchC
     let mut exes: Vec<&str> = files
         .iter()
         .map(|f| f.path.as_str())
-        .filter(|p| p.rsplit('/').next().unwrap_or(p).to_ascii_lowercase().ends_with(".exe"))
+        .filter(|p| {
+            p.rsplit('/')
+                .next()
+                .unwrap_or(p)
+                .to_ascii_lowercase()
+                .ends_with(".exe")
+        })
         .collect();
     if exes.is_empty() {
         exes = files
@@ -586,8 +596,16 @@ fn apply_plan(
     for change in &plan.changes {
         match change.kind {
             SyncChangeKind::Added | SyncChangeKind::Changed => {
-                let src = src_root.join(change.relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
-                let dest = dest_game.join(change.relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
+                let src = src_root.join(
+                    change
+                        .relative_path
+                        .replace('/', std::path::MAIN_SEPARATOR_STR),
+                );
+                let dest = dest_game.join(
+                    change
+                        .relative_path
+                        .replace('/', std::path::MAIN_SEPARATOR_STR),
+                );
                 if src.is_file() {
                     if let Some(parent) = dest.parent() {
                         fs::create_dir_all(parent)?;
@@ -596,7 +614,11 @@ fn apply_plan(
                 }
             }
             SyncChangeKind::Removed => {
-                let dest = dest_game.join(change.relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
+                let dest = dest_game.join(
+                    change
+                        .relative_path
+                        .replace('/', std::path::MAIN_SEPARATOR_STR),
+                );
                 if dest.is_file() {
                     fs::remove_file(&dest)?;
                     remove_empty_parents(&dest_game, dest.parent());
@@ -675,7 +697,11 @@ fn prune_catalog(dest_root: &Path, remote_folder: &str) -> Result<()> {
 }
 
 fn write_catalog(path: &Path, mut games: Vec<Game>) -> Result<()> {
-    games.sort_by(|a, b| a.name.to_ascii_lowercase().cmp(&b.name.to_ascii_lowercase()));
+    games.sort_by(|a, b| {
+        a.name
+            .to_ascii_lowercase()
+            .cmp(&b.name.to_ascii_lowercase())
+    });
     fs::write(path, serde_json::to_string_pretty(&games)?)?;
     Ok(())
 }
@@ -764,7 +790,7 @@ fn is_junk_exe(file_name: &str) -> bool {
         "overlay",
     ]
     .iter()
-        .any(|k| n.contains(k))
+    .any(|k| n.contains(k))
 }
 
 fn numeric_prefix(value: &str) -> String {
@@ -807,7 +833,10 @@ mod tests {
         assert_eq!(g.files.len(), 1);
         assert_eq!(g.files[0].path, "game.exe");
         assert!(g.to_catalog().screenshot_urls.is_empty());
-        assert_eq!(g.launch_config.as_ref().unwrap().executable_path, "game.exe");
+        assert_eq!(
+            g.launch_config.as_ref().unwrap().executable_path,
+            "game.exe"
+        );
     }
 
     #[test]

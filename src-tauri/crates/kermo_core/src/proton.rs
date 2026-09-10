@@ -19,7 +19,8 @@ const RUNTIME_DIR_BY_APP_ID: &[(&str, &str)] = &[
     ("4183110", "SteamLinuxRuntime_4"),
 ];
 
-const UMU_RUNTIME_DIR_BY_APP_ID: &[(&str, &str)] = &[("1628350", "steamrt3"), ("4183110", "steamrt4")];
+const UMU_RUNTIME_DIR_BY_APP_ID: &[(&str, &str)] =
+    &[("1628350", "steamrt3"), ("4183110", "steamrt4")];
 
 const RUNTIME_LABEL_BY_APP_ID: &[(&str, &str)] = &[
     ("1070560", "Steam Linux Runtime 1.0 (scout)"),
@@ -57,9 +58,11 @@ pub fn find_installed(home: Option<&Path>) -> Vec<ProtonInstall> {
 
     let mut values: Vec<ProtonInstall> = found.into_values().collect();
     values.sort_by(|a, b| {
-        rank(b)
-            .cmp(&rank(a))
-            .then_with(|| b.name.to_ascii_lowercase().cmp(&a.name.to_ascii_lowercase()))
+        rank(b).cmp(&rank(a)).then_with(|| {
+            b.name
+                .to_ascii_lowercase()
+                .cmp(&a.name.to_ascii_lowercase())
+        })
     });
     values
 }
@@ -70,10 +73,7 @@ pub fn resolve(preferred_version: Option<&str>, home: Option<&Path>) -> Option<P
         return None;
     }
     if let Some(pref) = preferred_version.map(str::trim).filter(|s| !s.is_empty()) {
-        if let Some(m) = installed
-            .iter()
-            .find(|p| p.name.eq_ignore_ascii_case(pref))
-        {
+        if let Some(m) = installed.iter().find(|p| p.name.eq_ignore_ascii_case(pref)) {
             return Some(m.clone());
         }
     }
@@ -83,7 +83,11 @@ pub fn resolve(preferred_version: Option<&str>, home: Option<&Path>) -> Option<P
         let ub = if has_required_runtime(b, home) { 1 } else { 0 };
         ub.cmp(&ua)
             .then_with(|| rank(b).cmp(&rank(a)))
-            .then_with(|| b.name.to_ascii_lowercase().cmp(&a.name.to_ascii_lowercase()))
+            .then_with(|| {
+                b.name
+                    .to_ascii_lowercase()
+                    .cmp(&a.name.to_ascii_lowercase())
+            })
     });
     ordered.into_iter().next()
 }
@@ -168,7 +172,10 @@ pub fn find_runtime_for_app_id(app_id: &str, home: Option<&Path>) -> Option<Path
         }
     }
 
-    if let Some((_, umu_dir)) = UMU_RUNTIME_DIR_BY_APP_ID.iter().find(|(id, _)| *id == app_id) {
+    if let Some((_, umu_dir)) = UMU_RUNTIME_DIR_BY_APP_ID
+        .iter()
+        .find(|(id, _)| *id == app_id)
+    {
         return runtime_entry_point(&home.join(".local/share/umu").join(umu_dir));
     }
     None
@@ -262,7 +269,10 @@ fn collect_from_directory(
         }
         let name = entry.file_name().to_string_lossy().into_owned();
         if let Some(prefix) = name_prefix {
-            if !name.to_ascii_lowercase().starts_with(&prefix.to_ascii_lowercase()) {
+            if !name
+                .to_ascii_lowercase()
+                .starts_with(&prefix.to_ascii_lowercase())
+            {
                 continue;
             }
         } else {
@@ -382,8 +392,8 @@ mod tests {
         let ge = ProtonInstall {
             name: "GE-Proton11-5".into(),
             directory: "/home/user/.local/share/Steam/compatibilitytools.d/GE-Proton11-5".into(),
-            proton_script: "/home/user/.local/share/Steam/compatibilitytools.d/GE-Proton11-5/proton"
-                .into(),
+            proton_script:
+                "/home/user/.local/share/Steam/compatibilitytools.d/GE-Proton11-5/proton".into(),
             required_runtime_app_id: None,
         };
         assert!(rank(&ge) > rank(&usr));
@@ -403,10 +413,10 @@ mod tests {
 
     #[test]
     fn find_steam_runtime_picks_the_runtime_the_build_requires() {
-        let tmp = make_home_with_protons(&[("GE-Proton11-5", Some("4183110"))], &[
-            "SteamLinuxRuntime_sniper",
-            "SteamLinuxRuntime_4",
-        ]);
+        let tmp = make_home_with_protons(
+            &[("GE-Proton11-5", Some("4183110"))],
+            &["SteamLinuxRuntime_sniper", "SteamLinuxRuntime_4"],
+        );
         let proton = resolve(None, Some(tmp.path())).unwrap();
         assert_eq!(proton.required_runtime_app_id.as_deref(), Some("4183110"));
         let runtime = find_steam_runtime(&proton, Some(tmp.path())).unwrap();

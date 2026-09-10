@@ -16,6 +16,10 @@ export function setLanguage(lang: string) {
   current = resolveLang(lang);
 }
 
+export function locale() {
+  return current === pl ? "pl-PL" : "en-GB";
+}
+
 export function t(key: string) {
   return current[key] ?? en[key] ?? key;
 }

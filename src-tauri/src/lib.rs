@@ -197,6 +197,13 @@ pub fn run() {
                 webdav,
                 steam,
             });
+            let steam = app.state::<AppState>().steam.clone();
+            let db = app.state::<AppState>().db.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(games) = db.get_all_games() {
+                    let _ = steam.enrich_missing(&db, &games).await;
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

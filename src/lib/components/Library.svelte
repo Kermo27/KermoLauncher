@@ -7,6 +7,7 @@
   import type { DownloadTask, LibraryItem } from "$lib/types";
   import { onMount } from "svelte";
   import GameCard from "./GameCard.svelte";
+  import Select from "./Select.svelte";
   import { toast } from "$lib/toasts.svelte";
 
   const ALL = "__all__";
@@ -33,6 +34,13 @@
 
   const tags = $derived(
     [ALL, ...[...new Set(items.flatMap((i) => tagsOf(i)))].sort((a, b) => a.localeCompare(b))],
+  );
+
+  const continuePlaying = $derived(
+    [...items]
+      .filter((i) => i.local?.status === "Installed" && (i.local.last_played ?? 0) > 0)
+      .sort((a, b) => (b.local?.last_played ?? 0) - (a.local?.last_played ?? 0))
+      .slice(0, 8),
   );
 
   const filtered = $derived.by(() => {
@@ -111,23 +119,27 @@
   });
 </script>
 
-<div class="flex h-full flex-col p-5">
-  <header class="mb-4 flex flex-wrap items-end gap-3">
+<div class="flex h-full min-w-0 flex-col overflow-x-hidden px-7 py-6">
+  <header class="mb-5 flex flex-wrap items-end gap-3">
     <div class="mr-auto">
-      <h1 class="text-2xl font-bold">{t("Library.Title")}</h1>
-      <p class="text-[11px] text-muted">{format(t("Library.CountGames"), filtered.length)}</p>
+      <h1 class="text-3xl font-bold tracking-tight">{t("Library.Title")}</h1>
+      <p class="mt-1 text-xs text-muted">{format(t("Library.CountGames"), filtered.length)}</p>
     </div>
     <input
-      class="w-72 rounded-md border border-border bg-window px-3 py-2 text-sm"
+      class="field w-80"
       placeholder={t("Library.SearchPlaceholder")}
       bind:value={search}
     />
-    <select class="rounded-md border border-border bg-window px-3 py-2 text-sm" bind:value={sort}>
-      <option value="name">{t("Library.SortName")}</option>
-      <option value="play">{t("Library.SortPlayTime")}</option>
-      <option value="size">{t("Library.SortSize")}</option>
-    </select>
-    <button class="rounded-md border border-border px-3 py-2 text-sm" disabled={refreshing} onclick={refresh}>
+    <Select
+      class="w-[10.75rem]"
+      bind:value={sort}
+      options={[
+        { value: "name", label: t("Library.SortName") },
+        { value: "play", label: t("Library.SortPlayTime") },
+        { value: "size", label: t("Library.SortSize") },
+      ]}
+    />
+    <button class="btn-ghost btn" disabled={refreshing} onclick={refresh}>
       {t("Library.Refresh")}
     </button>
   </header>
@@ -135,7 +147,7 @@
   <div class="mb-2 flex flex-wrap gap-1.5">
     {#each statusFilters as filter (filter.id)}
       <button
-        class="rounded-full px-2.5 py-1 text-[11px] {statusFilter === filter.id ? 'bg-accent text-white' : 'bg-sidebar text-muted'}"
+        class={["chip", statusFilter === filter.id && "chip-active"]}
         onclick={() => (statusFilter = filter.id)}
       >
         {t(filter.key)}
@@ -143,32 +155,40 @@
     {/each}
   </div>
 
-  <div class="mb-4 flex flex-wrap gap-1.5">
+  <div class="mb-6 flex flex-wrap gap-1.5">
     {#each tags as name (name)}
-      <button
-        class="rounded-full px-2.5 py-1 text-[11px] {tag === name ? 'bg-accent text-white' : 'bg-sidebar text-muted'}"
-        onclick={() => (tag = name)}
-      >
+      <button class={["chip", tag === name && "chip-active"]} onclick={() => (tag = name)}>
         {name === ALL ? t("Library.FilterAll") : name}
       </button>
     {/each}
   </div>
 
   {#if loading}
-    <p class="text-muted">…</p>
+    <p class="text-sm text-muted">…</p>
   {:else if items.length === 0}
-    <div class="rounded-xl border border-border bg-card p-10 text-center">
-      <h2 class="text-base font-semibold">{t("Library.EmptyTitle")}</h2>
+    <div class="panel px-10 py-16 text-center">
+      <h2 class="text-lg font-semibold">{t("Library.EmptyTitle")}</h2>
       <p class="mt-2 text-sm text-muted">{t("Library.EmptyHint")}</p>
     </div>
   {:else if filtered.length === 0}
-    <div class="rounded-xl border border-border bg-card p-10 text-center">
-      <h2 class="text-base font-semibold">{t("Library.NoResultsTitle")}</h2>
+    <div class="panel px-10 py-16 text-center">
+      <h2 class="text-lg font-semibold">{t("Library.NoResultsTitle")}</h2>
       <p class="mt-2 text-sm text-muted">{t("Library.NoResultsMessage")}</p>
-      <button class="mt-3 text-sm text-accent" onclick={clearFilters}>{t("Library.ClearFilters")}</button>
+      <button class="mt-4 text-sm font-semibold text-accent" onclick={clearFilters}>{t("Library.ClearFilters")}</button>
     </div>
   {:else}
-    <div class="flex flex-wrap gap-2 overflow-auto pb-8">
+    {#if continuePlaying.length}
+      <section class="mb-8 min-w-0">
+        <h2 class="mb-3 text-xs font-semibold tracking-[0.14em] text-muted uppercase">{t("Library.ContinuePlaying")}</h2>
+        <div class="flex min-w-0 gap-3 overflow-x-auto pb-1">
+          {#each continuePlaying as item (item.game.id)}
+            <GameCard {item} task={taskFor(item.game.id)} onChanged={load} size="lg" />
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-4 pb-8">
       {#each filtered as item (item.game.id)}
         <GameCard {item} task={taskFor(item.game.id)} onChanged={load} />
       {/each}

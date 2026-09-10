@@ -11,9 +11,7 @@
   import { applySession, session } from "$lib/session.svelte";
   import { applyTheme } from "$lib/theme";
   import { onMount } from "svelte";
-
-  const themes = ["Light", "Dark", "System"];
-  const langs = ["System", "en", "pl"];
+  import Select from "./Select.svelte";
 
   let step = $state(0);
   let theme = $state("Dark");
@@ -137,50 +135,57 @@
 </script>
 
 {#key tick}
-  <main class="flex min-h-screen items-center justify-center p-6">
-    <section class="w-full max-w-xl rounded-xl border border-border bg-card p-6 shadow-xl">
-      <p class="text-sm font-semibold text-accent">KermoLauncher</p>
-      <h1 class="mt-1 text-2xl font-bold">{t("Onboarding.Title")}</h1>
-      <p class="mt-1 text-sm text-muted">{t("Onboarding.Subtitle")}</p>
+  <main class="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,var(--color-raised),var(--color-window)_58%)] p-6">
+    <section class="panel w-full max-w-xl p-7 shadow-[var(--shadow-hero)]">
+      <img
+        src="/favicon.png"
+        alt="KermoLauncher"
+        class="mx-auto h-16 w-16 rounded-2xl shadow-[var(--shadow-hero)] ring-1 ring-white/10"
+      />
+      <p class="mt-4 text-center text-xs font-semibold tracking-[0.16em] text-accent uppercase">KermoLauncher</p>
+      <h1 class="mt-2 text-center text-3xl font-bold tracking-tight">{t("Onboarding.Title")}</h1>
+      <p class="mt-1 text-center text-sm text-muted">{t("Onboarding.Subtitle")}</p>
 
-      <div class="mt-5 flex justify-center gap-2">
-        {#each [0, 1, 2] as i}
-          <span
-            class="h-2.5 w-2.5 rounded-full {step === i ? 'bg-accent' : 'bg-border'}"
-          ></span>
+      <div class="mt-6 flex justify-center gap-2">
+        {#each [0, 1, 2] as i (i)}
+          <span class="h-2 w-8 rounded-full {step === i ? 'bg-accent' : 'bg-border'}"></span>
         {/each}
       </div>
 
       <div class="mt-6 space-y-4">
         {#if step === 0}
           <p class="text-sm text-muted">{t("Onboarding.Welcome.Body")}</p>
-          <label class="block text-sm text-muted">{t("Settings.General.Theme")}
-            <select
-              class="mt-1 w-full rounded-md border border-border bg-window px-3 py-2 text-text"
+          <div>
+            <p class="text-xs font-medium tracking-wide text-muted">{t("Settings.General.Theme")}</p>
+            <Select
+              class="mt-1.5"
               bind:value={theme}
               onchange={previewTheme}
-            >
-              {#each themes as value, i}
-                <option {value}>{t(["Settings.Theme.Light", "Settings.Theme.Dark", "Settings.Theme.System"][i])}</option>
-              {/each}
-            </select>
-          </label>
-          <label class="block text-sm text-muted">{t("Settings.General.Language")}
-            <select
-              class="mt-1 w-full rounded-md border border-border bg-window px-3 py-2 text-text"
+              options={[
+                { value: "Light", label: t("Settings.Theme.Light") },
+                { value: "Dark", label: t("Settings.Theme.Dark") },
+                { value: "System", label: t("Settings.Theme.System") },
+              ]}
+            />
+          </div>
+          <div>
+            <p class="text-xs font-medium tracking-wide text-muted">{t("Settings.General.Language")}</p>
+            <Select
+              class="mt-1.5"
               bind:value={language}
               onchange={previewTheme}
-            >
-              {#each langs as value, i}
-                <option {value}>{t(["Settings.Language.System", "Settings.Language.English", "Settings.Language.Polish"][i])}</option>
-              {/each}
-            </select>
-          </label>
+              options={[
+                { value: "System", label: t("Settings.Language.System") },
+                { value: "en", label: t("Settings.Language.English") },
+                { value: "pl", label: t("Settings.Language.Polish") },
+              ]}
+            />
+          </div>
         {:else if step === 1}
           <p class="text-sm text-muted">{t("Onboarding.Folder.Body")}</p>
-          <label class="block text-sm text-muted">{t("Settings.Folders.Install")}
+          <label class="block text-xs font-medium tracking-wide text-muted">{t("Settings.Folders.Install")}
             <input
-              class="mt-1 w-full rounded-md border border-border bg-window px-3 py-2 text-text"
+              class="field mt-1.5"
               bind:value={installFolder}
               oninput={checkFolder}
             />
@@ -188,9 +193,9 @@
           <p class="text-sm {folderOk ? 'text-ok' : 'text-danger'}">{folderStatus}</p>
         {:else}
           <p class="text-sm text-muted">{t("Onboarding.Source.Body")}</p>
-          <label class="block text-sm text-muted">{t("Settings.Nextcloud.ShareUrl")}
+          <label class="block text-xs font-medium tracking-wide text-muted">{t("Settings.Nextcloud.ShareUrl")}
             <input
-              class="mt-1 w-full rounded-md border border-border bg-window px-3 py-2 text-text"
+              class="field mt-1.5"
               placeholder={t("Settings.Nextcloud.ShareUrlPlaceholder")}
               bind:value={shareUrl}
               oninput={() => {
@@ -200,7 +205,7 @@
             />
           </label>
           <button
-            class="rounded-md border border-border px-3 py-2 text-sm"
+            class="btn-ghost btn"
             disabled={busy}
             onclick={testConn}
           >
@@ -219,7 +224,7 @@
       <div class="mt-8 flex justify-end gap-2">
         {#if step > 0}
           <button
-            class="rounded-md px-4 py-2 text-sm text-muted"
+            class="btn px-4 py-2 text-muted"
             disabled={busy}
             onclick={() => {
               step -= 1;
@@ -230,7 +235,7 @@
           </button>
         {/if}
         <button
-          class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          class="btn-primary btn px-5 disabled:opacity-40"
           disabled={busy || (step === 1 && !canFolder) || (step === 2 && !canFinish)}
           onclick={primary}
         >

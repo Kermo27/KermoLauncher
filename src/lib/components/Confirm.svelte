@@ -12,17 +12,17 @@
 <svelte:window onkeydown={onKey} />
 
 {#if dialog.open}
-  <button class="fixed inset-0 z-[60] bg-black/50" onclick={() => answer(false)} aria-label={dialog.cancelLabel || t("Dialog.Cancel")}></button>
+  <button class="fixed inset-0 z-[60] bg-black/60" onclick={() => answer(false)} aria-label={dialog.cancelLabel || t("Dialog.Cancel")}></button>
   <div class="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center p-6">
-    <div class="pointer-events-auto w-full max-w-md rounded-xl border border-border bg-card p-5">
-      <h2 class="text-base font-bold">{dialog.title}</h2>
+    <div class="panel pointer-events-auto w-full max-w-md p-6 shadow-[var(--shadow-hero)]">
+      <h2 class="text-lg font-bold">{dialog.title}</h2>
       <p class="mt-2 text-sm text-muted">{dialog.message}</p>
-      <div class="mt-5 flex justify-end gap-2">
-        <button class="rounded-md border border-border px-3 py-2 text-sm" onclick={() => answer(false)}>
+      <div class="mt-6 flex justify-end gap-2">
+        <button class="btn-ghost btn" onclick={() => answer(false)}>
           {dialog.cancelLabel || t("Dialog.Cancel")}
         </button>
         <button
-          class={["rounded-md px-3 py-2 text-sm font-medium text-white", dialog.danger ? "bg-danger" : "bg-accent"]}
+          class={["btn", dialog.danger ? "btn-danger bg-danger text-white" : "btn-primary"]}
           onclick={() => answer(true)}
         >
           {dialog.confirmLabel || t("Dialog.Confirm")}

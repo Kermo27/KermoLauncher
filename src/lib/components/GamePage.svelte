@@ -132,47 +132,51 @@
 <svelte:window onkeydown={onKey} />
 
 {#if lightbox}
-  <button
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8"
-    onclick={() => (lightbox = null)}
-  >
-    <img src={lightbox} alt="" class="max-h-full max-w-full rounded-lg object-contain" />
+  <button class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-8" onclick={() => (lightbox = null)}>
+    <img src={lightbox} alt="" class="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
   </button>
 {/if}
 
-<div class="flex h-full flex-col overflow-auto">
-  <div class="flex items-center gap-3 px-6 py-3">
-    <button class="rounded-md border border-border px-3 py-1.5 text-sm" onclick={back}>
-      {t("Library.Back")}
-    </button>
-  </div>
-
+<div class="flex min-h-full min-w-0 flex-col overflow-x-hidden">
   {#if loading && !item}
-    <p class="px-6 text-muted">…</p>
+    <p class="px-8 py-6 text-muted">…</p>
   {:else if !item}
-    <div class="px-6">
+    <div class="px-8 py-10">
       <h1 class="text-xl font-bold">{t("Library.MissingGame")}</h1>
-      <button class="mt-3 text-sm text-accent" onclick={back}>{t("Library.Back")}</button>
+      <button class="mt-3 text-sm font-semibold text-accent" onclick={back}>{t("Library.Back")}</button>
     </div>
   {:else if flags}
-    <div class="relative h-72 shrink-0 bg-sidebar">
+    <div class="relative isolate overflow-hidden bg-sidebar shadow-[var(--shadow-hero)]">
       {#if hero}
-        <img src={hero} alt="" class="h-full w-full object-cover" />
+        <img src={hero} alt="" class="absolute inset-0 h-full w-full object-cover" />
       {/if}
-      <div class="absolute inset-0 bg-gradient-to-t from-window via-window/40 to-transparent"></div>
-      <div class="absolute bottom-0 left-0 right-0 flex items-end gap-5 px-8 pb-6">
+      <div class="absolute inset-0 bg-gradient-to-t from-window via-window/55 to-black/20"></div>
+      <button
+        class="absolute left-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/65"
+        onclick={back}
+        aria-label={t("Library.Back")}
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <div class="relative z-10 flex min-h-[20rem] items-end gap-5 px-8 pb-8 pt-24 lg:min-h-[24rem]">
         {#if cover}
-          <img src={cover} alt="" class="h-40 w-[108px] rounded-lg object-cover shadow-lg" />
+          <img
+            src={cover}
+            alt={item.game.name}
+            class="hidden h-52 w-[8.67rem] max-w-none shrink-0 rounded-lg object-cover object-top shadow-2xl ring-1 ring-white/10 sm:block"
+          />
         {/if}
-        <div class="min-w-0 pb-1">
-          <h1 class="text-3xl font-bold">{item.game.name}</h1>
-          <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+        <div class="min-w-0 flex-1">
+          <h1 class="text-4xl font-bold tracking-tight text-white drop-shadow-lg">{item.game.name}</h1>
+          <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-white/80">
             <span
               class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold
-                {flags.status === 'Installed' ? 'bg-ok/20 text-ok' : ''}
-                {flags.busy ? 'bg-accent/20 text-accent' : ''}
-                {flags.status === 'Failed' ? 'bg-danger/20 text-danger' : ''}
-                {flags.status === 'NotInstalled' || flags.status === 'Paused' ? 'bg-card text-muted' : ''}"
+                {flags.status === 'Installed' ? 'bg-ok/25 text-ok' : ''}
+                {flags.busy ? 'bg-accent/25 text-white' : ''}
+                {flags.status === 'Failed' ? 'bg-danger/25 text-danger' : ''}
+                {flags.status === 'NotInstalled' || flags.status === 'Paused' ? 'bg-black/40 text-white/80' : ''}"
             >
               {t(`Library.Status.${flags.status}`)}
             </span>
@@ -188,47 +192,65 @@
               <span>{formatBytes(item.game.sizeBytes)}</span>
             {/if}
           </div>
+          {#if flags.busy || flags.status === "Paused"}
+            <div class="mt-4 max-w-md">
+              <p class="text-sm font-semibold text-white">
+                {task
+                  ? `${Math.round(pct)}% · ${formatBytes(task.downloaded_bytes)} / ${formatBytes(task.total_bytes)}`
+                  : t(`Library.Status.${flags.status}`)}
+              </p>
+              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
+                <div class="h-full rounded-full bg-accent" style:width="{pct}%"></div>
+              </div>
+            </div>
+          {/if}
+          <div class="mt-5 flex flex-wrap gap-2">
+            {#if flags.canLaunch}
+              <button class="btn-primary btn px-6 py-2.5 text-sm" onclick={launch}>{t("Library.Launch")}</button>
+            {/if}
+            {#if flags.canInstall}
+              <button class="btn-primary btn px-6 py-2.5 text-sm" onclick={() => run("install", () => installGame(item.game.id))}>{t("Library.Install")}</button>
+            {/if}
+            {#if flags.updateAvailable}
+              <button class="btn-primary btn px-6 py-2.5 text-sm" onclick={() => run("update", () => updateGame(item.game.id))}>{t("Library.Update")}</button>
+            {/if}
+            {#if flags.canPause}
+              <button class="btn-ghost btn border-white/20 bg-black/30 text-white" onclick={() => run("pause", () => pauseInstall(item.game.id))}>{t("Library.PauseDownload")}</button>
+            {/if}
+            {#if flags.canResume}
+              <button class="btn-primary btn px-6 py-2.5 text-sm" onclick={() => run("resume", () => resumeInstall(item.game.id))}>{t("Library.ResumeDownload")}</button>
+            {/if}
+            {#if flags.canCancel}
+              <button class="btn-ghost btn border-white/20 bg-black/30 text-white" onclick={() => run("cancel", () => cancelInstall(item.game.id))}>{t("Library.CancelDownload")}</button>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="grid gap-8 px-8 py-6 lg:grid-cols-[1fr_280px]">
-      <div>
-        {#if flags.busy || flags.status === "Paused"}
-          <p class="text-sm font-semibold">
-            {task
-              ? `${Math.round(pct)}% · ${formatBytes(task.downloaded_bytes)} / ${formatBytes(task.total_bytes)}`
-              : t(`Library.Status.${flags.status}`)}
-          </p>
-          <div class="mt-2 h-1.5 overflow-hidden rounded bg-border">
-            <div class="h-full bg-accent" style="width: {pct}%"></div>
-          </div>
-        {/if}
-
+    <div class="grid min-w-0 gap-8 px-8 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div class="min-w-0">
         {#if tags.length}
-          <div class="mb-4 flex flex-wrap gap-1.5">
-            {#each tags as tag (tag)}
-              <span class="rounded-full bg-sidebar px-2.5 py-1 text-[11px] text-muted">{tag}</span>
+          <div class="mb-5 flex flex-wrap gap-1.5">
+            {#each tags as tagName (tagName)}
+              <span class="chip">{tagName}</span>
             {/each}
           </div>
         {/if}
 
-        <h2 class="text-sm font-semibold">{t("Library.Details")}</h2>
-        <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{description}</p>
+        <h2 class="text-xs font-semibold tracking-[0.14em] text-muted uppercase">{t("Library.Details")}</h2>
+        <p class="mt-2 break-words whitespace-pre-wrap text-sm leading-relaxed text-muted">{description}</p>
 
         {#if notes}
-          <h2 class="mt-8 text-sm font-semibold">{t("Library.Notes")}</h2>
-          <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{notes}</p>
+          <h2 class="mt-8 text-xs font-semibold tracking-[0.14em] text-muted uppercase">{t("Library.Notes")}</h2>
+          <p class="mt-2 break-words whitespace-pre-wrap text-sm leading-relaxed text-muted">{notes}</p>
         {/if}
 
         {#if shots.length}
-          <h2 class="mt-8 text-sm font-semibold">{t("Library.Gallery")}</h2>
-          <div class="mt-3 flex flex-wrap gap-2">
+          <h2 class="mt-8 text-xs font-semibold tracking-[0.14em] text-muted uppercase">{t("Library.Gallery")}</h2>
+          <div class="mt-3 flex min-w-0 gap-2 overflow-x-auto pb-2">
             {#each shots as src (src)}
-              <button
-                class="h-28 w-44 overflow-hidden rounded-lg bg-sidebar"
-                onclick={() => (lightbox = src)}
-              >
+              <button class="h-28 w-48 shrink-0 overflow-hidden rounded-lg bg-sidebar ring-1 ring-border" onclick={() => (lightbox = src)}>
                 <img
                   {src}
                   alt=""
@@ -242,59 +264,41 @@
       </div>
 
       <aside class="space-y-3">
-          <div class="flex flex-col gap-2">
-            {#if flags.canInstall}
-              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("install", () => installGame(item.game.id))}>{t("Library.Install")}</button>
-            {/if}
-            {#if flags.canPause}
-              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run("pause", () => pauseInstall(item.game.id))}>{t("Library.PauseDownload")}</button>
-            {/if}
-            {#if flags.canResume}
-              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("resume", () => resumeInstall(item.game.id))}>{t("Library.ResumeDownload")}</button>
-            {/if}
-            {#if flags.updateAvailable}
-              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={() => run("update", () => updateGame(item.game.id))}>{t("Library.Update")}</button>
-            {/if}
-            {#if flags.canLaunch}
-              <button class="rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white" onclick={launch}>{t("Library.Launch")}</button>
-            {/if}
-            {#if flags.canCancel}
-              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={() => run("cancel", () => cancelInstall(item.game.id))}>{t("Library.CancelDownload")}</button>
-            {/if}
-            {#if flags.canVerify}
-              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" disabled={verifying} onclick={verify}>
-                {verifying ? t("Library.Verifying") : t("Library.Verify")}
-              </button>
-            {/if}
-            {#if flags.canOpenFolder}
-              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={openFolder}>{t("Library.OpenFolder")}</button>
-            {/if}
-            {#if flags.canUninstall}
-              <button class="rounded-lg border border-border px-3 py-2.5 text-sm" onclick={uninstall}>{t("Library.Uninstall")}</button>
-            {/if}
-          </div>
+        <div class="flex flex-col gap-2">
+          {#if flags.canVerify}
+            <button class="btn-ghost btn" disabled={verifying} onclick={verify}>
+              {verifying ? t("Library.Verifying") : t("Library.Verify")}
+            </button>
+          {/if}
+          {#if flags.canOpenFolder}
+            <button class="btn-ghost btn" onclick={openFolder}>{t("Library.OpenFolder")}</button>
+          {/if}
+          {#if flags.canUninstall}
+            <button class="btn-danger btn" onclick={uninstall}>{t("Library.Uninstall")}</button>
+          {/if}
+        </div>
 
-        <dl class="space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
+        <dl class="panel space-y-3 p-4 text-sm">
           <div>
-            <dt class="text-[11px] text-muted">{t("Library.DetailsVersion")}</dt>
-            <dd>{item.local?.installed_version || item.game.version || "—"}</dd>
+            <dt class="text-[11px] tracking-wide text-muted uppercase">{t("Library.DetailsVersion")}</dt>
+            <dd class="mt-0.5">{item.local?.installed_version || item.game.version || "—"}</dd>
           </div>
           <div>
-            <dt class="text-[11px] text-muted">{t("Library.DetailsSize")}</dt>
-            <dd>{item.game.sizeBytes > 0 ? formatBytes(item.game.sizeBytes) : "—"}</dd>
+            <dt class="text-[11px] tracking-wide text-muted uppercase">{t("Library.DetailsSize")}</dt>
+            <dd class="mt-0.5">{item.game.sizeBytes > 0 ? formatBytes(item.game.sizeBytes) : "—"}</dd>
           </div>
           <div>
-            <dt class="text-[11px] text-muted">{t("Library.DetailsPlayed")}</dt>
-            <dd>{played || "—"}</dd>
+            <dt class="text-[11px] tracking-wide text-muted uppercase">{t("Library.DetailsPlayed")}</dt>
+            <dd class="mt-0.5">{played || "—"}</dd>
           </div>
           <div>
-            <dt class="text-[11px] text-muted">{t("Library.LastPlayed")}</dt>
-            <dd>{lastPlayed || t("Library.LastPlayedNever")}</dd>
+            <dt class="text-[11px] tracking-wide text-muted uppercase">{t("Library.LastPlayed")}</dt>
+            <dd class="mt-0.5">{lastPlayed || t("Library.LastPlayedNever")}</dd>
           </div>
           {#if item.local?.installed_path}
             <div>
-              <dt class="text-[11px] text-muted">{t("Library.InstalledPath")}</dt>
-              <dd class="break-all text-xs text-muted">{item.local.installed_path}</dd>
+              <dt class="text-[11px] tracking-wide text-muted uppercase">{t("Library.InstalledPath")}</dt>
+              <dd class="mt-0.5 break-all text-xs text-muted">{item.local.installed_path}</dd>
             </div>
           {/if}
         </dl>

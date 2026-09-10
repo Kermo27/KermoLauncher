@@ -127,7 +127,8 @@ impl WebDavClient {
             Ok(meta) => meta.len(),
             Err(_) => 0,
         };
-        let response = cancellable(self.get_with_optional_range(remote_url, existing), &cancel).await?;
+        let response =
+            cancellable(self.get_with_optional_range(remote_url, existing), &cancel).await?;
         if response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
             tracing::warn!(
                 "Server rejected resume for {}; restarting from scratch",
@@ -136,13 +137,27 @@ impl WebDavClient {
             let _ = tokio::fs::remove_file(local_path).await;
             let retry = cancellable(self.get_with_optional_range(remote_url, 0), &cancel).await?;
             ensure_success(&retry, remote_url)?;
-            self.write_body(retry, local_path, task_id, 0, &mut on_progress, cancel.clone())
-                .await?;
+            self.write_body(
+                retry,
+                local_path,
+                task_id,
+                0,
+                &mut on_progress,
+                cancel.clone(),
+            )
+            .await?;
             return Ok(());
         }
         ensure_success(&response, remote_url)?;
-        self.write_body(response, local_path, task_id, existing, &mut on_progress, cancel)
-            .await?;
+        self.write_body(
+            response,
+            local_path,
+            task_id,
+            existing,
+            &mut on_progress,
+            cancel,
+        )
+        .await?;
         Ok(())
     }
     async fn get_with_optional_range(
@@ -350,7 +365,13 @@ mod tests {
         let dest = dir.path().join("file.bin");
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
+            .download_file(
+                &format!("{}/file.bin", server.uri()),
+                &dest,
+                "t1",
+                |_| {},
+                None,
+            )
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"hello");
@@ -372,7 +393,13 @@ mod tests {
 
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
+            .download_file(
+                &format!("{}/file.bin", server.uri()),
+                &dest,
+                "t1",
+                |_| {},
+                None,
+            )
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"hellworld");
@@ -399,7 +426,13 @@ mod tests {
 
         WebDavClient::new()
             .unwrap()
-            .download_file(&format!("{}/file.bin", server.uri()), &dest, "t1", |_| {}, None)
+            .download_file(
+                &format!("{}/file.bin", server.uri()),
+                &dest,
+                "t1",
+                |_| {},
+                None,
+            )
             .await
             .unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"abc");

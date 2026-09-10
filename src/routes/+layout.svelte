@@ -19,5 +19,5 @@
 {#if session.ready}
     {@render children()}
 {:else}
-    <main class="flex min-h-screen items-center justify-center text-muted">...</main>
+    <main class="flex min-h-screen items-center justify-center text-sm text-muted">…</main>
 {/if}

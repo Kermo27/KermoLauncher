@@ -4,8 +4,7 @@ import type { LibraryItem } from "./types";
 
 export function coverSrc(item: LibraryItem) {
   if (item.coverPath) return convertFileSrc(item.coverPath);
-  const shot = item.game.screenshotUrls?.[0];
-  return shot || null;
+  return null;
 }
 
 export function heroSrc(item: LibraryItem, shareUrl = "", rootFolder = "") {
@@ -16,11 +15,11 @@ export function heroSrc(item: LibraryItem, shareUrl = "", rootFolder = "") {
 }
 
 export function screenshotSrcs(item: LibraryItem, shareUrl = "", rootFolder = "") {
-  const catalog = (item.game.screenshotUrls ?? [])
+  const local = (item.extraScreenshotPaths ?? []).filter(Boolean).map((p) => convertFileSrc(p));
+  if (local.length) return local;
+  return (item.game.screenshotUrls ?? [])
     .map((u) => shareFileUrl(shareUrl, rootFolder, u))
     .filter(Boolean);
-  if (catalog.length) return catalog;
-  return (item.extraScreenshotPaths ?? []).map((p) => convertFileSrc(p));
 }
 
 export function tagsOf(item: LibraryItem) {

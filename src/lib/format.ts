@@ -1,3 +1,5 @@
+import { locale } from "./i18n";
+
 export function formatBytes(bytes: number) {
   const units = ["B", "KB", "MB", "GB", "TB"];
   let value = bytes;
@@ -25,7 +27,12 @@ export function formatPlayDuration(seconds: number) {
 
 export function formatLastPlayed(unix: number | null) {
   if (!unix) return "";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(unix * 1000),
-  );
+  return new Intl.DateTimeFormat(locale(), {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(unix * 1000));
 }

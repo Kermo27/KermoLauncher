@@ -90,9 +90,10 @@ impl GameService {
         let Some(mut local) = self.inner.db.get_local_state(game_id)? else {
             return Ok(());
         };
-        let (Some(manifest), Some(installed_path)) =
-            (local.installed_manifest.as_ref(), local.installed_path.as_ref())
-        else {
+        let (Some(manifest), Some(installed_path)) = (
+            local.installed_manifest.as_ref(),
+            local.installed_path.as_ref(),
+        ) else {
             return Ok(());
         };
         for file in &manifest.files {

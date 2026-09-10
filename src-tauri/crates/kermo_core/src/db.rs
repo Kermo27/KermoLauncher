@@ -406,7 +406,7 @@ fn migrate_schema(conn: &Connection) -> Result<()> {
         )
         .unwrap_or(0);
 
-        if version < 2 {
+    if version < 2 {
         add_column_if_missing(conn, "games", "manifest_url", "TEXT")?;
         add_column_if_missing(conn, "game_local_state", "installed_version", "TEXT")?;
         add_column_if_missing(conn, "game_local_state", "installed_manifest", "TEXT")?;
@@ -491,7 +491,9 @@ fn map_steam_cache(row: &Row<'_>) -> rusqlite::Result<SteamCache> {
         game_id: row.get("game_id")?,
         steam_app_id: row.get("steam_app_id")?,
         tags,
-        description: row.get::<_, Option<String>>("description")?.unwrap_or_default(),
+        description: row
+            .get::<_, Option<String>>("description")?
+            .unwrap_or_default(),
         cover_path: row.get("cover_path")?,
         hero_path: row.get("hero_path")?,
         screenshot_paths: parse_json_vec(row.get("screenshot_paths").ok().flatten()),
@@ -666,7 +668,6 @@ mod tests {
             ..AppSettings::default()
         })
         .unwrap();
-
 
         let reopened = LocalDb::open(db.path());
         let settings = reopened.get_settings().unwrap();

@@ -16,11 +16,6 @@ mod url_sanitizer;
 mod webdav;
 
 pub use catalog::{library_items, probe_share, refresh_from_remote};
-pub use publish::{
-    compare_library, guess_dest_folder, load_state, load_state_from, merge_scanned, publish_library,
-    remove_orphan, save_state, save_state_to, scan_folder, AdminGame, AdminState, CompareResult,
-    GameSyncPlan, PublishProgress, PublishReport, SyncChange, SyncChangeKind,
-};
 pub use db::LocalDb;
 pub use download::DownloadService;
 pub use error::{Error, Result};
@@ -34,6 +29,11 @@ pub use models::*;
 pub use paths::{admin_data_directory, data_directory, data_directory_from, db_path};
 pub use proton::{
     find_installed as find_proton_installs, resolve as resolve_proton, ProtonInstall,
+};
+pub use publish::{
+    compare_library, guess_dest_folder, load_state, load_state_from, merge_scanned,
+    publish_library, remove_orphan, save_state, save_state_to, scan_folder, AdminGame, AdminState,
+    CompareResult, GameSyncPlan, PublishProgress, PublishReport, SyncChange, SyncChangeKind,
 };
 pub use steam::SteamClient;
 pub use url_sanitizer::mask_url;
