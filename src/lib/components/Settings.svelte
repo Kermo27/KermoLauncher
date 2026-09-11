@@ -2,6 +2,7 @@
   import {
     dataDirectory,
     listProtonVersions,
+    openLogFolder,
     saveSettings,
     testShare,
     validateInstallFolder,
@@ -101,10 +102,18 @@
     }
   }
 
+  async function openLogs() {
+    try {
+      await openLogFolder();
+    } catch (e) {
+      toast("error", t("Settings.Logs.OpenError"), String(e));
+    }
+  }
+
   onMount(async () => {
+    dataDir = await dataDirectory();
     if (showWine) {
       protons = await listProtonVersions();
-      dataDir = await dataDirectory();
     }
   });
 </script>
@@ -114,6 +123,9 @@
     <header class="mb-8">
       <h1 class="text-3xl font-bold tracking-tight">{t("Settings.Title")}</h1>
       <p class="mt-1 text-sm text-muted">{t("Settings.Subtitle")}</p>
+      {#if session.version}
+        <p class="mt-2 text-xs text-muted">{format(t("Settings.Version"), session.version)}</p>
+      {/if}
     </header>
 
     <div class="space-y-4">
@@ -210,6 +222,19 @@
           <button class="btn-ghost btn" disabled={checkingUpdate} onclick={checkUpdates}>
             {t("Settings.General.CheckUpdates")}
           </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="border-b border-border px-5 py-4">
+          <h2 class="text-sm font-semibold">{t("Settings.Logs.Title")}</h2>
+          <p class="mt-1 text-xs leading-relaxed text-muted">{t("Settings.Logs.Hint")}</p>
+        </div>
+        <div class="space-y-3 p-5">
+          {#if dataDir}
+            <p class="break-all font-mono text-xs text-muted">{dataDir}/logs</p>
+          {/if}
+          <button class="btn-ghost btn" onclick={openLogs}>{t("Settings.Logs.Open")}</button>
         </div>
       </section>
 

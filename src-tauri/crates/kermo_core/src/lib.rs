@@ -26,7 +26,7 @@ pub use install_folder::{
 pub use launch::{build as build_launch, looks_like_online_fix, prefix_key, LaunchSpec};
 pub use manifest_diff::{files_to_download, is_same_file, stale_files};
 pub use models::*;
-pub use paths::{admin_data_directory, data_directory, data_directory_from, db_path};
+pub use paths::{admin_data_directory, data_directory, data_directory_from, db_path, log_directory};
 pub use proton::{
     find_installed as find_proton_installs, resolve as resolve_proton, ProtonInstall,
 };

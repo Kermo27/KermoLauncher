@@ -3,14 +3,20 @@
   import { onMount } from "svelte";
   import { boot, session } from "$lib/session.svelte";
   import { checkForAppUpdate } from "$lib/updater";
+  import { installLogBridge, logError } from "$lib/log";
 
   let { children } = $props();
 
   onMount(() => {
+    installLogBridge();
     void (async () => {
-      await boot();
-      if (session.settings?.AutoUpdate && session.settings.OnboardingCompleted) {
-        void checkForAppUpdate({ silent: true });
+      try {
+        await boot();
+        if (session.settings?.AutoUpdate && session.settings.OnboardingCompleted) {
+          void checkForAppUpdate({ silent: true });
+        }
+      } catch (e) {
+        logError("boot failed", e);
       }
     })();
   });

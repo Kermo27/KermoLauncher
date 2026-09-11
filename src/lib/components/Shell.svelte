@@ -79,10 +79,14 @@
       </svg>
       {t("Nav.Settings")}
     </button>
-    <div class="mt-auto"></div>
-    {#if activeCount > 0}
-      <span class="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-white">{activeCount}</span>
-    {/if}
+    <div class="mt-auto flex flex-col items-center gap-2">
+      {#if activeCount > 0}
+        <span class="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-white">{activeCount}</span>
+      {/if}
+      {#if session.version}
+        <span class="pb-1 text-[10px] font-medium tracking-wide text-muted tabular-nums">v{session.version}</span>
+      {/if}
+    </div>
   </nav>
   <div class="flex min-w-0 flex-1 flex-col bg-window">
     <div class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">

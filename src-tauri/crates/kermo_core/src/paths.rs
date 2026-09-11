@@ -18,6 +18,10 @@ pub fn db_path() -> PathBuf {
     data_directory().join("launcher.db")
 }
 
+pub fn log_directory() -> PathBuf {
+    data_directory().join("logs")
+}
+
 pub fn admin_data_directory() -> PathBuf {
     let base = dirs::data_local_dir().expect("LocalAppData / XDG_DATA_HOME");
     base.join("KermoLauncherAdmin")

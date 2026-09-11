@@ -80,3 +80,7 @@ export function listProtonVersions() {
 export function dataDirectory() {
   return invoke<string>("data_directory");
 }
+
+export function openLogFolder() {
+  return invoke<void>("open_log_folder");
+}

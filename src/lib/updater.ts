@@ -3,6 +3,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { ask } from "./confirm.svelte";
 import { format } from "./format";
 import { t } from "./i18n";
+import { logError } from "./log";
 import { toast } from "./toasts.svelte";
 
 export async function checkForAppUpdate(opts: { silent?: boolean } = {}) {
@@ -30,6 +31,7 @@ export async function checkForAppUpdate(opts: { silent?: boolean } = {}) {
       toast("info", t("Updates.InstallLaterTitle"), t("Updates.InstallLaterMessage"));
     }
   } catch (e) {
+    logError("update check failed", e);
     if (!silent) {
       toast("error", t("Updates.CheckFailed"), format(t("Updates.CheckFailedMessage"), String(e)));
     }
