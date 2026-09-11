@@ -2,6 +2,7 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { boot, session } from "$lib/session.svelte";
+  import { changelogDialog, maybeShowChangelog } from "$lib/changelog.svelte";
   import { checkForAppUpdate } from "$lib/updater";
   import { installLogBridge, logError } from "$lib/log";
 
@@ -12,7 +13,12 @@
     void (async () => {
       try {
         await boot();
-        if (session.settings?.AutoUpdate && session.settings.OnboardingCompleted) {
+        await maybeShowChangelog();
+        if (
+          !changelogDialog.open &&
+          session.settings?.AutoUpdate &&
+          session.settings.OnboardingCompleted
+        ) {
           void checkForAppUpdate({ silent: true });
         }
       } catch (e) {

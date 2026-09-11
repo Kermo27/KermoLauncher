@@ -170,4 +170,8 @@ export const pl: Record<string, string> = {
   "Updates.UpToDateMessage": "Launcher ma już najnowszą dostępną wersję.",
   "Updates.CheckFailed": "Nie udało się sprawdzić aktualizacji",
   "Updates.CheckFailedMessage": "Nie można połączyć się z serwerem aktualizacji. Błąd: {0}",
+  "Changelog.Title": "Co nowego",
+  "Changelog.Subtitle": "Zmiany od wersji {0}",
+  "Changelog.Ok": "Rozumiem",
+  "Changelog.Close": "Zamknij",
 };

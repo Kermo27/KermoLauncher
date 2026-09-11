@@ -113,6 +113,7 @@
         Theme: theme,
         Language: language,
         OnboardingCompleted: true,
+        LastSeenVersion: session.version,
         Nextcloud: {
           ShareUrl: shareUrl.trim(),
           ShareToken: "",

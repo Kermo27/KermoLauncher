@@ -236,6 +236,8 @@ pub struct AppSettings {
     pub wine_command: String,
     #[serde(default)]
     pub wine_prefix: String,
+    #[serde(default)]
+    pub last_seen_version: String,
 }
 
 impl AppSettings {
@@ -259,6 +261,7 @@ impl Default for AppSettings {
             proton_version: String::new(),
             wine_command: default_wine(),
             wine_prefix: String::new(),
+            last_seen_version: String::new(),
         }
     }
 }
@@ -448,7 +451,15 @@ mod tests {
         let json = serde_json::to_string(&AppSettings::default()).unwrap();
         assert!(json.contains("\"MaxParallelDownloads\":2"));
         assert!(json.contains("\"OnboardingCompleted\":false"));
+        assert!(json.contains("\"LastSeenVersion\":\"\""));
         assert!(!json.contains("max_parallel_downloads"));
+    }
+
+    #[test]
+    fn settings_missing_last_seen_version_defaults_empty() {
+        let s: AppSettings = serde_json::from_str(r#"{"OnboardingCompleted":true}"#).unwrap();
+        assert!(s.last_seen_version.is_empty());
+        assert!(s.onboarding_completed);
     }
 
     #[test]

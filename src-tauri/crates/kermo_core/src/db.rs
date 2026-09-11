@@ -696,6 +696,7 @@ mod tests {
         assert_eq!(s.theme, "Dark");
         assert_eq!(s.language, "pl");
         assert!(s.onboarding_completed);
+        assert!(s.last_seen_version.is_empty());
     }
 
     #[test]

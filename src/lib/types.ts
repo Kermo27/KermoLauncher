@@ -25,6 +25,7 @@ export type AppSettings = {
   ProtonVersion: string;
   WineCommand: string;
   WinePrefix: string;
+  LastSeenVersion: string;
 };
 
 export type FolderValidation = {

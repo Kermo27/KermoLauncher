@@ -63,14 +63,26 @@ impl SteamClient {
         cover_dir: &Path,
     ) -> Result<()> {
         std::fs::create_dir_all(cover_dir)?;
+        let mut attempted = 0u32;
+        let mut failed = 0u32;
         for game in games {
             let cache = db.get_steam_cache(&game.id)?;
             if !needs_steam_enrich(cache.as_ref()) {
                 continue;
             }
+            attempted += 1;
             if let Err(e) = self.enrich_one(db, game, cover_dir, cache.as_ref()).await {
-                tracing::debug!("Steam enrich skipped for {}: {e}", game.id);
+                failed += 1;
+                tracing::warn!("Steam enrich skipped for {}: {e}", game.id);
             }
+        }
+        if attempted > 0 {
+            tracing::info!(
+                attempted,
+                failed,
+                ok = attempted.saturating_sub(failed),
+                "Steam enrich finished"
+            );
         }
         Ok(())
     }

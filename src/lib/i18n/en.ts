@@ -169,4 +169,8 @@ export const en: Record<string, string> = {
   "Updates.UpToDateMessage": "The launcher is already running the latest version.",
   "Updates.CheckFailed": "Update check failed",
   "Updates.CheckFailedMessage": "Could not reach the update server. Error: {0}",
+  "Changelog.Title": "What's new",
+  "Changelog.Subtitle": "Changes since {0}",
+  "Changelog.Ok": "Got it",
+  "Changelog.Close": "Close",
 };

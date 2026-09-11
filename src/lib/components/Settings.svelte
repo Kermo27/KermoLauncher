@@ -45,6 +45,7 @@
     return {
       ...s,
       MaxParallelDownloads: parallel,
+      LastSeenVersion: session.settings?.LastSeenVersion ?? s.LastSeenVersion ?? "",
       Nextcloud: url.trim()
         ? {
             ShareUrl: url.trim(),

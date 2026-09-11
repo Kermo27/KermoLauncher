@@ -20,6 +20,10 @@ export function locale() {
   return current === pl ? "pl-PL" : "en-GB";
 }
 
+export function changelogLang(): "en" | "pl" {
+  return current === pl ? "pl" : "en";
+}
+
 export function t(key: string) {
   return current[key] ?? en[key] ?? key;
 }

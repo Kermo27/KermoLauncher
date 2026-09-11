@@ -1,6 +1,6 @@
 {
   "name": "kermo-launcher",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "KermoLauncher",
   "type": "module",
   "scripts": {

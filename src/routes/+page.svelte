@@ -1,5 +1,6 @@
 <script lang="ts">
   import Confirm from "$lib/components/Confirm.svelte";
+  import Changelog from "$lib/components/Changelog.svelte";
   import Onboarding from "$lib/components/Onboarding.svelte";
   import Shell from "$lib/components/Shell.svelte";
   import Toasts from "$lib/components/Toasts.svelte";
@@ -13,3 +14,4 @@
 {/if}
 <Toasts />
 <Confirm />
+<Changelog />
