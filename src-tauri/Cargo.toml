@@ -1,6 +1,6 @@
 [package]
 name = "kermo-launcher"
-version = "2.0.2"
+version = "2.0.3"
 description = "KermoLauncher"
 authors = ["Kermo"]
 edition = "2021"

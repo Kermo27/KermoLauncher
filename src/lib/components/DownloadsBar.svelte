@@ -1,7 +1,7 @@
 <script lang="ts">
   import { cancelInstall, pauseInstall, resumeInstall } from "$lib/api";
   import { format, formatBytes } from "$lib/format";
-  import { gameFlags, taskPct } from "$lib/game";
+  import { gameFlags, shownPct } from "$lib/game";
   import { runGameAction } from "$lib/game-notify";
   import { t } from "$lib/i18n";
   import type { DownloadTask, LibraryItem } from "$lib/types";
@@ -58,19 +58,21 @@
       {#each rows as row (row.item?.game.id ?? row.task?.id)}
         {@const current = row.item}
         {@const flags = current ? gameFlags(current) : null}
-        {@const pct = taskPct(row.task)}
+        {@const pct = shownPct(current?.local?.status ?? "", row.task)}
         <div class="flex items-center gap-3">
           <div class="min-w-0 flex-1">
             <p class="truncate text-xs font-semibold">{current?.game.name ?? row.task?.game_id}</p>
             <p class="mt-0.5 text-[11px] text-muted">
-              {#if row.task && row.task.total_bytes > 0}
+              {#if current?.local?.status === "Installing"}
+                {t("Library.Status.Installing")}
+              {:else if row.task && row.task.total_bytes > 0}
                 {Math.round(pct)}% · {formatBytes(row.task.downloaded_bytes)} / {formatBytes(row.task.total_bytes)}
               {:else if current}
                 {t(`Library.Status.${current.local?.status ?? "Downloading"}`)}
               {/if}
             </p>
             <div class="mt-1 h-1 overflow-hidden rounded-full bg-border">
-              <div class="h-full rounded-full bg-accent" style:width="{pct}%"></div>
+              <div class="h-full rounded-full bg-accent transition-[width] duration-500 ease-linear" style:width="{pct}%"></div>
             </div>
           </div>
           {#if current && flags}

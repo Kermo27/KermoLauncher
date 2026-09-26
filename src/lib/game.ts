@@ -11,7 +11,7 @@ export function gameFlags(item: LibraryItem) {
       canUninstall: status === "Installed" || status === "Failed" || status === "Paused",
       canPause: status === "Downloading",
       canResume: status === "Paused",
-      canCancel: status === "Downloading" || status === "Paused",
+      canCancel: status === "Downloading" || status === "Installing" || status === "Paused",
       canVerify: status === "Installed",
       canOpenFolder: status === "Installed" && !!item.local?.installed_path,
       updateAvailable:
@@ -24,4 +24,9 @@ export function gameFlags(item: LibraryItem) {
 export function taskPct(task: DownloadTask | null) {
   if (!task || task.total_bytes <= 0) return 0;
   return Math.min(100, (100 * task.downloaded_bytes / task.total_bytes));
+}
+
+export function shownPct(status: string, task: DownloadTask | null) {
+  if (status === "Installing") return 100;
+  return taskPct(task);
 }

@@ -203,7 +203,7 @@ impl WebDavClient {
             };
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
-            if last_report.elapsed() >= Duration::from_millis(100) {
+            if last_report.elapsed() >= Duration::from_millis(50) {
                 let elapsed = start.elapsed().as_secs_f64();
                 let speed = if elapsed > 0.0 {
                     (downloaded - existing) as f64 / elapsed

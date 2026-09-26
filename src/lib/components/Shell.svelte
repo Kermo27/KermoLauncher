@@ -47,7 +47,7 @@
 
   onMount(() => {
     void load();
-    const timer = setInterval(load, 1000);
+    const timer = setInterval(load, 200);
     return () => clearInterval(timer);
   });
 </script>

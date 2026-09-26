@@ -406,7 +406,11 @@ impl GameService {
             .await?;
         throw_if_cancelled(&cancel)?;
 
+        download_task.downloaded_bytes = download_task.total_bytes;
+        download_task.status = DownloadStatus::Downloading;
         download_task.install_stage = InstallStage::Verifying;
+        local.status = InstallStatus::Installing;
+        self.inner.db.upsert_local_state(local)?;
         self.inner.db.upsert_download_task(download_task)?;
 
         for file in &to_download {

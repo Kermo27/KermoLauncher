@@ -14,7 +14,7 @@
   } from "$lib/api";
   import { coverSrc, descriptionOf, heroSrc, screenshotSrcs, tagsOf } from "$lib/cover";
   import { format, formatBytes, formatLastPlayed, formatPlayDuration } from "$lib/format";
-  import { gameFlags, taskPct } from "$lib/game";
+  import { gameFlags, shownPct } from "$lib/game";
   import { t } from "$lib/i18n";
   import { session } from "$lib/session.svelte";
   import type { DownloadTask, LibraryItem } from "$lib/types";
@@ -47,7 +47,7 @@
   const notes = $derived(item?.game.notes?.trim() || "");
   const played = $derived(item ? formatPlayDuration(item.local?.play_time_seconds ?? 0) : "");
   const lastPlayed = $derived(item ? formatLastPlayed(item.local?.last_played ?? null) : "");
-  const pct = $derived(taskPct(task));
+  const pct = $derived(shownPct(flags?.status ?? "", task));
 
   async function load() {
     try {
@@ -124,7 +124,7 @@
 
   onMount(() => {
     void load();
-    const timer = setInterval(load, 1000);
+    const timer = setInterval(load, 200);
     return () => clearInterval(timer);
   });
 </script>
@@ -195,12 +195,16 @@
           {#if flags.busy || flags.status === "Paused"}
             <div class="mt-4 max-w-md">
               <p class="text-sm font-semibold text-white">
-                {task
-                  ? `${Math.round(pct)}% · ${formatBytes(task.downloaded_bytes)} / ${formatBytes(task.total_bytes)}`
-                  : t(`Library.Status.${flags.status}`)}
+                {#if flags.status === "Installing"}
+                  {t("Library.Status.Installing")}
+                {:else if task && task.total_bytes > 0}
+                  {Math.round(pct)}% · {formatBytes(task.downloaded_bytes)} / {formatBytes(task.total_bytes)}
+                {:else}
+                  {t(`Library.Status.${flags.status}`)}
+                {/if}
               </p>
               <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
-                <div class="h-full rounded-full bg-accent" style:width="{pct}%"></div>
+                <div class="h-full rounded-full bg-accent transition-[width] duration-500 ease-linear" style:width="{pct}%"></div>
               </div>
             </div>
           {/if}

@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use futures_util::stream::{self, StreamExt};
 
@@ -46,6 +47,24 @@ impl DownloadService {
         let webdav = self.webdav.clone();
         let task_id = task.id.clone();
         let first_err: Arc<Mutex<Option<crate::Error>>> = Arc::new(Mutex::new(None));
+        let stop_progress = Arc::new(AtomicBool::new(false));
+        let progress_task = {
+            let db = self.db.clone();
+            let task_id = task_id.clone();
+            let completed = completed.clone();
+            let in_flight = in_flight.clone();
+            let stop = stop_progress.clone();
+            tokio::spawn(async move {
+                while !stop.load(Ordering::Relaxed) {
+                    tokio::time::sleep(Duration::from_millis(80)).await;
+                    if stop.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let bytes = progress_bytes(&completed, &in_flight);
+                    let _ = db.set_downloaded_bytes(&task_id, bytes as i64);
+                }
+            })
+        };
 
         stream::iter(files.to_vec())
             .for_each_concurrent(max_parallel, |file| {
@@ -93,12 +112,13 @@ impl DownloadService {
                         )
                         .await;
 
-                    in_flight.lock().expect("in_flight").remove(&file.key);
                     match download_result {
                         Ok(()) => {
                             completed.fetch_add(file.size_bytes as u64, Ordering::Relaxed);
+                            in_flight.lock().expect("in_flight").remove(&file.key);
                         }
                         Err(e) => {
+                            in_flight.lock().expect("in_flight").remove(&file.key);
                             let mut slot = first_err.lock().expect("err");
                             if slot.is_none() {
                                 *slot = Some(e);
@@ -108,6 +128,9 @@ impl DownloadService {
                 }
             })
             .await;
+
+        stop_progress.store(true, Ordering::Relaxed);
+        progress_task.abort();
 
         if let Some(e) = first_err.lock().expect("err").take() {
             return Err(e);
@@ -119,6 +142,19 @@ impl DownloadService {
         self.db.upsert_download_task(&done)?;
         Ok(())
     }
+}
+
+fn progress_bytes(
+    completed: &AtomicU64,
+    in_flight: &Mutex<std::collections::HashMap<String, u64>>,
+) -> u64 {
+    let inflight = in_flight
+        .lock()
+        .expect("in_flight")
+        .values()
+        .copied()
+        .sum::<u64>();
+    completed.load(Ordering::Relaxed).saturating_add(inflight)
 }
 
 fn prepare_local_file(file: &DownloadFileRequest) -> u64 {
@@ -244,5 +280,62 @@ mod tests {
         .unwrap();
 
         assert_eq!(std::fs::read(&dest).unwrap(), b"hi");
+    }
+
+    #[test]
+    fn progress_bytes_adds_finished_files_and_partial_downloads() {
+        let completed = AtomicU64::new(100);
+        let in_flight = Mutex::new(std::collections::HashMap::from([
+            ("a".into(), 40u64),
+            ("b".into(), 10),
+        ]));
+        assert_eq!(progress_bytes(&completed, &in_flight), 150);
+    }
+
+    #[tokio::test]
+    async fn persists_partial_progress_while_the_file_is_still_downloading() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/a.bin"))
+            .respond_with(
+                ResponseTemplate::new(206)
+                    .insert_header("content-range", "bytes 3-8/9")
+                    .set_body_string("lo-rest")
+                    .set_delay(Duration::from_millis(800)),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let dest = dir.path().join("a.bin");
+        std::fs::write(&dest, b"hel").unwrap();
+
+        let file = NamedTempFile::new().unwrap();
+        let db = Arc::new(LocalDb::open(file.path()));
+        seed_game(&db);
+        db.save_settings(&AppSettings::default()).unwrap();
+        let mut running = task();
+        running.status = DownloadStatus::Downloading;
+        running.total_bytes = 9;
+        db.upsert_download_task(&running).unwrap();
+
+        let svc = DownloadService::new(WebDavClient::new().unwrap(), db.clone());
+        let requests = vec![DownloadFileRequest {
+            key: "a.bin".into(),
+            remote_url: format!("{}/a.bin", server.uri()),
+            local_path: dest.to_string_lossy().into(),
+            size_bytes: 9,
+        }];
+        let download = tokio::spawn(async move {
+            svc.download_files(&running, &requests, None).await
+        });
+
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        let partial = db.get_download_task("t1").unwrap().unwrap().downloaded_bytes;
+        download.await.unwrap().unwrap();
+        assert!(
+            partial > 0 && partial < 9,
+            "progress stayed at {partial} until the download finished"
+        );
     }
 }

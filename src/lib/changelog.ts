@@ -20,6 +20,19 @@ export const CHANGELOG: ChangelogRelease[] = [
       pl: ["Okładki i zrzuty Steam ładują się na Windowsie", "Historia zmian po aktualizacji"],
     },
   },
+  {
+    version: "2.0.3",
+    items: {
+      en: [
+        "Download progress updates while files are downloading",
+        "Progress stays full and shows Installing while the game is checked and moved into place",
+      ],
+      pl: [
+        "Pasek postępu aktualizuje się w trakcie pobierania",
+        "Po 100% zostaje „Instalowanie…” na czas sprawdzania i przenoszenia gry",
+      ],
+    },
+  },
 ];
 
 export function compareVersion(a: string, b: string) {

@@ -278,6 +278,16 @@ impl LocalDb {
         Ok(())
     }
 
+    pub fn set_downloaded_bytes(&self, task_id: &str, downloaded_bytes: i64) -> Result<()> {
+        self.initialize()?;
+        let conn = self.connect()?;
+        conn.execute(
+            "UPDATE downloads SET downloaded_bytes = ?1 WHERE id = ?2 AND status = 'Downloading'",
+            params![downloaded_bytes, task_id],
+        )?;
+        Ok(())
+    }
+
     pub fn get_download_task(&self, task_id: &str) -> Result<Option<DownloadTask>> {
         self.initialize()?;
         let conn = self.connect()?;
@@ -697,6 +707,35 @@ mod tests {
         assert_eq!(s.language, "pl");
         assert!(s.onboarding_completed);
         assert!(s.last_seen_version.is_empty());
+    }
+
+    #[test]
+    fn set_downloaded_bytes_updates_only_active_downloads() {
+        let (db, _file) = db();
+        db.upsert_games(&[game("g1")]).unwrap();
+        let task = DownloadTask {
+            id: "t1".into(),
+            game_id: "g1".into(),
+            remote_url: "https://example/a".into(),
+            local_path: "/tmp/a".into(),
+            total_bytes: 100,
+            downloaded_bytes: 0,
+            status: DownloadStatus::Downloading,
+            error: None,
+            started_at: None,
+            completed_at: None,
+            install_stage: InstallStage::Downloading,
+        };
+        db.upsert_download_task(&task).unwrap();
+        db.set_downloaded_bytes("t1", 40).unwrap();
+        assert_eq!(db.get_download_task("t1").unwrap().unwrap().downloaded_bytes, 40);
+
+        let mut paused = task;
+        paused.status = DownloadStatus::Paused;
+        paused.downloaded_bytes = 40;
+        db.upsert_download_task(&paused).unwrap();
+        db.set_downloaded_bytes("t1", 90).unwrap();
+        assert_eq!(db.get_download_task("t1").unwrap().unwrap().downloaded_bytes, 40);
     }
 
     #[test]

@@ -9,7 +9,7 @@
   } from "$lib/api";
   import { coverSrc } from "$lib/cover";
   import { formatBytes } from "$lib/format";
-  import { gameFlags, taskPct } from "$lib/game";
+  import { gameFlags, shownPct } from "$lib/game";
   import { runGameAction } from "$lib/game-notify";
   import { t } from "$lib/i18n";
   import { session } from "$lib/session.svelte";
@@ -25,7 +25,7 @@
 
   const flags = $derived(gameFlags(item));
   const cover = $derived(coverSrc(item));
-  const pct = $derived(taskPct(task));
+  const pct = $derived(shownPct(flags.status, task));
   const primary = $derived.by(() => {
     if (flags.canLaunch && !flags.updateAvailable) return "launch" as const;
     if (flags.updateAvailable) return "update" as const;
@@ -76,12 +76,16 @@
     {#if flags.busy || flags.status === "Paused"}
       <div class="absolute inset-x-2 bottom-10">
         <div class="h-1 overflow-hidden rounded-full bg-white/20">
-          <div class="h-full rounded-full bg-accent" style:width="{pct}%"></div>
+          <div class="h-full rounded-full bg-accent transition-[width] duration-500 ease-linear" style:width="{pct}%"></div>
         </div>
         <p class="mt-1 text-[10px] font-semibold text-white/90">
-          {task && task.total_bytes > 0
-            ? `${Math.round(pct)}% · ${formatBytes(task.downloaded_bytes)}`
-            : t(`Library.Status.${flags.status}`)}
+          {#if flags.status === "Installing"}
+            {t("Library.Status.Installing")}
+          {:else if task && task.total_bytes > 0}
+            {Math.round(pct)}% · {formatBytes(task.downloaded_bytes)}
+          {:else}
+            {t(`Library.Status.${flags.status}`)}
+          {/if}
         </p>
       </div>
     {/if}
