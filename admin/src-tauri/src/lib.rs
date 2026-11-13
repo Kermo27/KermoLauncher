@@ -1,8 +1,9 @@
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use kermo_core::{
-    compare_library, guess_dest_folder, load_state, merge_scanned, publish_library, remove_orphan,
-    save_state, scan_folder, AdminGame, AdminState, CompareResult, PublishProgress, PublishReport,
+    load_state, merge_scanned, save_state, scan_folder_reporting, write_scan_outputs, AdminGame,
+    AdminState, ScanProgress,
 };
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
@@ -24,55 +25,55 @@ fn save_admin_state(state: AdminState) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn scan_games(folder: String, previous: Vec<AdminGame>) -> Result<Vec<AdminGame>, String> {
-    let scanned = scan_folder(&PathBuf::from(&folder)).map_err(map_err)?;
-    Ok(merge_scanned(scanned, &previous))
-}
-
-#[tauri::command]
-fn compare_games(dest: String, games: Vec<AdminGame>) -> Result<CompareResult, String> {
-    compare_library(&PathBuf::from(dest), &games).map_err(map_err)
-}
-
-#[tauri::command]
-async fn publish_games(
+async fn scan_games(
     app: AppHandle,
-    dest: String,
-    games: Vec<AdminGame>,
-    _lock: State<'_, AdminLock>,
-) -> Result<PublishOutcome, String> {
-    let _guard = _lock.0.lock().await;
-    let dest = PathBuf::from(dest);
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<PublishProgress>();
+    folder: String,
+    previous: Vec<AdminGame>,
+    lock: State<'_, AdminLock>,
+) -> Result<Vec<AdminGame>, String> {
+    let _guard = lock.0.lock().await;
+    let folder_path = PathBuf::from(&folder);
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<ScanProgress>();
     let worker = tokio::task::spawn_blocking(move || {
-        let mut games = games;
-        let report = publish_library(&dest, &mut games, |p| {
-            let _ = tx.send(p);
-        })?;
-        Ok::<_, kermo_core::Error>((report, games))
+        let scanned = scan_folder_reporting(&folder_path, |progress| {
+            let _ = tx.send(progress);
+        })
+        .map_err(map_err)?;
+        let games = merge_scanned(scanned, &previous);
+        write_scan_outputs(&games, &folder_path).map_err(map_err)?;
+        Ok::<_, String>(games)
     });
+    let mut last_emit = Instant::now() - Duration::from_secs(1);
+    let mut pending = None;
     while let Some(progress) = rx.recv().await {
-        let _ = app.emit("admin-progress", &progress);
+        pending = Some(progress);
+        if last_emit.elapsed() >= Duration::from_millis(80) {
+            if let Some(progress) = pending.take() {
+                let _ = app.emit("admin-scan", &progress);
+                last_emit = Instant::now();
+            }
+        }
     }
-    let (report, games) = worker.await.map_err(|e| e.to_string())?.map_err(map_err)?;
-    Ok(PublishOutcome { report, games })
+    if let Some(progress) = pending {
+        let _ = app.emit("admin-scan", &progress);
+    }
+    worker.await.map_err(|e| e.to_string())?
 }
 
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PublishOutcome {
-    report: PublishReport,
+#[tauri::command]
+async fn write_library(
+    folder: String,
     games: Vec<AdminGame>,
-}
-
-#[tauri::command]
-fn remove_orphan_game(dest: String, folder: String) -> Result<(), String> {
-    remove_orphan(&PathBuf::from(dest), &folder).map_err(map_err)
-}
-
-#[tauri::command]
-fn guess_dest() -> String {
-    guess_dest_folder()
+    lock: State<'_, AdminLock>,
+) -> Result<(), String> {
+    let _guard = lock.0.lock().await;
+    if folder.trim().is_empty() || games.is_empty() {
+        return Ok(());
+    }
+    tokio::task::spawn_blocking(move || write_scan_outputs(&games, PathBuf::from(folder).as_path()))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(map_err)
 }
 
 pub fn run() {
@@ -89,10 +90,7 @@ pub fn run() {
             load_admin_state,
             save_admin_state,
             scan_games,
-            compare_games,
-            publish_games,
-            remove_orphan_game,
-            guess_dest,
+            write_library,
         ])
         .run(tauri::generate_context!())
         .expect("error while running KermoLauncher Admin");

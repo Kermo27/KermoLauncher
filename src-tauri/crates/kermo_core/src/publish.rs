@@ -124,6 +124,17 @@ pub struct PublishProgress {
     pub total: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanProgress {
+    pub game_name: String,
+    pub game_index: u32,
+    pub game_count: u32,
+    pub relative_path: String,
+    pub completed: u32,
+    pub total: u32,
+}
+
 pub fn state_path() -> PathBuf {
     admin_data_directory().join("admin-state.json")
 }
@@ -149,9 +160,6 @@ pub fn save_state_to(path: &Path, state: &AdminState) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
     fs::write(path, serde_json::to_string_pretty(state)?)?;
-    if !state.scan_folder.trim().is_empty() && !state.games.is_empty() {
-        write_scan_outputs(&state.games, Path::new(&state.scan_folder))?;
-    }
     Ok(())
 }
 
@@ -165,6 +173,13 @@ pub fn guess_dest_folder() -> String {
 }
 
 pub fn scan_folder(folder: &Path) -> Result<Vec<AdminGame>> {
+    scan_folder_reporting(folder, |_| {})
+}
+
+pub fn scan_folder_reporting(
+    folder: &Path,
+    mut on_progress: impl FnMut(ScanProgress),
+) -> Result<Vec<AdminGame>> {
     if !folder.is_dir() {
         return Err(Error::message(format!(
             "Folder not found: {}",
@@ -178,8 +193,24 @@ pub fn scan_folder(folder: &Path) -> Result<Vec<AdminGame>> {
         .filter(|p| p.is_dir())
         .collect();
     dirs.sort();
-    for dir in dirs {
-        if let Some(game) = scan_game_directory(&dir)? {
+    let game_count = dirs.len() as u32;
+    for (index, dir) in dirs.iter().enumerate() {
+        let game_name = dir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("")
+            .to_string();
+        let game_index = index as u32 + 1;
+        if let Some(game) = scan_game_directory(dir, &mut |relative_path, completed, total| {
+            on_progress(ScanProgress {
+                game_name: game_name.clone(),
+                game_index,
+                game_count,
+                relative_path: relative_path.to_string(),
+                completed,
+                total,
+            });
+        })? {
             games.push(game);
         }
     }
@@ -393,7 +424,10 @@ pub fn guess_launch_config(dir_name: &str, files: &[GameFile]) -> Option<LaunchC
     })
 }
 
-fn scan_game_directory(dir: &Path) -> Result<Option<AdminGame>> {
+fn scan_game_directory(
+    dir: &Path,
+    on_file: &mut impl FnMut(&str, u32, u32),
+) -> Result<Option<AdminGame>> {
     let dir_name = dir
         .file_name()
         .and_then(|n| n.to_str())
@@ -418,7 +452,9 @@ fn scan_game_directory(dir: &Path) -> Result<Option<AdminGame>> {
 
     let mut files = Vec::with_capacity(paths.len());
     let mut total = 0i64;
-    for path in &paths {
+    let file_count = paths.len() as u32;
+    on_file("", 0, file_count);
+    for (index, path) in paths.iter().enumerate() {
         let rel = path
             .strip_prefix(dir)
             .unwrap_or(path)
@@ -428,13 +464,17 @@ fn scan_game_directory(dir: &Path) -> Result<Option<AdminGame>> {
         let size = meta.len() as i64;
         let sha = reuse_sha(&existing, &rel, size, meta.modified().ok(), manifest_mtime)
             .map(Ok)
-            .unwrap_or_else(|| hash_file(path))?;
+            .unwrap_or_else(|| {
+                on_file(&rel, index as u32, file_count);
+                hash_file(path)
+            })?;
         files.push(GameFile {
-            path: rel,
+            path: rel.clone(),
             size_bytes: size,
             sha256: sha,
         });
         total += size;
+        on_file(&rel, index as u32 + 1, file_count);
     }
 
     let launch_config = guess_launch_config(&dir_name, &files);
@@ -527,7 +567,7 @@ fn read_folder_manifest(game_dir: &Path) -> Result<Option<GameManifest>> {
     if !game_dir.is_dir() {
         return Ok(None);
     }
-    Ok(scan_game_directory(game_dir)?.map(|g| GameManifest {
+    Ok(scan_game_directory(game_dir, &mut |_, _, _| {})?.map(|g| GameManifest {
         version: g.version,
         total_bytes: g.size_bytes,
         files: g.files,
@@ -837,6 +877,21 @@ mod tests {
             g.launch_config.as_ref().unwrap().executable_path,
             "game.exe"
         );
+    }
+
+    #[test]
+    fn scan_reports_progress_for_each_file() {
+        let root = tempdir().unwrap();
+        let game = root.path().join("game-a");
+        write_game(&game, &[("game.exe", "cccc"), ("data.bin", "dd")]);
+        let mut ticks = Vec::new();
+        let games = scan_folder_reporting(root.path(), |progress| {
+            ticks.push((progress.completed, progress.total, progress.relative_path));
+        })
+        .unwrap();
+        assert_eq!(games.len(), 1);
+        assert_eq!(ticks.last().map(|tick| (tick.0, tick.1)), Some((2, 2)));
+        assert!(ticks.iter().any(|tick| tick.2 == "game.exe"));
     }
 
     #[test]

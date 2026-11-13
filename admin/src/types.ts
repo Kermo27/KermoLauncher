@@ -51,8 +51,10 @@ export type PublishReport = {
   orphans: string[];
 };
 
-export type PublishProgress = {
-  gameId: string;
+export type ScanProgress = {
+  gameName: string;
+  gameIndex: number;
+  gameCount: number;
   relativePath: string;
   completed: number;
   total: number;

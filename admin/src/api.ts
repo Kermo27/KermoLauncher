@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AdminGame, AdminState, CompareResult, PublishReport } from "./types";
+import type { AdminGame, AdminState } from "./types";
 
 export function loadState() {
   return invoke<AdminState>("load_admin_state");
@@ -13,21 +13,6 @@ export function scanFolder(folder: string, previous: AdminGame[]) {
   return invoke<AdminGame[]>("scan_games", { folder, previous });
 }
 
-export function compareLibrary(dest: string, games: AdminGame[]) {
-  return invoke<CompareResult>("compare_games", { dest, games });
-}
-
-export function publishLibrary(dest: string, games: AdminGame[]) {
-  return invoke<{ report: PublishReport; games: AdminGame[] }>("publish_games", {
-    dest,
-    games,
-  });
-}
-
-export function removeOrphan(dest: string, folder: string) {
-  return invoke<void>("remove_orphan_game", { dest, folder });
-}
-
-export function guessDestFolder() {
-  return invoke<string>("guess_dest");
+export function writeLibrary(folder: string, games: AdminGame[]) {
+  return invoke<void>("write_library", { folder, games });
 }

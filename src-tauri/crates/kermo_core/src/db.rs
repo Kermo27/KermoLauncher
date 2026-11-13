@@ -728,14 +728,26 @@ mod tests {
         };
         db.upsert_download_task(&task).unwrap();
         db.set_downloaded_bytes("t1", 40).unwrap();
-        assert_eq!(db.get_download_task("t1").unwrap().unwrap().downloaded_bytes, 40);
+        assert_eq!(
+            db.get_download_task("t1")
+                .unwrap()
+                .unwrap()
+                .downloaded_bytes,
+            40
+        );
 
         let mut paused = task;
         paused.status = DownloadStatus::Paused;
         paused.downloaded_bytes = 40;
         db.upsert_download_task(&paused).unwrap();
         db.set_downloaded_bytes("t1", 90).unwrap();
-        assert_eq!(db.get_download_task("t1").unwrap().unwrap().downloaded_bytes, 40);
+        assert_eq!(
+            db.get_download_task("t1")
+                .unwrap()
+                .unwrap()
+                .downloaded_bytes,
+            40
+        );
     }
 
     #[test]

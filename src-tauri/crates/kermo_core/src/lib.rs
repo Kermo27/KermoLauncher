@@ -32,8 +32,9 @@ pub use proton::{
 };
 pub use publish::{
     compare_library, guess_dest_folder, load_state, load_state_from, merge_scanned,
-    publish_library, remove_orphan, save_state, save_state_to, scan_folder, AdminGame, AdminState,
-    CompareResult, GameSyncPlan, PublishProgress, PublishReport, SyncChange, SyncChangeKind,
+    publish_library, remove_orphan, save_state, save_state_to, scan_folder, scan_folder_reporting,
+    write_scan_outputs, AdminGame, AdminState, CompareResult, GameSyncPlan, PublishProgress,
+    PublishReport, ScanProgress, SyncChange, SyncChangeKind,
 };
 pub use steam::SteamClient;
 pub use url_sanitizer::mask_url;
